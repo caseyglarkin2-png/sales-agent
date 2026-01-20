@@ -16,6 +16,9 @@ from src.agents.specialized import (
 from src.connectors.gmail import GmailConnector
 from src.connectors.hubspot import HubSpotConnector
 from src.connectors.calendar_connector import CalendarConnector
+from src.connectors.drive import DriveConnector
+from src.draft_generator import DraftGenerator
+from src.voice_profile import VoiceProfileManager, VoiceProfile
 
 logger = get_logger(__name__)
 
@@ -28,12 +31,18 @@ class FormleadOrchestrator:
         gmail_connector: Optional[GmailConnector] = None,
         hubspot_connector: Optional[HubSpotConnector] = None,
         calendar_connector: Optional[CalendarConnector] = None,
+        drive_connector: Optional[DriveConnector] = None,
+        draft_generator: Optional[DraftGenerator] = None,
+        voice_profile_manager: Optional[VoiceProfileManager] = None,
         charlie_pesti_folder_id: Optional[str] = None,
     ):
         """Initialize orchestrator with connectors."""
         self.gmail_connector = gmail_connector
         self.hubspot_connector = hubspot_connector
         self.calendar_connector = calendar_connector
+        self.drive_connector = drive_connector
+        self.draft_generator = draft_generator or DraftGenerator()
+        self.voice_profile_manager = voice_profile_manager or VoiceProfileManager()
         self.charlie_pesti_folder_id = charlie_pesti_folder_id
 
         # Initialize specialized agents
@@ -363,11 +372,15 @@ def create_formlead_orchestrator() -> FormleadOrchestrator:
     from src.connectors.gmail import create_gmail_connector
     from src.connectors.hubspot import create_hubspot_connector
     from src.connectors.calendar_connector import create_calendar_connector
+    from src.connectors.drive import DriveConnector
+    from src.draft_generator import DraftGenerator
+    from src.voice_profile import VoiceProfileManager
     
     # Create connectors - they gracefully handle missing credentials
     gmail_connector = None
     hubspot_connector = None
     calendar_connector = None
+    drive_connector = None
     
     try:
         gmail_connector = create_gmail_connector()
@@ -384,12 +397,27 @@ def create_formlead_orchestrator() -> FormleadOrchestrator:
     except Exception as e:
         logger.warning(f"Could not create Calendar connector: {e}")
     
-    charlie_pesti_folder_id = os.environ.get("CHARLIE_PESTI_FOLDER_ID")
+    try:
+        drive_connector = DriveConnector()
+    except Exception as e:
+        logger.warning(f"Could not create Drive connector: {e}")
+    
+    charlie_pesti_folder_id = os.environ.get("CHARLIE_PESTI_FOLDER_ID", "0AB_H1WFgMn8uUk9PVA")
+    pesti_sales_folder_id = os.environ.get("PESTI_SALES_FOLDER_ID", "0ACIUuJIAAt4IUk9PVA")
+    
+    # Create draft generator with OpenAI
+    draft_generator = DraftGenerator()
+    
+    # Create voice profile manager
+    voice_profile_manager = VoiceProfileManager()
     
     return FormleadOrchestrator(
         gmail_connector=gmail_connector,
         hubspot_connector=hubspot_connector,
         calendar_connector=calendar_connector,
+        drive_connector=drive_connector,
+        draft_generator=draft_generator,
+        voice_profile_manager=voice_profile_manager,
         charlie_pesti_folder_id=charlie_pesti_folder_id,
     )
 
