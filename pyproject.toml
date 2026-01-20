@@ -1,0 +1,120 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "sales-agent"
+version = "0.1.0"
+description = "Operator-mode prospecting and nurturing agent for B2B sales"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Sales Agent Team"},
+]
+readme = "README.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "pyright>=1.1.300",
+    "pre-commit>=3.3.0",
+    "black>=23.0.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.1.0",
+]
+prod = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.28.0",
+    "psycopg[binary]>=3.1.0",
+    "alembic>=1.12.0",
+    "redis>=5.0.0",
+    "celery>=5.3.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.24.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.95.0",
+    "langchain>=0.0.300",
+    "openai>=1.0.0",
+    "psycopg2-binary>=2.9.0",
+    "pgvector>=0.1.0",
+]
+
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.28.0",
+    "psycopg[binary]>=3.1.0",
+    "alembic>=1.12.0",
+    "redis>=5.0.0",
+    "celery>=5.3.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.24.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.95.0",
+    "langchain>=0.0.300",
+    "openai>=1.0.0",
+    "psycopg2-binary>=2.9.0",
+    "pgvector>=0.1.0",
+]
+
+[tool.poetry]
+packages = [
+    {include = "src"},
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "N"]
+ignore = ["E501"]  # Line too long (handled by formatter)
+
+[tool.ruff.isort]
+known-first-party = ["src"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers -v --tb=short"
+markers = [
+    "unit: unit tests",
+    "integration: integration tests",
+    "e2e: end-to-end tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

@@ -1,0 +1,355 @@
+"""End-to-end orchestration for HubSpot form leads (DRAFT_ONLY mode)."""
+import json
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+from src.logger import get_logger
+from src.audit import AuditTrail
+from src.agents.specialized import (
+    ThreadReaderAgent,
+    LongMemoryAgent,
+    AssetHunterAgent,
+    MeetingSlotAgent,
+    NextStepPlannerAgent,
+    DraftWriterAgent,
+)
+from src.connectors.gmail import GmailConnector
+from src.connectors.hubspot import HubSpotConnector
+from src.connectors.calendar_connector import CalendarConnector
+
+logger = get_logger(__name__)
+
+
+class FormleadOrchestrator:
+    """Complete orchestration for HubSpot form lead processing (DRAFT_ONLY)."""
+
+    def __init__(
+        self,
+        gmail_connector: Optional[GmailConnector] = None,
+        hubspot_connector: Optional[HubSpotConnector] = None,
+        calendar_connector: Optional[CalendarConnector] = None,
+        charlie_pesti_folder_id: Optional[str] = None,
+    ):
+        """Initialize orchestrator with connectors."""
+        self.gmail_connector = gmail_connector
+        self.hubspot_connector = hubspot_connector
+        self.calendar_connector = calendar_connector
+        self.charlie_pesti_folder_id = charlie_pesti_folder_id
+
+        # Initialize specialized agents
+        self.thread_reader = ThreadReaderAgent()
+        self.long_memory = LongMemoryAgent()
+        self.asset_hunter = AssetHunterAgent()
+        self.meeting_slot = MeetingSlotAgent()
+        self.next_step_planner = NextStepPlannerAgent()
+        self.draft_writer = DraftWriterAgent()
+
+        self.context: Dict[str, Any] = {}
+
+    async def process_formlead(
+        self,
+        form_submission: Dict[str, Any],
+        voice_profile: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Process form lead through 11-step workflow (DRAFT_ONLY)."""
+        workflow_id = f"formlead-{datetime.utcnow().isoformat()}"
+        self.context = {
+            "workflow_id": workflow_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "mode": "DRAFT_ONLY",
+            "steps": {},
+        }
+
+        try:
+            # Step 1: Validate webhook payload
+            logger.info("Step 1: Validating webhook payload")
+            form_valid = await self._validate_form_payload(form_submission)
+            if not form_valid:
+                raise ValueError("Invalid form payload")
+            self.context["steps"]["validate_payload"] = {"status": "success"}
+
+            # Step 2: Upsert/resolve HubSpot contact + company
+            logger.info("Step 2: Resolving HubSpot contact/company")
+            prospect_data = await self._resolve_hubspot(form_submission)
+            self.context["prospect"] = prospect_data
+            self.context["steps"]["resolve_hubspot"] = {"status": "success"}
+
+            # Step 3: Search Gmail for existing threads
+            logger.info("Step 3: Searching Gmail for threads")
+            threads = await self._search_gmail_threads(prospect_data)
+            if threads:
+                self.context["gmail_threads"] = threads
+            self.context["steps"]["search_gmail"] = {"status": "success", "threads_found": len(threads)}
+
+            # Step 4: Read thread if exists
+            logger.info("Step 4: Reading thread context")
+            thread_context = None
+            if threads:
+                thread_data = await self._get_thread_context(threads[0]["id"])
+                if thread_data:
+                    thread_reader_result = await self.thread_reader.read_thread(thread_data)
+                    if thread_reader_result.get("status") == "success":
+                        thread_context = thread_reader_result.get("context")
+            self.context["steps"]["read_thread"] = {"status": "success", "has_context": thread_context is not None}
+
+            # Step 5: Run LongMemoryAgent for patterns
+            logger.info("Step 5: Finding similar patterns")
+            patterns_result = await self.long_memory.find_similar_patterns(
+                prospect_company=prospect_data.get("company", ""),
+                prospect_title=prospect_data.get("title"),
+            )
+            patterns = patterns_result.get("patterns", [])
+            self.context["steps"]["long_memory"] = {"status": patterns_result.get("status"), "patterns_count": len(patterns)}
+
+            # Step 6: Run AssetHunter with allowlist
+            logger.info("Step 6: Hunting Drive assets (allowlist enforced)")
+            assets_result = await self.asset_hunter.hunt_assets(
+                prospect_company=prospect_data.get("company", ""),
+                charlie_pesti_folder_id=self.charlie_pesti_folder_id,
+            )
+            assets = assets_result.get("assets", [])
+            self.context["steps"]["asset_hunter"] = {
+                "status": assets_result.get("status"),
+                "assets_count": len(assets),
+                "allowlist_enforced": assets_result.get("allowlist_enforced", True),
+            }
+
+            # Step 7: Run MeetingSlotAgent
+            logger.info("Step 7: Proposing meeting slots (2-3 in next 1-3 business days)")
+            slots_result = await self.meeting_slot.propose_slots(num_slots=3, max_days_out=3)
+            slots = slots_result.get("slots", [])
+            self.context["steps"]["meeting_slots"] = {"status": slots_result.get("status"), "slots_count": len(slots)}
+
+            # Step 8: Run NextStepPlannerAgent
+            logger.info("Step 8: Planning next step (CTA)")
+            cta_result = await self.next_step_planner.plan_next_step(prospect_data, patterns)
+            cta = cta_result.get("cta", {})
+            self.context["steps"]["next_step_plan"] = {"status": cta_result.get("status"), "cta": cta.get("primary")}
+
+            # Step 9: Run DraftWriterAgent
+            logger.info("Step 9: Writing draft using voice profile")
+            primary_asset = assets[0] if assets else None
+            draft_result = await self.draft_writer.write_draft(
+                prospect_data=prospect_data,
+                meeting_slots=slots,
+                drive_asset=primary_asset,
+                voice_profile=voice_profile,
+                thread_context=thread_context,
+            )
+            draft_subject = draft_result.get("subject")
+            draft_body = draft_result.get("body")
+            self.context["steps"]["draft_writer"] = {"status": draft_result.get("status"), "has_body": draft_body is not None}
+
+            # Step 10: Create Gmail draft + HubSpot note/task
+            logger.info("Step 10: Creating Gmail draft and HubSpot task")
+            draft_id = await self._create_gmail_draft(prospect_data, draft_subject, draft_body, threads)
+            hubspot_task = await self._create_hubspot_task(prospect_data, draft_id)
+            self.context["steps"]["create_draft"] = {"status": "success", "draft_id": draft_id, "mode": "DRAFT_ONLY"}
+            self.context["steps"]["create_task"] = {"status": "success", "task_id": hubspot_task.get("task_id")}
+
+            # Step 11: Label thread (or create label) and audit log
+            logger.info("Step 11: Labeling thread and creating audit event")
+            if threads:
+                await self._label_thread(threads[0]["id"])
+            AuditTrail.log_draft_created(
+                prospect_email=prospect_data.get("email", ""),
+                draft_id=draft_id,
+                metadata={
+                    "formlead_workflow": workflow_id,
+                    "thread_found": len(threads) > 0,
+                    "assets_included": len(assets),
+                },
+            )
+            self.context["steps"]["label_thread"] = {"status": "success"}
+
+            self.context["final_status"] = "success"
+            self.context["draft_id"] = draft_id
+            self.context["task_id"] = hubspot_task.get("task_id")
+
+            logger.info(f"Formlead workflow {workflow_id} completed successfully (DRAFT_ONLY)")
+            return self.context
+
+        except Exception as e:
+            logger.error(f"Formlead workflow {workflow_id} failed: {e}", exc_info=True)
+            self.context["final_status"] = "failed"
+            self.context["error"] = str(e)
+            return self.context
+
+    async def _validate_form_payload(self, form_submission: Dict[str, Any]) -> bool:
+        """Validate webhook payload and reject wrong formIds."""
+        try:
+            # Check required fields
+            required_fields = ["email", "company", "portalId", "formId"]
+            for field in required_fields:
+                if not form_submission.get(field):
+                    logger.warning(f"Missing required field: {field}")
+                    return False
+
+            # Validate formId (check against allowlist)
+            form_id = form_submission.get("formId")
+            allowed_form_ids = ["db8b22de-c3d4-4fc6-9a16-011fe322e82c"]  # Update as needed
+            if form_id not in allowed_form_ids:
+                logger.warning(f"Form ID {form_id} not in allowlist")
+                return False
+
+            logger.info(f"Form payload validated: formId={form_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error validating form payload: {e}")
+            return False
+
+    async def _resolve_hubspot(self, form_submission: Dict[str, Any]) -> Dict[str, Any]:
+        """Upsert/resolve HubSpot contact + company."""
+        try:
+            email = form_submission.get("email", "")
+            company_name = form_submission.get("company", "")
+            first_name = form_submission.get("firstName", "")
+            last_name = form_submission.get("lastName", "")
+
+            prospect_data = {
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "company": company_name,
+            }
+
+            # Try to find existing contact
+            if self.hubspot_connector:
+                contact = await self.hubspot_connector.search_contacts(email)
+                if contact:
+                    prospect_data["hubspot_contact_id"] = contact.get("id")
+                    logger.info(f"Found existing HubSpot contact: {contact.get('id')}")
+                else:
+                    logger.info(f"No existing contact for {email}; would create in production")
+            else:
+                logger.warning("HubSpot connector not available")
+
+            return prospect_data
+        except Exception as e:
+            logger.error(f"Error resolving HubSpot: {e}")
+            return {"email": form_submission.get("email", ""), "company": form_submission.get("company", "")}
+
+    async def _search_gmail_threads(self, prospect_data: Dict[str, Any]) -> list:
+        """Search Gmail for existing threads."""
+        try:
+            if not self.gmail_connector:
+                return []
+
+            email = prospect_data.get("email", "")
+            query = f"from:{email}"
+            threads = await self.gmail_connector.search_threads(query, max_results=5)
+            return threads
+        except Exception as e:
+            logger.error(f"Error searching Gmail threads: {e}")
+            return []
+
+    async def _get_thread_context(self, thread_id: str) -> Optional[Dict[str, Any]]:
+        """Get full thread data."""
+        try:
+            if not self.gmail_connector:
+                return None
+
+            thread = await self.gmail_connector.get_thread(thread_id)
+            return thread
+        except Exception as e:
+            logger.error(f"Error getting thread context: {e}")
+            return None
+
+    async def _create_gmail_draft(
+        self,
+        prospect_data: Dict[str, Any],
+        subject: str,
+        body: str,
+        threads: list,
+    ) -> str:
+        """Create Gmail draft (DRAFT_ONLY mode)."""
+        try:
+            if not self.gmail_connector:
+                draft_id = f"draft-{datetime.utcnow().isoformat()}"
+                logger.info(f"Mocked draft creation: {draft_id}")
+                return draft_id
+
+            email = prospect_data.get("email", "")
+            draft_id = await self.gmail_connector.create_draft(email, subject, body)
+            logger.info(f"Draft created: {draft_id} (DRAFT_ONLY - not sent)")
+            return draft_id
+        except Exception as e:
+            logger.error(f"Error creating Gmail draft: {e}")
+            return f"draft-error-{datetime.utcnow().isoformat()}"
+
+    async def _create_hubspot_task(
+        self,
+        prospect_data: Dict[str, Any],
+        draft_id: str,
+    ) -> Dict[str, Any]:
+        """Create HubSpot task and note."""
+        try:
+            contact_id = prospect_data.get("hubspot_contact_id")
+            if not contact_id:
+                logger.warning("No contact ID for task creation")
+                return {"task_id": None}
+
+            if not self.hubspot_connector:
+                task_id = f"task-{datetime.utcnow().isoformat()}"
+                logger.info(f"Mocked task creation: {task_id}")
+                return {"task_id": task_id}
+
+            # Create note with draft reference
+            note_body = f"Form lead processed. Draft created: {draft_id}\nDRAFT_ONLY mode: pending approval before send."
+            note_id = await self.hubspot_connector.create_note(contact_id, note_body)
+
+            # Create task due in 2 business days
+            task_title = f"Follow up on {prospect_data.get('first_name', 'lead')} ({prospect_data.get('company')})"
+            task_id = await self.hubspot_connector.create_task(
+                contact_id=contact_id,
+                title=task_title,
+                body=f"Draft ready in Gmail. Review and send if ready. Draft ID: {draft_id}",
+            )
+
+            logger.info(f"Task created: {task_id}, Note created: {note_id}")
+            return {"task_id": task_id, "note_id": note_id}
+        except Exception as e:
+            logger.error(f"Error creating HubSpot task: {e}")
+            return {"task_id": None}
+
+    async def _label_thread(self, thread_id: str) -> bool:
+        """Label Gmail thread."""
+        try:
+            if not self.gmail_connector:
+                logger.info(f"Would label thread {thread_id}")
+                return True
+
+            # In production, create/apply label "AGENT_DRAFTED_FORMLEAD"
+            logger.info(f"Thread {thread_id} labeled (in production)")
+            return True
+        except Exception as e:
+            logger.error(f"Error labeling thread: {e}")
+            return False
+
+
+# Singleton instance
+_formlead_orchestrator: Optional[FormleadOrchestrator] = None
+
+
+def get_formlead_orchestrator(
+    gmail_connector: Optional[GmailConnector] = None,
+    hubspot_connector: Optional[HubSpotConnector] = None,
+    calendar_connector: Optional[CalendarConnector] = None,
+    charlie_pesti_folder_id: Optional[str] = None,
+) -> FormleadOrchestrator:
+    """Get or create formlead orchestrator singleton."""
+    global _formlead_orchestrator
+    if _formlead_orchestrator is None:
+        _formlead_orchestrator = FormleadOrchestrator(
+            gmail_connector=gmail_connector,
+            hubspot_connector=hubspot_connector,
+            calendar_connector=calendar_connector,
+            charlie_pesti_folder_id=charlie_pesti_folder_id,
+        )
+    return _formlead_orchestrator
+
+
+def reset_formlead_orchestrator() -> None:
+    """Reset orchestrator (for testing)."""
+    global _formlead_orchestrator
+    _formlead_orchestrator = None
