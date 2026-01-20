@@ -367,6 +367,42 @@ LOG_LEVEL=INFO
 
 ## 🚢 Deployment
 
+### Railway (Recommended)
+
+Deploy to Railway for simple, managed infrastructure:
+
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login and link project
+railway login
+railway link
+
+# Add PostgreSQL and Redis
+railway add --database postgres
+railway add --database redis
+
+# Set environment variables
+railway variables set OPENAI_API_KEY=sk-...
+railway variables set HUBSPOT_API_KEY=pat-...
+railway variables set GOOGLE_CREDENTIALS_JSON='...'
+railway variables set GMAIL_DELEGATED_USER=you@company.com
+railway variables set MODE_DRAFT_ONLY=true
+railway variables set OPERATOR_APPROVAL_REQUIRED=true
+
+# Deploy
+railway up
+
+# Open dashboard
+railway open
+```
+
+**Live Environment:**
+- Dashboard: `https://web-production-a6ccf.up.railway.app/`
+- API Docs: `https://web-production-a6ccf.up.railway.app/docs`
+- Webhook: `https://web-production-a6ccf.up.railway.app/api/webhooks/hubspot/form-submission`
+
 ### Docker Build
 
 ```bash
