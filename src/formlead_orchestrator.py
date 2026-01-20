@@ -92,6 +92,7 @@ class FormleadOrchestrator:
                 logger.warning(f"Duplicate submission detected: {submission_id}")
                 return {
                     "status": "skipped",
+                    "final_status": "skipped",
                     "workflow_id": workflow_id,
                     "reason": "duplicate_submission",
                     "message": f"Submission {submission_id} has already been processed",
@@ -102,6 +103,7 @@ class FormleadOrchestrator:
                 logger.warning(f"Recent workflow exists for {email}, throttling")
                 return {
                     "status": "skipped",
+                    "final_status": "skipped",
                     "workflow_id": workflow_id,
                     "reason": "throttled",
                     "message": f"A workflow for {email} was processed within the last hour",
