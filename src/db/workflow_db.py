@@ -1,7 +1,7 @@
 """Database persistence for workflow runs and audit logs."""
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
 
 import asyncpg
