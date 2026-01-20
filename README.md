@@ -367,9 +367,18 @@ LOG_LEVEL=INFO
 
 ## 🚢 Deployment
 
-### Railway (Recommended)
+### Railway (Recommended) - Currently Live ✅
 
-Deploy to Railway for simple, managed infrastructure:
+The system is deployed and running on Railway:
+
+| Service | URL |
+|---------|-----|
+| **Dashboard** | https://web-production-a6ccf.up.railway.app/ |
+| **API Docs** | https://web-production-a6ccf.up.railway.app/docs |
+| **Health** | https://web-production-a6ccf.up.railway.app/health |
+| **Webhook** | https://web-production-a6ccf.up.railway.app/api/webhooks/hubspot/form-submission |
+
+#### Quick Deploy
 
 ```bash
 # Install Railway CLI
@@ -386,22 +395,24 @@ railway add --database redis
 # Set environment variables
 railway variables set OPENAI_API_KEY=sk-...
 railway variables set HUBSPOT_API_KEY=pat-...
-railway variables set GOOGLE_CREDENTIALS_JSON='...'
+railway variables set GOOGLE_CREDENTIALS_JSON="$(cat service-account.json | base64 -w 0)"
 railway variables set GMAIL_DELEGATED_USER=you@company.com
 railway variables set MODE_DRAFT_ONLY=true
 railway variables set OPERATOR_APPROVAL_REQUIRED=true
 
 # Deploy
 railway up
-
-# Open dashboard
-railway open
 ```
 
-**Live Environment:**
-- Dashboard: `https://web-production-a6ccf.up.railway.app/`
-- API Docs: `https://web-production-a6ccf.up.railway.app/docs`
-- Webhook: `https://web-production-a6ccf.up.railway.app/api/webhooks/hubspot/form-submission`
+#### Google Workspace Setup (Required for Gmail/Calendar/Drive)
+
+1. **Create Service Account** in Google Cloud Console (IAM & Admin → Service Accounts)
+2. **Enable APIs**: Gmail API, Calendar API, Drive API
+3. **Download JSON key** and base64 encode it for `GOOGLE_CREDENTIALS_JSON`
+4. **Configure Domain-Wide Delegation** in Google Workspace Admin:
+   - Go to: https://admin.google.com/ac/owl/domainwidedelegation
+   - Add Client ID from service account
+   - Add scopes: `https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar.readonly,https://www.googleapis.com/auth/drive.readonly`
 
 ### Docker Build
 
@@ -415,14 +426,14 @@ docker run -p 8000:8000 \
 
 ### Production Checklist
 
-- [ ] Set `API_ENV=production`
+- [x] Set `API_ENV=production`
+- [x] Configure PostgreSQL (Railway)
+- [x] Configure Redis (Railway)  
+- [x] Set up Google Workspace delegation
 - [ ] Use strong API keys (rotate regularly)
-- [ ] Enable HTTPS/TLS
-- [ ] Set up PostgreSQL backups
-- [ ] Configure Redis persistence
 - [ ] Enable monitoring & alerting
-- [ ] Run full test suite
-- [ ] Set up CI/CD pipeline
+- [ ] Configure HubSpot webhook
+- [ ] Run full test suite before go-live
 
 ---
 
