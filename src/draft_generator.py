@@ -32,6 +32,8 @@ class DraftGenerator:
         meeting_slots: Optional[List[Dict[str, Any]]] = None,
         asset_link: Optional[str] = None,
         voice_profile: Optional[VoiceProfile] = None,
+        talking_points: Optional[List[str]] = None,
+        personalization_hooks: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Generate a personalized email draft.
         
@@ -43,6 +45,8 @@ class DraftGenerator:
             meeting_slots: Available meeting times
             asset_link: Link to relevant asset (case study, proposal)
             voice_profile: Voice profile for tone/style
+            talking_points: Research-based talking points
+            personalization_hooks: Personalization hooks from research
         
         Returns:
             Dict with subject, body, and metadata
@@ -59,7 +63,9 @@ class DraftGenerator:
         system_prompt = self._build_system_prompt(profile)
         user_prompt = self._build_user_prompt(
             prospect_name, company_name, thread_context, 
-            meeting_slots, asset_link, profile
+            meeting_slots, asset_link, profile,
+            talking_points=talking_points,
+            personalization_hooks=personalization_hooks,
         )
         
         try:
@@ -119,11 +125,25 @@ IMPORTANT:
         meeting_slots: Optional[List[Dict[str, Any]]],
         asset_link: Optional[str],
         profile: VoiceProfile,
+        talking_points: Optional[List[str]] = None,
+        personalization_hooks: Optional[List[str]] = None,
     ) -> str:
         """Build user prompt with context."""
         parts = [
             f"Write an email to {prospect_name} at {company_name}.",
         ]
+        
+        # Add research-based talking points
+        if talking_points:
+            parts.append("\nResearch insights to incorporate:")
+            for point in talking_points:
+                parts.append(f"- {point}")
+        
+        # Add personalization hooks
+        if personalization_hooks:
+            parts.append("\nPersonalization suggestions:")
+            for hook in personalization_hooks:
+                parts.append(f"- {hook}")
         
         if thread_context:
             parts.append(f"\nPrevious conversation context:\n{thread_context}")

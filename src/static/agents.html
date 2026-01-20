@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Activity - Sales Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .agent-card { transition: all 0.3s ease; }
+        .agent-card:hover { transform: translateY(-2px); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .chat-messages { max-height: 400px; overflow-y: auto; }
+        .typing-indicator { animation: typing 1.5s infinite; }
+        @keyframes typing {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-6">
+                <h1 class="text-xl font-bold text-gray-800">🤖 Sales Agent</h1>
+                <a href="/" class="text-gray-600 hover:text-gray-800 text-sm">Dashboard</a>
+                <a href="/voice-profiles" class="text-gray-600 hover:text-gray-800 text-sm">Voice Profiles</a>
+                <a href="/agents" class="text-blue-600 font-medium text-sm">Agents</a>
+            </div>
+            <a href="/docs" class="text-blue-600 hover:text-blue-800 text-sm">API Docs</a>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Agent Activity</h1>
+            <p class="text-gray-600">Monitor agents in real-time and interact with them</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Agent Status Cards -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-800">Active Agents</h2>
+                    <button onclick="loadAgentStatus()" class="text-blue-600 hover:text-blue-800 text-sm">
+                        ↻ Refresh
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="agents-grid">
+                    <!-- Agent cards will be rendered here -->
+                </div>
+
+                <!-- Recent Activity Feed -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b">
+                        <h3 class="font-semibold text-gray-800">Recent Activity</h3>
+                    </div>
+                    <div id="activity-feed" class="divide-y max-h-96 overflow-y-auto">
+                        <div class="p-4 text-center text-gray-500">Loading activity...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow sticky top-8">
+                    <div class="px-6 py-4 border-b flex justify-between items-center">
+                        <h3 class="font-semibold text-gray-800">💬 Chat with Agents</h3>
+                        <select id="agent-select" class="text-sm border rounded px-2 py-1">
+                            <option value="orchestrator">Orchestrator</option>
+                            <option value="research">Research Agent</option>
+                            <option value="draft_writer">Draft Writer</option>
+                            <option value="thread_reader">Thread Reader</option>
+                        </select>
+                    </div>
+                    
+                    <div id="chat-messages" class="chat-messages p-4 space-y-3 bg-gray-50">
+                        <div class="text-center text-gray-500 text-sm py-8">
+                            Ask questions about current workflows, research, or drafts
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border-t">
+                        <form id="chat-form" class="flex space-x-2">
+                            <input type="text" id="chat-input" 
+                                class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Ask a question...">
+                            <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Send
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflow Details Modal -->
+        <div id="workflow-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                    <div class="px-6 py-4 border-b flex justify-between items-center">
+                        <h3 class="font-semibold text-gray-800">Workflow Details</h3>
+                        <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">✕</button>
+                    </div>
+                    <div id="modal-content" class="p-6">
+                        <!-- Content will be injected -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = '';
+        let chatHistory = [];
+
+        // Agent definitions
+        const AGENTS = [
+            {
+                id: 'orchestrator',
+                name: 'Orchestrator',
+                icon: '🎯',
+                description: 'Coordinates the workflow',
+                color: 'blue'
+            },
+            {
+                id: 'research',
+                name: 'Research Agent',
+                icon: '🔍',
+                description: 'Researches prospects & companies',
+                color: 'purple'
+            },
+            {
+                id: 'thread_reader',
+                name: 'Thread Reader',
+                icon: '📧',
+                description: 'Analyzes email threads',
+                color: 'green'
+            },
+            {
+                id: 'draft_writer',
+                name: 'Draft Writer',
+                icon: '✍️',
+                description: 'Generates personalized emails',
+                color: 'orange'
+            },
+            {
+                id: 'asset_hunter',
+                name: 'Asset Hunter',
+                icon: '📁',
+                description: 'Finds relevant Drive assets',
+                color: 'pink'
+            },
+            {
+                id: 'meeting_slot',
+                name: 'Meeting Planner',
+                icon: '📅',
+                description: 'Proposes meeting times',
+                color: 'teal'
+            }
+        ];
+
+        // Load agent status
+        async function loadAgentStatus() {
+            const grid = document.getElementById('agents-grid');
+            
+            // Get recent workflow activity
+            let recentActivity = [];
+            try {
+                const response = await fetch(`${API_BASE}/api/operator/workflows?limit=10`);
+                recentActivity = await response.json();
+            } catch (e) {
+                console.error('Error loading workflows:', e);
+            }
+
+            // Determine which agents are "active" based on recent workflows
+            const activeWorkflows = recentActivity.filter(w => w.status === 'running');
+            
+            grid.innerHTML = AGENTS.map(agent => {
+                const isActive = activeWorkflows.length > 0;
+                const statusClass = isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600';
+                const statusText = isActive ? 'Active' : 'Idle';
+                const pulseClass = isActive ? 'pulse' : '';
+                
+                return `
+                    <div class="agent-card bg-white rounded-lg shadow p-4 cursor-pointer" 
+                         onclick="selectAgent('${agent.id}')">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="text-3xl">${agent.icon}</div>
+                            <span class="px-2 py-1 text-xs rounded-full ${statusClass} ${pulseClass}">
+                                ${statusText}
+                            </span>
+                        </div>
+                        <h4 class="font-semibold text-gray-800">${agent.name}</h4>
+                        <p class="text-sm text-gray-500 mt-1">${agent.description}</p>
+                    </div>
+                `;
+            }).join('');
+
+            // Load activity feed
+            loadActivityFeed(recentActivity);
+        }
+
+        // Load activity feed
+        function loadActivityFeed(workflows) {
+            const feed = document.getElementById('activity-feed');
+            
+            if (!workflows || workflows.length === 0) {
+                feed.innerHTML = '<div class="p-4 text-center text-gray-500">No recent activity</div>';
+                return;
+            }
+
+            feed.innerHTML = workflows.map(wf => {
+                const time = wf.started_at ? new Date(wf.started_at).toLocaleString() : 'Unknown';
+                const statusColor = wf.status === 'success' ? 'green' : wf.status === 'failed' ? 'red' : 'yellow';
+                const steps = wf.steps_completed ? Object.keys(wf.steps_completed).length : 0;
+                
+                return `
+                    <div class="p-4 hover:bg-gray-50 cursor-pointer" onclick="showWorkflowDetails('${wf.workflow_id}')">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="font-medium text-gray-800">${wf.contact_email || 'Unknown'}</div>
+                                <div class="text-sm text-gray-500">${wf.company_name || 'Unknown Company'}</div>
+                            </div>
+                            <span class="px-2 py-1 text-xs rounded-full bg-${statusColor}-100 text-${statusColor}-800">
+                                ${wf.status}
+                            </span>
+                        </div>
+                        <div class="flex justify-between mt-2 text-xs text-gray-400">
+                            <span>${time}</span>
+                            <span>${steps} steps completed</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Select agent for chat
+        function selectAgent(agentId) {
+            document.getElementById('agent-select').value = agentId;
+            const agent = AGENTS.find(a => a.id === agentId);
+            addChatMessage('system', `Now chatting with ${agent.name}`);
+        }
+
+        // Add chat message
+        function addChatMessage(role, content) {
+            const container = document.getElementById('chat-messages');
+            const isUser = role === 'user';
+            
+            const messageHtml = `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="max-w-[80%] px-4 py-2 rounded-lg ${
+                        isUser ? 'bg-blue-600 text-white' : 
+                        role === 'system' ? 'bg-gray-200 text-gray-600 text-center text-sm' :
+                        'bg-white border text-gray-800'
+                    }">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML += messageHtml;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Show typing indicator
+        function showTyping() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML += `
+                <div id="typing" class="flex justify-start">
+                    <div class="bg-white border rounded-lg px-4 py-2 text-gray-500 typing-indicator">
+                        Agent is thinking...
+                    </div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Remove typing indicator
+        function hideTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        // Chat with agent
+        async function chatWithAgent(message) {
+            const agentId = document.getElementById('agent-select').value;
+            addChatMessage('user', message);
+            showTyping();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/agents/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_id: agentId,
+                        message: message,
+                        context: chatHistory.slice(-5) // Last 5 messages for context
+                    })
+                });
+
+                hideTyping();
+
+                if (!response.ok) {
+                    // Fallback response if endpoint doesn't exist yet
+                    const agent = AGENTS.find(a => a.id === agentId);
+                    addChatMessage('agent', `${agent.icon} I'm the ${agent.name}. ${getAgentResponse(agentId, message)}`);
+                } else {
+                    const result = await response.json();
+                    addChatMessage('agent', result.response);
+                }
+
+                chatHistory.push({ role: 'user', content: message });
+            } catch (e) {
+                hideTyping();
+                const agent = AGENTS.find(a => a.id === agentId);
+                addChatMessage('agent', `${agent.icon} ${getAgentResponse(agentId, message)}`);
+            }
+        }
+
+        // Get contextual agent response
+        function getAgentResponse(agentId, message) {
+            const responses = {
+                orchestrator: [
+                    "I coordinate the entire workflow - from form submission to draft creation.",
+                    "I manage the sequence: HubSpot lookup → Research → Gmail search → Draft writing.",
+                    "Currently processing workflows in DRAFT_ONLY mode for human review."
+                ],
+                research: [
+                    "I research prospects before emails are drafted - company info, industry, talking points.",
+                    "I look at HubSpot data, Gmail history, and generate personalization hooks.",
+                    "I help the Draft Writer craft more relevant, personalized emails."
+                ],
+                thread_reader: [
+                    "I analyze existing email threads to understand conversation context.",
+                    "I extract key points, open questions, and the current state of the relationship.",
+                    "This helps avoid repetitive messages and keeps conversations coherent."
+                ],
+                draft_writer: [
+                    "I generate personalized email drafts using voice profiles and research context.",
+                    "I ensure emails match your tone, include relevant meeting slots, and have a single CTA.",
+                    "All drafts go to the operator queue for human review before sending."
+                ],
+                asset_hunter: [
+                    "I search Google Drive for relevant case studies, proposals, and materials.",
+                    "I only search approved folders to ensure compliance.",
+                    "I match assets to the prospect's industry and needs."
+                ],
+                meeting_slot: [
+                    "I check calendar availability and propose 2-3 meeting slots.",
+                    "I look at the next 1-3 business days for quick turnaround.",
+                    "Slots are formatted for easy copy-paste into emails."
+                ]
+            };
+
+            const agentResponses = responses[agentId] || ["I'm here to help with the sales workflow."];
+            return agentResponses[Math.floor(Math.random() * agentResponses.length)];
+        }
+
+        // Show workflow details
+        async function showWorkflowDetails(workflowId) {
+            const modal = document.getElementById('workflow-modal');
+            const content = document.getElementById('modal-content');
+            
+            content.innerHTML = '<div class="text-center py-8">Loading...</div>';
+            modal.classList.remove('hidden');
+
+            try {
+                // Try to get detailed workflow info
+                const response = await fetch(`${API_BASE}/api/operator/workflows?limit=50`);
+                const workflows = await response.json();
+                const workflow = workflows.find(w => w.workflow_id === workflowId);
+
+                if (!workflow) {
+                    content.innerHTML = '<div class="text-red-500">Workflow not found</div>';
+                    return;
+                }
+
+                const steps = workflow.steps_completed || {};
+                
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-500">Workflow ID</div>
+                                <div class="font-mono text-sm">${workflow.workflow_id}</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Status</div>
+                                <div class="font-medium ${workflow.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                                    ${workflow.status}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Contact</div>
+                                <div>${workflow.contact_email || '-'}</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Company</div>
+                                <div>${workflow.company_name || '-'}</div>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-4">
+                            <div class="text-sm font-medium text-gray-700 mb-2">Steps Completed</div>
+                            <div class="space-y-2">
+                                ${Object.entries(steps).map(([step, data]) => `
+                                    <div class="flex items-center justify-between bg-gray-50 rounded p-2">
+                                        <span class="text-sm">${step}</span>
+                                        <span class="px-2 py-1 text-xs rounded ${
+                                            data.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                        }">
+                                            ${data.status}
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        ${workflow.draft_id ? `
+                            <div class="border-t pt-4">
+                                <div class="text-sm text-gray-500">Draft ID</div>
+                                <div class="font-mono text-sm">${workflow.draft_id}</div>
+                            </div>
+                        ` : ''}
+
+                        ${workflow.error_message ? `
+                            <div class="border-t pt-4">
+                                <div class="text-sm text-red-500 font-medium">Error</div>
+                                <div class="text-sm text-red-600 bg-red-50 rounded p-2 mt-1">
+                                    ${workflow.error_message}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } catch (e) {
+                content.innerHTML = `<div class="text-red-500">Error: ${e.message}</div>`;
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('workflow-modal').classList.add('hidden');
+        }
+
+        // Chat form handler
+        document.getElementById('chat-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (message) {
+                chatWithAgent(message);
+                input.value = '';
+            }
+        });
+
+        // Close modal on background click
+        document.getElementById('workflow-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'workflow-modal') closeModal();
+        });
+
+        // Initial load
+        loadAgentStatus();
+
+        // Auto-refresh every 10 seconds
+        setInterval(loadAgentStatus, 10000);
+    </script>
+</body>
+</html>

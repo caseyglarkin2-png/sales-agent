@@ -343,8 +343,9 @@ class DraftWriterAgent:
         drive_asset: Optional[Dict[str, Any]] = None,
         voice_profile: Optional[Dict[str, Any]] = None,
         thread_context: Optional[str] = None,
+        research_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Create Gmail draft with voice profile (no em-dashes)."""
+        """Create Gmail draft with voice profile and research context."""
         try:
             # Use DraftGenerator if available (OpenAI-powered)
             if self.draft_generator:
@@ -360,6 +361,13 @@ class DraftWriterAgent:
                     
                     asset_link = drive_asset.get("webViewLink") if drive_asset else None
                     
+                    # Extract research insights for the draft
+                    talking_points = []
+                    personalization_hooks = []
+                    if research_context:
+                        talking_points = research_context.get("talking_points", [])
+                        personalization_hooks = research_context.get("personalization_hooks", [])
+                    
                     result = await self.draft_generator.generate_draft(
                         prospect_email=prospect_data.get("email", ""),
                         prospect_name=prospect_data.get("first_name", ""),
@@ -368,6 +376,8 @@ class DraftWriterAgent:
                         meeting_slots=meeting_slots,
                         asset_link=asset_link,
                         voice_profile=vp,
+                        talking_points=talking_points,
+                        personalization_hooks=personalization_hooks,
                     )
                     
                     if result.get("subject") and result.get("body"):

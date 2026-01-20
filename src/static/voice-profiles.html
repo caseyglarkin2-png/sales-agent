@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Profiles - Sales Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-active { border-bottom: 2px solid #3B82F6; color: #3B82F6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-6">
+                <h1 class="text-xl font-bold text-gray-800">🤖 Sales Agent</h1>
+                <a href="/" class="text-gray-600 hover:text-gray-800 text-sm">Dashboard</a>
+                <a href="/voice-profiles" class="text-blue-600 font-medium text-sm">Voice Profiles</a>
+                <a href="/agents" class="text-gray-600 hover:text-gray-800 text-sm">Agents</a>
+            </div>
+            <a href="/docs" class="text-blue-600 hover:text-blue-800 text-sm">API Docs</a>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Voice Profiles</h1>
+            <p class="text-gray-600">Train and manage voice profiles for personalized email generation</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="border-b mb-6">
+            <nav class="flex space-x-8">
+                <button onclick="showTab('profiles')" id="tab-profiles" class="py-4 text-sm font-medium tab-active">
+                    Profiles
+                </button>
+                <button onclick="showTab('training')" id="tab-training" class="py-4 text-sm font-medium text-gray-500 hover:text-gray-700">
+                    Training
+                </button>
+                <button onclick="showTab('create')" id="tab-create" class="py-4 text-sm font-medium text-gray-500 hover:text-gray-700">
+                    Create New
+                </button>
+            </nav>
+        </div>
+
+        <!-- Profiles Tab -->
+        <div id="panel-profiles" class="tab-panel">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="profiles-grid">
+                <div class="text-center text-gray-500 py-8">Loading profiles...</div>
+            </div>
+        </div>
+
+        <!-- Training Tab -->
+        <div id="panel-training" class="tab-panel hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Training Sources -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📧 Train from HubSpot Emails</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Import marketing emails from HubSpot to learn your brand's voice.
+                            Search for specific campaigns like "Freight Marketer Newsletter".
+                        </p>
+                        <form id="hubspot-train-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name</label>
+                                <input type="text" name="profile_name" required 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="freight_marketer_voice">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Search Query</label>
+                                <input type="text" name="search_query" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    value="Freight Marketer Newsletter"
+                                    placeholder="Campaign name or keyword">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Emails</label>
+                                <input type="number" name="limit" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    value="20" min="1" max="50">
+                            </div>
+                            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Import from HubSpot
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📤 Upload Training Samples</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Upload text files, JSON, or email exports to train your voice profile.
+                        </p>
+                        <form id="upload-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">File</label>
+                                <input type="file" name="file" accept=".txt,.json,.eml"
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                Upload File
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">✍️ Add Sample Manually</h3>
+                        <form id="manual-sample-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                <input type="text" name="subject" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Email subject">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email Text</label>
+                                <textarea name="text" rows="6" required
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Paste email content here..."></textarea>
+                            </div>
+                            <button type="submit" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                Add Sample
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Training Status -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">📊 Training Status</h3>
+                            <button onclick="loadTrainingStatus()" class="text-blue-600 hover:text-blue-800 text-sm">
+                                ↻ Refresh
+                            </button>
+                        </div>
+                        <div id="training-status">
+                            <div class="text-gray-500 text-center py-4">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🧠 Analyze & Create Profile</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Once you've added samples, analyze them to extract voice patterns and create a new profile.
+                        </p>
+                        <div class="space-y-4">
+                            <button onclick="analyzeSamples()" class="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">
+                                Analyze Samples
+                            </button>
+                            <div id="analysis-result" class="hidden bg-gray-50 rounded p-4 text-sm"></div>
+                            <form id="create-from-training-form" class="hidden">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name</label>
+                                    <input type="text" name="profile_name" required 
+                                        class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="my_trained_voice">
+                                </div>
+                                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    Create Profile from Analysis
+                                </button>
+                            </form>
+                            <button onclick="clearSamples()" class="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                                Clear All Samples
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Tab -->
+        <div id="panel-create" class="tab-panel hidden">
+            <div class="max-w-2xl">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Create Voice Profile Manually</h3>
+                    <form id="create-profile-form" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name *</label>
+                            <input type="text" name="name" required 
+                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="My Custom Voice">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+                            <select name="tone" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="professional">Professional</option>
+                                <option value="casual">Casual</option>
+                                <option value="formal">Formal</option>
+                                <option value="friendly">Friendly</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Style Notes (one per line)</label>
+                            <textarea name="style_notes" rows="3"
+                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Direct but warm&#10;Focus on value&#10;Never pushy"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Signature Style</label>
+                                <input type="text" name="signature_style" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    value="Best">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Paragraphs</label>
+                                <input type="number" name="max_paragraphs" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    value="3" min="1" max="10">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Slot Count</label>
+                                <input type="number" name="slot_count" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    value="3" min="1" max="5">
+                            </div>
+                            <div class="flex items-center pt-6 space-x-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="use_contractions" checked class="mr-2">
+                                    Use Contractions
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="include_ps" checked class="mr-2">
+                                    Include P.S.
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Create Profile
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = '';
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all panels
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+            // Deactivate all tabs
+            document.querySelectorAll('[id^="tab-"]').forEach(t => {
+                t.classList.remove('tab-active');
+                t.classList.add('text-gray-500');
+            });
+            // Show selected panel
+            document.getElementById(`panel-${tabName}`).classList.remove('hidden');
+            // Activate tab
+            const tab = document.getElementById(`tab-${tabName}`);
+            tab.classList.add('tab-active');
+            tab.classList.remove('text-gray-500');
+        }
+
+        // Load profiles
+        async function loadProfiles() {
+            const grid = document.getElementById('profiles-grid');
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/profiles`);
+                const profiles = await response.json();
+
+                if (!profiles || profiles.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No profiles found. Create one!</div>';
+                    return;
+                }
+
+                grid.innerHTML = profiles.map(p => `
+                    <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-semibold text-gray-800">${p.name}</h3>
+                            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">${p.tone}</span>
+                        </div>
+                        <div class="text-sm text-gray-600 mb-4">
+                            ${p.style_notes.length > 0 ? p.style_notes.slice(0, 2).join(', ') : 'No style notes'}
+                        </div>
+                        <div class="text-xs text-gray-400 space-y-1">
+                            <div>Signature: "${p.signature_style}"</div>
+                            <div>Paragraphs: ${p.max_paragraphs} | Slots: ${p.slot_count}</div>
+                            <div>Contractions: ${p.use_contractions ? '✓' : '✗'} | P.S.: ${p.include_ps ? '✓' : '✗'}</div>
+                        </div>
+                        <button onclick="viewProfile('${p.id}')" 
+                            class="mt-4 w-full px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                            View Details
+                        </button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                grid.innerHTML = `<div class="col-span-full text-center text-red-500 py-8">Error: ${e.message}</div>`;
+            }
+        }
+
+        // View profile details
+        async function viewProfile(profileId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/profiles/${profileId}`);
+                const profile = await response.json();
+                
+                alert(`Profile: ${profile.name}\n\nPrompt Context:\n${profile.prompt_context}`);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Load training status
+        async function loadTrainingStatus() {
+            const container = document.getElementById('training-status');
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/status`);
+                const status = await response.json();
+
+                if (status.samples_count === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-4">
+                            <div class="text-gray-500 mb-2">No samples yet</div>
+                            <div class="text-sm text-gray-400">Add samples using the options on the left</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Total Samples</span>
+                            <span class="font-semibold text-blue-600">${status.samples_count}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Sources</span>
+                            <span class="text-sm text-gray-800">${status.sources.join(', ') || 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="border-t pt-4">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Recent Samples:</div>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                            ${status.samples.map(s => `
+                                <div class="text-xs bg-gray-50 rounded p-2">
+                                    <div class="font-medium truncate">${s.subject}</div>
+                                    <div class="text-gray-400">${s.source}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                container.innerHTML = `<div class="text-red-500 text-center py-4">Error: ${e.message}</div>`;
+            }
+        }
+
+        // Analyze samples
+        async function analyzeSamples() {
+            const resultDiv = document.getElementById('analysis-result');
+            const createForm = document.getElementById('create-from-training-form');
+            
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<div class="text-center">Analyzing...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/analyze`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Analysis failed');
+                }
+
+                const analysis = result.analysis;
+                resultDiv.innerHTML = `
+                    <div class="space-y-2">
+                        <div><strong>Tone:</strong> ${analysis.tone}</div>
+                        <div><strong>Formality:</strong> ${(analysis.formality_level * 100).toFixed(0)}%</div>
+                        <div><strong>Uses Contractions:</strong> ${analysis.uses_contractions ? 'Yes' : 'No'}</div>
+                        <div><strong>Uses Questions:</strong> ${analysis.uses_questions ? 'Yes' : 'No'}</div>
+                        <div><strong>Uses P.S.:</strong> ${analysis.uses_ps ? 'Yes' : 'No'}</div>
+                        <div><strong>Common Sign-offs:</strong> ${analysis.common_sign_offs.join(', ')}</div>
+                        <div><strong>Style Notes:</strong></div>
+                        <ul class="list-disc list-inside text-xs">
+                            ${analysis.style_notes.map(n => `<li>${n}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+                createForm.classList.remove('hidden');
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="text-red-500">Error: ${e.message}</div>`;
+            }
+        }
+
+        // Clear samples
+        async function clearSamples() {
+            if (!confirm('Clear all training samples?')) return;
+            
+            try {
+                await fetch(`${API_BASE}/api/voice/training/clear`, { method: 'POST' });
+                loadTrainingStatus();
+                document.getElementById('analysis-result').classList.add('hidden');
+                document.getElementById('create-from-training-form').classList.add('hidden');
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Form handlers
+        document.getElementById('hubspot-train-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/hubspot`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile_name: formData.get('profile_name'),
+                        search_query: formData.get('search_query'),
+                        limit: parseInt(formData.get('limit'))
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.status === 'error') {
+                    alert(result.message + '\n\n' + result.suggestion);
+                } else {
+                    alert(`Profile created: ${result.profile_name}\nEmails analyzed: ${result.emails_analyzed}`);
+                    loadProfiles();
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                alert(`File uploaded. Total samples: ${result.samples_count}`);
+                loadTrainingStatus();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+
+        document.getElementById('manual-sample-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/samples`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: formData.get('text'),
+                        subject: formData.get('subject') || 'Manual Sample',
+                        source: 'manual'
+                    })
+                });
+                const result = await response.json();
+                alert(`Sample added. Total samples: ${result.samples_count}`);
+                e.target.reset();
+                loadTrainingStatus();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+
+        document.getElementById('create-from-training-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const profileName = formData.get('profile_name');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/create-profile?profile_name=${encodeURIComponent(profileName)}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                alert(`Profile created: ${result.profile_name}\nTone: ${result.tone}`);
+                loadProfiles();
+                showTab('profiles');
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+
+        document.getElementById('create-profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            const styleNotes = formData.get('style_notes').split('\n').filter(s => s.trim());
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/profiles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: formData.get('name'),
+                        tone: formData.get('tone'),
+                        style_notes: styleNotes,
+                        signature_style: formData.get('signature_style'),
+                        max_paragraphs: parseInt(formData.get('max_paragraphs')),
+                        slot_count: parseInt(formData.get('slot_count')),
+                        use_contractions: formData.get('use_contractions') === 'on',
+                        include_ps: formData.get('include_ps') === 'on'
+                    })
+                });
+                const result = await response.json();
+                alert(`Profile created: ${result.name}`);
+                e.target.reset();
+                loadProfiles();
+                showTab('profiles');
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+
+        // Initial load
+        loadProfiles();
+        loadTrainingStatus();
+    </script>
+</body>
+</html>

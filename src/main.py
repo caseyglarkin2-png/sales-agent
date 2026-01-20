@@ -12,6 +12,7 @@ from src.middleware import TraceIDMiddleware
 from src.routes import agents as agents_routes
 from src.routes import operator as operator_routes
 from src.routes import webhooks as webhooks_routes
+from src.routes import voice as voice_routes
 
 # Configure logging
 settings = get_settings()
@@ -33,6 +34,7 @@ app.add_middleware(TraceIDMiddleware)
 app.include_router(agents_routes.router)
 app.include_router(operator_routes.router)
 app.include_router(webhooks_routes.router)
+app.include_router(voice_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -83,6 +85,24 @@ async def dashboard():
     if os.path.exists(dashboard_path):
         return FileResponse(dashboard_path)
     return JSONResponse({"error": "Dashboard not found"}, status_code=404)
+
+
+@app.get("/voice-profiles", tags=["Dashboard"])
+async def voice_profiles_page():
+    """Voice profiles management page."""
+    page_path = os.path.join(os.path.dirname(__file__), "static", "voice-profiles.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return JSONResponse({"error": "Page not found"}, status_code=404)
+
+
+@app.get("/agents", tags=["Dashboard"])
+async def agents_page():
+    """Agents visibility page."""
+    page_path = os.path.join(os.path.dirname(__file__), "static", "agents.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return JSONResponse({"error": "Page not found"}, status_code=404)
 
 
 @app.get("/api/status", tags=["Health"])

@@ -14,6 +14,7 @@ from src.agents.specialized import (
     NextStepPlannerAgent,
     DraftWriterAgent,
 )
+from src.agents.research import ResearchAgent, create_research_agent
 from src.connectors.gmail import GmailConnector
 from src.connectors.hubspot import HubSpotConnector
 from src.connectors.calendar_connector import CalendarConnector
@@ -53,6 +54,12 @@ class FormleadOrchestrator:
         self.meeting_slot = MeetingSlotAgent(calendar_connector=calendar_connector)
         self.next_step_planner = NextStepPlannerAgent()
         self.draft_writer = DraftWriterAgent(draft_generator=self.draft_generator)
+        
+        # Research agent for company/person enrichment
+        self.research_agent = create_research_agent(
+            hubspot_connector=hubspot_connector,
+            gmail_connector=gmail_connector,
+        )
 
         self.context: Dict[str, Any] = {}
 
@@ -102,6 +109,22 @@ class FormleadOrchestrator:
             prospect_data = await self._resolve_hubspot(form_submission)
             self.context["prospect"] = prospect_data
             self.context["steps"]["resolve_hubspot"] = {"status": "success"}
+
+            # Step 2.5: Research prospect and company
+            logger.info("Step 2.5: Researching prospect and company")
+            research_data = await self.research_agent.research_prospect(
+                email=prospect_data.get("email", ""),
+                company=prospect_data.get("company"),
+                first_name=prospect_data.get("first_name"),
+                last_name=prospect_data.get("last_name"),
+            )
+            self.context["research"] = research_data
+            self.context["steps"]["research_prospect"] = {
+                "status": "success",
+                "sources": research_data.get("sources", []),
+                "talking_points": len(research_data.get("talking_points", [])),
+                "hooks": len(research_data.get("personalization_hooks", [])),
+            }
 
             # Step 3: Search Gmail for existing threads
             logger.info("Step 3: Searching Gmail for threads")
@@ -156,7 +179,7 @@ class FormleadOrchestrator:
             self.context["steps"]["next_step_plan"] = {"status": cta_result.get("status"), "cta": cta.get("primary")}
 
             # Step 9: Run DraftWriterAgent
-            logger.info("Step 9: Writing draft using voice profile")
+            logger.info("Step 9: Writing draft using voice profile and research context")
             primary_asset = assets[0] if assets else None
             draft_result = await self.draft_writer.write_draft(
                 prospect_data=prospect_data,
@@ -164,6 +187,7 @@ class FormleadOrchestrator:
                 drive_asset=primary_asset,
                 voice_profile=voice_profile,
                 thread_context=thread_context,
+                research_context=self.context.get("research"),
             )
             draft_subject = draft_result.get("subject")
             draft_body = draft_result.get("body")
