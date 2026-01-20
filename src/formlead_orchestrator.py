@@ -83,6 +83,32 @@ class FormleadOrchestrator:
         company = form_submission.get("company", "")
         submission_id = form_submission.get("formSubmissionId", "")
 
+        # Check for duplicate submissions
+        try:
+            db = await get_workflow_db()
+            
+            # Check for exact duplicate submission ID
+            if submission_id and await db.check_duplicate_submission(submission_id):
+                logger.warning(f"Duplicate submission detected: {submission_id}")
+                return {
+                    "status": "skipped",
+                    "workflow_id": workflow_id,
+                    "reason": "duplicate_submission",
+                    "message": f"Submission {submission_id} has already been processed",
+                }
+            
+            # Check for recent workflow for same email (throttling)
+            if email and await db.check_recent_email_workflow(email, hours=1):
+                logger.warning(f"Recent workflow exists for {email}, throttling")
+                return {
+                    "status": "skipped",
+                    "workflow_id": workflow_id,
+                    "reason": "throttled",
+                    "message": f"A workflow for {email} was processed within the last hour",
+                }
+        except Exception as e:
+            logger.warning(f"Could not check for duplicates: {e}")
+
         # Persist workflow start to database
         try:
             db = await get_workflow_db()

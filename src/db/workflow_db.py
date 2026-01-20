@@ -115,6 +115,10 @@ class WorkflowDB:
                     ON workflow_runs(contact_email)
                 """)
                 await conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_workflow_runs_submission
+                    ON workflow_runs(submission_id)
+                """)
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_pending_drafts_status 
                     ON pending_drafts(status)
                 """)
@@ -122,6 +126,66 @@ class WorkflowDB:
                 logger.info("Database tables ensured")
             except Exception as e:
                 logger.error(f"Error ensuring tables: {e}")
+    
+    async def check_duplicate_submission(self, submission_id: str) -> bool:
+        """Check if a submission ID has already been processed."""
+        if not submission_id:
+            return False
+        
+        async with self.get_connection() as conn:
+            if not conn:
+                return False
+            
+            try:
+                row = await conn.fetchrow(
+                    """
+                    SELECT workflow_id, status 
+                    FROM workflow_runs 
+                    WHERE submission_id = $1
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """,
+                    submission_id,
+                )
+                
+                if row:
+                    logger.warning(f"Duplicate submission detected: {submission_id} (workflow: {row['workflow_id']}, status: {row['status']})")
+                    return True
+                return False
+            except Exception as e:
+                logger.error(f"Error checking duplicate: {e}")
+                return False
+    
+    async def check_recent_email_workflow(self, email: str, hours: int = 24) -> bool:
+        """Check if we've already processed a workflow for this email recently."""
+        if not email:
+            return False
+        
+        async with self.get_connection() as conn:
+            if not conn:
+                return False
+            
+            try:
+                row = await conn.fetchrow(
+                    """
+                    SELECT workflow_id, status, started_at
+                    FROM workflow_runs 
+                    WHERE contact_email = $1
+                    AND started_at > NOW() - INTERVAL '1 hour' * $2
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """,
+                    email,
+                    hours,
+                )
+                
+                if row:
+                    logger.info(f"Recent workflow found for {email}: {row['workflow_id']} ({row['status']})")
+                    return True
+                return False
+            except Exception as e:
+                logger.error(f"Error checking recent email workflow: {e}")
+                return False
     
     async def disconnect(self):
         """Close connection pool."""
