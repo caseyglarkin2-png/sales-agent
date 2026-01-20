@@ -20,5 +20,5 @@ COPY infra ./infra
 
 EXPOSE 8000
 
-# Use python -m to ensure module is found
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway sets PORT env var - use shell form for variable expansion
+CMD /bin/sh -c "python -m uvicorn src.main:app --host 0.0.0.0 --port \${PORT:-8000}"
