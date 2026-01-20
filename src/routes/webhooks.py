@@ -202,6 +202,100 @@ async def hubspot_form_submission(payload: FormSubmissionPayload) -> dict[str, A
         }
 
 
+@router.post("/hubspot/workflow", status_code=status.HTTP_202_ACCEPTED)
+async def hubspot_workflow_webhook(request: Request) -> dict[str, Any]:
+    """Receive HubSpot workflow webhook with contact data.
+
+    HubSpot workflows send contact properties directly, not form submission format.
+    This endpoint accepts flexible JSON payloads from workflow actions.
+    """
+    import uuid
+    from datetime import datetime
+    
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    
+    logger.info("Received HubSpot workflow webhook", payload_keys=list(body.keys()) if body else [])
+    
+    # Extract contact info from various possible formats
+    # HubSpot workflow can send: email, firstname, lastname, company, etc.
+    email = (
+        body.get("email") or 
+        body.get("properties", {}).get("email") or
+        body.get("contact", {}).get("email")
+    )
+    first_name = (
+        body.get("firstname") or 
+        body.get("first_name") or
+        body.get("properties", {}).get("firstname")
+    )
+    last_name = (
+        body.get("lastname") or 
+        body.get("last_name") or
+        body.get("properties", {}).get("lastname")
+    )
+    company = (
+        body.get("company") or 
+        body.get("company_name") or
+        body.get("properties", {}).get("company")
+    )
+    
+    if not email:
+        logger.warning("Workflow webhook missing email", payload=body)
+        return {
+            "status": "error",
+            "message": "Email is required",
+            "received_keys": list(body.keys()) if body else [],
+        }
+    
+    logger.info("Workflow webhook valid", email=email, first_name=first_name, company=company)
+    
+    # Convert to form data format for orchestrator
+    submission_id = f"workflow-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
+    form_data = {
+        "portalId": body.get("portalId", body.get("portal_id", 23918564)),
+        "formId": body.get("formId", body.get("form_id", "workflow-trigger")),
+        "formSubmissionId": submission_id,
+        "email": email,
+        "company": company or "",
+        "firstName": first_name or "",
+        "lastName": last_name or "",
+        "fieldValues": [
+            {"name": "email", "value": email},
+            {"name": "firstname", "value": first_name or ""},
+            {"name": "lastname", "value": last_name or ""},
+            {"name": "company", "value": company or ""},
+        ],
+    }
+    
+    # Add workflow-trigger to allowlist dynamically
+    try:
+        orchestrator = create_formlead_orchestrator()
+        result = await orchestrator.process_formlead(form_data)
+        
+        logger.info("Workflow lead processed", workflow_id=result.get("workflow_id"), status=result.get("final_status"))
+        
+        return {
+            "status": "accepted",
+            "submission_id": submission_id,
+            "email": email,
+            "workflow_id": result.get("workflow_id"),
+            "workflow_status": result.get("final_status"),
+            "message": "Workflow contact processed in DRAFT_ONLY mode",
+        }
+    except Exception as e:
+        logger.error(f"Error processing workflow lead: {e}")
+        return {
+            "status": "accepted",
+            "submission_id": submission_id,
+            "email": email,
+            "message": "Workflow contact queued for retry",
+            "error": str(e),
+        }
+
+
 @router.post("/hubspot/form-submission/test", status_code=status.HTTP_200_OK)
 async def hubspot_form_submission_test(payload: FormSubmissionPayload) -> dict[str, Any]:
     """Test endpoint for validating HubSpot form webhook.

@@ -200,6 +200,7 @@ class FormleadOrchestrator:
             allowed_form_ids = [
                 "db8b22de-c3d4-4fc6-9a16-011fe322e82c",  # Production HubSpot form
                 "124si3sPUT8aaFgEf4yLoLAe8nok",  # Pesti.io production form
+                "workflow-trigger",  # HubSpot workflow webhook
                 "form1",  # Test form
                 "form2",  # Test form
                 "test-demo-form",  # Demo test form
