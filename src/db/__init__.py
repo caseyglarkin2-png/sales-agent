@@ -3,8 +3,14 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
 
 from src.db.workflow_db import WorkflowDB, get_workflow_db, close_workflow_db
+
+
+# Base class for SQLAlchemy models (used by Alembic)
+class Base(DeclarativeBase):
+    pass
 
 # Placeholder async_session for backward compatibility
 # Real database connection is handled by WorkflowDB using asyncpg
@@ -34,4 +40,4 @@ async def async_session() -> AsyncGenerator[AsyncSession, None]:
         yield None  # type: ignore
 
 
-__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session"]
+__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "Base"]
