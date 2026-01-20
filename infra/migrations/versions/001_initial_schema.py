@@ -17,9 +17,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Enable pgvector extension
-    op.execute('CREATE EXTENSION IF NOT EXISTS vector')
+    # Enable uuid-ossp extension (standard in PostgreSQL)
     op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+    
+    # Note: pgvector extension is optional - if not available, embeddings use ARRAY(Float)
+    # Railway PostgreSQL doesn't have pgvector installed
+    # For production with semantic search, use a PostgreSQL provider with pgvector support
+    # or store embeddings in a separate vector database
 
     # Create hubspot_companies table
     op.create_table(
