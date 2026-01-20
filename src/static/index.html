@@ -20,6 +20,7 @@
                 <a href="/" class="text-blue-600 font-medium text-sm">Dashboard</a>
                 <a href="/voice-profiles" class="text-gray-600 hover:text-gray-800 text-sm">Voice Profiles</a>
                 <a href="/agents" class="text-gray-600 hover:text-gray-800 text-sm">Agents</a>
+                <a href="/admin" class="text-gray-600 hover:text-gray-800 text-sm">Admin</a>
             </div>
             <div class="flex items-center space-x-4">
                 <span id="status" class="text-sm text-gray-600">
@@ -81,6 +82,41 @@
             </div>
             <div id="workflows-container">
                 <div class="p-6 text-center text-gray-500">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Voice Training Panel -->
+        <div class="bg-white rounded-lg shadow mt-8">
+            <div class="px-6 py-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800">🎯 Voice Training</h2>
+                <span id="training-status" class="text-sm text-gray-500"></span>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-4">Train the voice profile from actual emails sent in HubSpot to capture the real communication style.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name</label>
+                        <input type="text" id="training-profile" value="casey_larkin"
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Owner Email (HubSpot)</label>
+                        <input type="email" id="training-owner-email" value="casey.l@pesti.io"
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Limit</label>
+                        <input type="number" id="training-limit" value="50" min="10" max="200"
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <button onclick="trainFromEmails()" 
+                    class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                    📧 Train from HubSpot Sent Emails
+                </button>
+                <div id="training-result" class="mt-4 hidden">
+                    <pre class="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto max-h-64 overflow-y-auto"></pre>
+                </div>
             </div>
         </div>
 
@@ -158,8 +194,9 @@
             container.innerHTML = '<div class="p-6 text-center text-gray-500">Loading...</div>';
             
             try {
-                const response = await fetch(`${API_BASE}/api/operator/drafts/pending`);
-                const drafts = await response.json();
+                const response = await fetch(`${API_BASE}/api/drafts`);
+                const data = await response.json();
+                const drafts = data.drafts || [];
                 
                 if (!drafts || drafts.length === 0) {
                     container.innerHTML = '<div class="p-6 text-center text-gray-500">No pending drafts</div>';
@@ -167,27 +204,32 @@
                 }
                 
                 container.innerHTML = drafts.map(draft => `
-                    <div class="p-6 hover:bg-gray-50 transition">
-                        <div class="flex justify-between items-start">
+                    <div class="p-6 hover:bg-gray-50 transition border-b">
+                        <div class="flex justify-between items-start mb-3">
                             <div class="flex-1">
-                                <div class="font-medium text-gray-800">${draft.subject || 'No subject'}</div>
-                                <div class="text-sm text-gray-500 mt-1">To: ${draft.recipient}</div>
-                                <div class="text-sm text-gray-400 mt-1">Created: ${new Date(draft.created_at).toLocaleString()}</div>
+                                <div class="font-semibold text-gray-800 text-lg">${draft.subject || 'No subject'}</div>
+                                <div class="text-sm text-gray-500 mt-1">
+                                    <span class="font-medium">To:</span> ${draft.recipient}
+                                    ${draft.company_name ? `<span class="ml-3 text-gray-400">| ${draft.company_name}</span>` : ''}
+                                </div>
                             </div>
-                            <div class="flex space-x-2">
-                                <button onclick="approveDraft('${draft.draft_id}')" 
-                                    class="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm">
-                                    Approve
+                            <div class="flex space-x-2 ml-4">
+                                <button onclick="approveDraft('${draft.id}')" 
+                                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+                                    ✓ Approve
                                 </button>
-                                <button onclick="rejectDraft('${draft.draft_id}')" 
-                                    class="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm">
-                                    Reject
-                                </button>
-                                <button onclick="viewDraft('${draft.draft_id}')" 
-                                    class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm">
-                                    View
+                                <button onclick="rejectDraft('${draft.id}')" 
+                                    class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium">
+                                    ✗ Reject
                                 </button>
                             </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                            ${draft.body || 'No body content'}
+                        </div>
+                        <div class="mt-2 text-xs text-gray-400 flex justify-between">
+                            <span>Gmail Draft: ${draft.gmail_draft_id || 'N/A'}</span>
+                            <span>${draft.created_at ? new Date(draft.created_at).toLocaleString() : ''}</span>
                         </div>
                     </div>
                 `).join('');
@@ -286,6 +328,47 @@
                 loadStats();
             } catch (e) {
                 alert('Error: ' + e.message);
+            }
+        }
+
+        // Train from HubSpot emails
+        async function trainFromEmails() {
+            const profile = document.getElementById('training-profile').value;
+            const ownerEmail = document.getElementById('training-owner-email').value;
+            const limit = document.getElementById('training-limit').value;
+            const statusEl = document.getElementById('training-status');
+            const resultDiv = document.getElementById('training-result');
+            
+            statusEl.textContent = 'Training in progress...';
+            statusEl.className = 'text-sm text-yellow-600';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice/training/sent-emails`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile_name: profile,
+                        owner_email: ownerEmail,
+                        limit: parseInt(limit)
+                    })
+                });
+                const result = await response.json();
+                
+                resultDiv.classList.remove('hidden');
+                resultDiv.querySelector('pre').textContent = JSON.stringify(result, null, 2);
+                
+                if (result.status === 'success') {
+                    statusEl.textContent = `✓ Trained from ${result.samples_used} emails`;
+                    statusEl.className = 'text-sm text-green-600';
+                } else {
+                    statusEl.textContent = result.message || 'Training completed with warnings';
+                    statusEl.className = 'text-sm text-yellow-600';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Training failed: ' + e.message;
+                statusEl.className = 'text-sm text-red-600';
+                resultDiv.classList.remove('hidden');
+                resultDiv.querySelector('pre').textContent = 'Error: ' + e.message;
             }
         }
 

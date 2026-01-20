@@ -56,6 +56,13 @@ class TrainFromHubSpotRequest(BaseModel):
     limit: int = 20
 
 
+class TrainFromSentEmailsRequest(BaseModel):
+    """Request to train from sent emails in HubSpot."""
+    profile_name: str = "casey_larkin"
+    owner_email: str = "casey.l@pesti.io"
+    limit: int = 50
+
+
 class AddTrainingSampleRequest(BaseModel):
     """Request to add a training sample."""
     text: str
@@ -328,3 +335,91 @@ async def clear_training_samples() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error clearing training samples: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/training/sent-emails", response_model=Dict[str, Any])
+async def train_from_sent_emails(request: TrainFromSentEmailsRequest) -> Dict[str, Any]:
+    """Train a voice profile from sent emails in HubSpot.
+    
+    This pulls actual emails sent by a specific user (like Casey) 
+    to train the voice profile on real communication style.
+    """
+    try:
+        from src.connectors.hubspot import create_hubspot_connector
+        import re
+        
+        hubspot = create_hubspot_connector()
+        trainer = get_trainer()
+        
+        # Fetch sent emails from HubSpot
+        logger.info(f"Fetching sent emails for {request.owner_email}")
+        emails = await hubspot.get_email_engagements(
+            owner_email=request.owner_email,
+            limit=request.limit,
+            sent_only=True,
+        )
+        
+        if not emails:
+            return {
+                "status": "warning",
+                "message": f"No sent emails found for {request.owner_email}",
+                "suggestion": "Check if the email matches a HubSpot owner and has sent emails logged",
+                "emails_found": 0,
+            }
+        
+        # Clean and add each email as a training sample
+        samples_added = 0
+        for email in emails:
+            body = email.get("body", "")
+            subject = email.get("subject", "")
+            
+            # Strip HTML if present
+            if "<" in body and ">" in body:
+                body = re.sub(r'<[^>]+>', '', body)
+            
+            # Skip if too short
+            if len(body) < 50:
+                continue
+            
+            trainer.add_text_sample(
+                text=body,
+                source=f"hubspot_sent_{email.get('id', 'unknown')}",
+                subject=subject,
+            )
+            samples_added += 1
+        
+        if samples_added == 0:
+            return {
+                "status": "warning",
+                "message": "Emails found but none had sufficient content for training",
+                "emails_found": len(emails),
+                "samples_added": 0,
+            }
+        
+        # Analyze and create profile
+        analysis = await trainer.analyze_samples()
+        profile = await trainer.create_profile_from_analysis(request.profile_name, analysis)
+        
+        # Save the profile
+        manager = get_voice_profile_manager()
+        manager.profiles[request.profile_name.lower().replace(" ", "_")] = profile
+        
+        return {
+            "status": "success",
+            "profile_id": request.profile_name.lower().replace(" ", "_"),
+            "profile_name": profile.name,
+            "tone": profile.tone,
+            "emails_analyzed": len(emails),
+            "samples_used": samples_added,
+            "analysis_summary": {
+                "formality_level": analysis.formality_level,
+                "uses_contractions": analysis.uses_contractions,
+                "common_greetings": analysis.common_greetings[:3] if analysis.common_greetings else [],
+                "common_sign_offs": analysis.common_sign_offs[:3] if analysis.common_sign_offs else [],
+                "style_notes": analysis.style_notes[:5] if analysis.style_notes else [],
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error training from sent emails: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

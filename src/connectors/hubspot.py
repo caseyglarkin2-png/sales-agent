@@ -200,3 +200,162 @@ class HubSpotConnector:
             except Exception as e:
                 logger.error(f"Error creating note for contact {contact_id}: {e}")
                 return None
+
+    async def get_email_engagements(
+        self, 
+        owner_email: str, 
+        limit: int = 100,
+        sent_only: bool = True
+    ) -> List[Dict[str, Any]]:
+        """Get email engagements from HubSpot for voice training.
+        
+        Args:
+            owner_email: Email of the HubSpot user whose emails to fetch
+            limit: Max emails to return
+            sent_only: If True, only get sent emails (not received)
+        
+        Returns:
+            List of email objects with subject, body, recipient, timestamp
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                # First find the owner ID by email
+                owner_response = await client.get(
+                    f"{self.BASE_URL}/crm/v3/owners",
+                    headers=self.headers,
+                    params={"email": owner_email}
+                )
+                owner_response.raise_for_status()
+                owners = owner_response.json().get("results", [])
+                
+                if not owners:
+                    logger.warning(f"No HubSpot owner found for email {owner_email}")
+                    return []
+                
+                owner_id = owners[0]["id"]
+                logger.info(f"Found HubSpot owner {owner_id} for {owner_email}")
+                
+                # Search for email engagements
+                # Using the engagements API to get emails
+                emails = []
+                after = None
+                
+                while len(emails) < limit:
+                    params = {
+                        "limit": min(100, limit - len(emails)),
+                    }
+                    if after:
+                        params["after"] = after
+                    
+                    response = await client.get(
+                        f"{self.BASE_URL}/crm/v3/objects/emails",
+                        headers=self.headers,
+                        params=params,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for email in data.get("results", []):
+                        props = email.get("properties", {})
+                        
+                        # Filter for sent emails if requested
+                        direction = props.get("hs_email_direction", "")
+                        if sent_only and direction != "EMAIL":
+                            continue
+                        
+                        # Extract email content
+                        email_obj = {
+                            "id": email.get("id"),
+                            "subject": props.get("hs_email_subject", ""),
+                            "body": props.get("hs_email_text") or props.get("hs_email_html", ""),
+                            "recipient": props.get("hs_email_to_email", ""),
+                            "sender": props.get("hs_email_from_email", ""),
+                            "timestamp": props.get("hs_timestamp") or props.get("hs_createdate"),
+                            "direction": direction,
+                        }
+                        
+                        # Only include if has content
+                        if email_obj["body"] and email_obj["subject"]:
+                            emails.append(email_obj)
+                    
+                    # Check for pagination
+                    paging = data.get("paging", {})
+                    if paging.get("next", {}).get("after"):
+                        after = paging["next"]["after"]
+                    else:
+                        break
+                
+                logger.info(f"Retrieved {len(emails)} sent emails from HubSpot")
+                return emails[:limit]
+                
+            except Exception as e:
+                logger.error(f"Error getting email engagements: {e}")
+                return []
+
+    async def get_form_submissions(
+        self, 
+        form_id: str,
+        limit: int = 500
+    ) -> List[Dict[str, Any]]:
+        """Get form submissions for a specific form.
+        
+        Args:
+            form_id: HubSpot form ID (e.g., CHAINge NA form)
+            limit: Max submissions to return
+            
+        Returns:
+            List of form submission objects with contact data
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                submissions = []
+                after = None
+                
+                while len(submissions) < limit:
+                    params = {
+                        "limit": min(50, limit - len(submissions)),
+                    }
+                    if after:
+                        params["after"] = after
+                    
+                    response = await client.get(
+                        f"{self.BASE_URL}/form-integrations/v1/submissions/forms/{form_id}",
+                        headers=self.headers,
+                        params=params,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for submission in data.get("results", []):
+                        # Extract field values into a flat object
+                        values = {}
+                        for field in submission.get("values", []):
+                            values[field.get("name")] = field.get("value")
+                        
+                        sub_obj = {
+                            "submission_id": submission.get("submissionId"),
+                            "submitted_at": submission.get("submittedAt"),
+                            "contact_id": submission.get("contactId"),
+                            "email": values.get("email", ""),
+                            "first_name": values.get("firstname", values.get("first_name", "")),
+                            "last_name": values.get("lastname", values.get("last_name", "")),
+                            "company": values.get("company", ""),
+                            "job_title": values.get("jobtitle", values.get("job_title", "")),
+                            "all_values": values,
+                        }
+                        submissions.append(sub_obj)
+                    
+                    # Check for pagination
+                    paging = data.get("paging", {})
+                    if paging.get("next", {}).get("after"):
+                        after = paging["next"]["after"]
+                    else:
+                        break
+                
+                logger.info(f"Retrieved {len(submissions)} form submissions for {form_id}")
+                return submissions[:limit]
+                
+            except Exception as e:
+                logger.error(f"Error getting form submissions: {e}")
+                return []
+
