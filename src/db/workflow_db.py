@@ -77,6 +77,8 @@ class WorkflowDB:
                         body TEXT,
                         status VARCHAR(50) DEFAULT 'pending',
                         workflow_id VARCHAR(255),
+                        contact_id VARCHAR(255),
+                        company_name VARCHAR(255),
                         approved_by VARCHAR(255),
                         approved_at TIMESTAMP,
                         rejected_by VARCHAR(255),
@@ -84,9 +86,24 @@ class WorkflowDB:
                         rejection_reason TEXT,
                         sent_at TIMESTAMP,
                         metadata JSONB,
-                        created_at TIMESTAMP DEFAULT NOW()
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        updated_at TIMESTAMP DEFAULT NOW()
                     )
                 """)
+                
+                # Add missing columns if they don't exist (migration)
+                migration_columns = [
+                    ("pending_drafts", "contact_id", "VARCHAR(255)"),
+                    ("pending_drafts", "company_name", "VARCHAR(255)"),
+                    ("pending_drafts", "updated_at", "TIMESTAMP DEFAULT NOW()"),
+                ]
+                for table, col, col_type in migration_columns:
+                    try:
+                        await conn.execute(f"""
+                            ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}
+                        """)
+                    except Exception:
+                        pass  # Column may already exist
                 
                 # Create indexes
                 await conn.execute("""

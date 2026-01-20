@@ -275,6 +275,7 @@ class FormleadOrchestrator:
                 "form2",  # Test form
                 "test-demo-form",  # Demo test form
                 "lead-interest-form",  # Example form
+                "test-form-123",  # Test form for validation
             ]
             if form_id not in allowed_form_ids:
                 logger.warning(f"Form ID {form_id} not in allowlist")
