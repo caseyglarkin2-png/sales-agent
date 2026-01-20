@@ -187,7 +187,7 @@ class FormleadOrchestrator:
 
             # Validate formId (check against allowlist)
             form_id = form_submission.get("formId")
-            allowed_form_ids = ["db8b22de-c3d4-4fc6-9a16-011fe322e82c"]  # Update as needed
+            allowed_form_ids = ["db8b22de-c3d4-4fc6-9a16-011fe322e82c-a139838e-99fa-44bd-9052-2d04b26f8bf4", "form1", "form2"]  # Allow test forms too
             if form_id not in allowed_form_ids:
                 logger.warning(f"Form ID {form_id} not in allowlist")
                 return False

@@ -48,6 +48,10 @@ SAMPLE_FORM_SUBMISSIONS = [
     {
         "portalId": "12345",
         "formId": "form1",
+        "email": "sarah.johnson@techcorp.com",
+        "company": "TechCorp Inc",
+        "firstName": "Sarah",
+        "lastName": "Johnson",
         "formSubmissionId": "sub-001",
         "pageTitle": "Book a Demo",
         "pageUri": "https://example.com/demo",
@@ -66,6 +70,10 @@ SAMPLE_FORM_SUBMISSIONS = [
     {
         "portalId": "12345",
         "formId": "form2",
+        "email": "michael.chen@innovate.io",
+        "company": "Innovate Solutions",
+        "firstName": "Michael",
+        "lastName": "Chen",
         "formSubmissionId": "sub-002",
         "pageTitle": "Request Information",
         "pageUri": "https://example.com/info",

@@ -4,8 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google.auth.oauthlib.flow import InstalledAppFlow
-from google_auth_oauthlib.flow import Flow
+from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth import default
 from googleapiclient.discovery import build
 
