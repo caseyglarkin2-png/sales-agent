@@ -1,4 +1,5 @@
 """HubSpot connector for CRM integration."""
+import os
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -6,6 +7,17 @@ import httpx
 from src.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def create_hubspot_connector() -> "HubSpotConnector":
+    """Create a HubSpotConnector with API key from environment.
+    
+    Looks for HUBSPOT_API_KEY environment variable.
+    """
+    api_key = os.environ.get("HUBSPOT_API_KEY", "")
+    if not api_key:
+        logger.warning("HUBSPOT_API_KEY not set, HubSpot connector will fail on API calls")
+    return HubSpotConnector(api_key=api_key)
 
 
 class HubSpotConnector:

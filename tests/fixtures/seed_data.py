@@ -271,10 +271,11 @@ def get_sample_prospect(prospect_id: str = "prospect-001") -> Dict[str, Any]:
 
 def get_sample_form_submission(form_id: str = "form1") -> Dict[str, Any]:
     """Get a sample form submission by form ID."""
+    import copy
     for submission in SAMPLE_FORM_SUBMISSIONS:
         if submission["formId"] == form_id:
-            return submission
-    return SAMPLE_FORM_SUBMISSIONS[0]
+            return copy.deepcopy(submission)
+    return copy.deepcopy(SAMPLE_FORM_SUBMISSIONS[0])
 
 
 def get_all_sample_prospects() -> List[Dict[str, Any]]:

@@ -187,7 +187,11 @@ class FormleadOrchestrator:
 
             # Validate formId (check against allowlist)
             form_id = form_submission.get("formId")
-            allowed_form_ids = ["db8b22de-c3d4-4fc6-9a16-011fe322e82c-a139838e-99fa-44bd-9052-2d04b26f8bf4", "form1", "form2"]  # Allow test forms too
+            allowed_form_ids = [
+                "db8b22de-c3d4-4fc6-9a16-011fe322e82c",  # Production HubSpot form
+                "form1",  # Test form
+                "form2",  # Test form
+            ]
             if form_id not in allowed_form_ids:
                 logger.warning(f"Form ID {form_id} not in allowlist")
                 return False
@@ -347,6 +351,47 @@ def get_formlead_orchestrator(
             charlie_pesti_folder_id=charlie_pesti_folder_id,
         )
     return _formlead_orchestrator
+
+
+def create_formlead_orchestrator() -> FormleadOrchestrator:
+    """Create a new formlead orchestrator with connectors from environment.
+    
+    This factory function creates real connectors based on environment variables.
+    Used by the webhook handler to process form submissions.
+    """
+    import os
+    from src.connectors.gmail import create_gmail_connector
+    from src.connectors.hubspot import create_hubspot_connector
+    from src.connectors.calendar_connector import create_calendar_connector
+    
+    # Create connectors - they gracefully handle missing credentials
+    gmail_connector = None
+    hubspot_connector = None
+    calendar_connector = None
+    
+    try:
+        gmail_connector = create_gmail_connector()
+    except Exception as e:
+        logger.warning(f"Could not create Gmail connector: {e}")
+    
+    try:
+        hubspot_connector = create_hubspot_connector()
+    except Exception as e:
+        logger.warning(f"Could not create HubSpot connector: {e}")
+    
+    try:
+        calendar_connector = create_calendar_connector()
+    except Exception as e:
+        logger.warning(f"Could not create Calendar connector: {e}")
+    
+    charlie_pesti_folder_id = os.environ.get("CHARLIE_PESTI_FOLDER_ID")
+    
+    return FormleadOrchestrator(
+        gmail_connector=gmail_connector,
+        hubspot_connector=hubspot_connector,
+        calendar_connector=calendar_connector,
+        charlie_pesti_folder_id=charlie_pesti_folder_id,
+    )
 
 
 def reset_formlead_orchestrator() -> None:

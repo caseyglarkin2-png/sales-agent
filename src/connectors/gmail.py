@@ -1,9 +1,12 @@
 """Gmail connector for reading/syncing messages."""
+import base64
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth import default
 from googleapiclient.discovery import build
@@ -12,7 +15,47 @@ from src.logger import get_logger
 
 logger = get_logger(__name__)
 
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.modify"]
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.compose",
+]
+
+
+def create_gmail_connector() -> "GmailConnector":
+    """Create a GmailConnector with credentials from environment.
+    
+    Looks for:
+    1. GOOGLE_CREDENTIALS_FILE - path to service account JSON
+    2. GOOGLE_CREDENTIALS_JSON - JSON content directly
+    3. Application Default Credentials
+    """
+    creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE")
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    delegated_user = os.environ.get("GMAIL_DELEGATED_USER")  # For service account impersonation
+    
+    credentials = None
+    
+    if creds_file and os.path.exists(creds_file):
+        logger.info(f"Loading Google credentials from file: {creds_file}")
+        credentials = service_account.Credentials.from_service_account_file(
+            creds_file, scopes=SCOPES
+        )
+        if delegated_user:
+            credentials = credentials.with_subject(delegated_user)
+    elif creds_json:
+        logger.info("Loading Google credentials from JSON env var")
+        creds_data = json.loads(creds_json)
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_data, scopes=SCOPES
+        )
+        if delegated_user:
+            credentials = credentials.with_subject(delegated_user)
+    else:
+        logger.warning("No Google credentials found, Gmail connector will be in mock mode")
+    
+    connector = GmailConnector(credentials=credentials)
+    return connector
 
 
 class GmailConnector:

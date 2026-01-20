@@ -133,4 +133,17 @@ clean-all: clean
 	@echo "Cleaning all (including venv)..."
 	rm -rf .venv/
 
+# Timeline guard: Fail if docs contain timeline language
+timeline-guard:
+	@echo "Checking for timeline language in docs..."
+	python -m src.commands.timeline_guard docs/GO_LIVE_TONIGHT.md
+
+timeline-guard-all:
+	@echo "Checking all docs for timeline language..."
+	python -m src.commands.timeline_guard --all-docs
+
+# Go-live validation sequence
+go-live-check: check-secrets smoke-formlead timeline-guard
+	@echo "✓ Go-live validation complete"
+
 .DEFAULT_GOAL := help

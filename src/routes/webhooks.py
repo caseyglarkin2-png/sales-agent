@@ -2,12 +2,14 @@
 
 Receives form submissions from HubSpot and initiates the prospecting workflow.
 """
+import asyncio
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from src.logger import get_logger
+from src.formlead_orchestrator import create_formlead_orchestrator
 
 logger = get_logger(__name__)
 
@@ -157,16 +159,47 @@ async def hubspot_form_submission(payload: FormSubmissionPayload) -> dict[str, A
         company=company,
     )
 
-    # TODO: Queue the prospecting workflow
-    # For now, just acknowledge receipt
-    # In future: create_prospecting_task(email, first_name, last_name, company)
-
-    return {
-        "status": "accepted",
-        "submission_id": payload.formSubmissionId,
+    # Convert payload to dict for orchestrator
+    form_data = {
+        "portalId": payload.portalId,
+        "formId": payload.formId,
+        "formSubmissionId": payload.formSubmissionId,
         "email": email,
-        "message": "Form submission queued for processing",
+        "company": company or "",
+        "firstName": first_name or "",
+        "lastName": last_name or "",
+        "fieldValues": [{"name": f.name, "value": f.value} for f in payload.fieldValues],
     }
+
+    # Process the form lead through the orchestrator
+    try:
+        orchestrator = create_formlead_orchestrator()
+        result = await orchestrator.process_formlead(form_data)
+        
+        logger.info(
+            "Form lead processed",
+            workflow_id=result.get("workflow_id"),
+            status=result.get("final_status"),
+        )
+        
+        return {
+            "status": "accepted",
+            "submission_id": payload.formSubmissionId,
+            "email": email,
+            "workflow_id": result.get("workflow_id"),
+            "workflow_status": result.get("final_status"),
+            "message": "Form submission processed in DRAFT_ONLY mode",
+        }
+    except Exception as e:
+        logger.error(f"Error processing form lead: {e}")
+        # Still return 202 to avoid HubSpot retry storms
+        return {
+            "status": "accepted",
+            "submission_id": payload.formSubmissionId,
+            "email": email,
+            "message": "Form submission queued for retry",
+            "error": str(e),
+        }
 
 
 @router.post("/hubspot/form-submission/test", status_code=status.HTTP_200_OK)

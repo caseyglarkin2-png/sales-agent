@@ -1,8 +1,11 @@
 """Google Calendar connector for availability management."""
+import json
+import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 from src.logger import get_logger
@@ -10,6 +13,40 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+
+
+def create_calendar_connector() -> "CalendarConnector":
+    """Create a CalendarConnector with credentials from environment.
+    
+    Looks for:
+    1. GOOGLE_CREDENTIALS_FILE - path to service account JSON
+    2. GOOGLE_CREDENTIALS_JSON - JSON content directly
+    """
+    creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE")
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    delegated_user = os.environ.get("CALENDAR_DELEGATED_USER")  # For service account impersonation
+    
+    credentials = None
+    
+    if creds_file and os.path.exists(creds_file):
+        logger.info(f"Loading Calendar credentials from file: {creds_file}")
+        credentials = service_account.Credentials.from_service_account_file(
+            creds_file, scopes=SCOPES
+        )
+        if delegated_user:
+            credentials = credentials.with_subject(delegated_user)
+    elif creds_json:
+        logger.info("Loading Calendar credentials from JSON env var")
+        creds_data = json.loads(creds_json)
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_data, scopes=SCOPES
+        )
+        if delegated_user:
+            credentials = credentials.with_subject(delegated_user)
+    else:
+        logger.warning("No Google credentials found, Calendar connector will be in mock mode")
+    
+    return CalendarConnector(credentials=credentials)
 
 
 class CalendarConnector:

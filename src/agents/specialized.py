@@ -106,7 +106,7 @@ class AssetHunterAgent:
             "exclude_prefixes": ["CP Closed"],
         },
         "charlie_pesti": {
-            "root_id": None,  # Read from env CHARLIE_PESTI_FOLDER_ID
+            "root_id": "0AB_H1WFgMn8uUk9PVA",  # Can be overridden by env CHARLIE_PESTI_FOLDER_ID
             "include_all": True,
         },
     }
