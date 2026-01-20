@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=20, description="Database pool size")
     database_max_overflow: int = Field(default=10, description="Database max overflow")
 
+    @property
+    def async_database_url(self) -> str:
+        """Get async database URL (postgresql+asyncpg://)."""
+        url = self.database_url
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
     # Redis
     redis_url: str = Field(
         default="redis://localhost:6379/0", description="Redis connection URL"

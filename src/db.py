@@ -8,13 +8,16 @@ from src.config import get_settings
 
 settings = get_settings()
 
+# Get async database URL (handles postgresql:// -> postgresql+asyncpg:// conversion)
+db_url = settings.async_database_url
+
 # Create async engine
 engine = create_async_engine(
-    settings.database_url,
+    db_url,
     echo=False,
     pool_size=settings.database_pool_size,
     max_overflow=settings.database_max_overflow,
-    connect_args={"timeout": 10},
+    connect_args={"timeout": 10} if "localhost" in db_url else {},
 )
 
 # Create session factory
