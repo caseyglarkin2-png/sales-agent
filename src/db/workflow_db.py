@@ -192,23 +192,26 @@ class WorkflowDB:
                 import json
                 steps_json = json.dumps(steps_completed) if steps_completed else None
                 
+                # Ensure status is a string
+                status_str = str(status) if status else 'unknown'
+                
                 await conn.execute(
                     """
                     UPDATE workflow_runs
-                    SET status = $2,
-                        draft_id = COALESCE($3, draft_id),
+                    SET status = $2::VARCHAR,
+                        draft_id = COALESCE($3::VARCHAR, draft_id),
                         steps_completed = COALESCE($4::jsonb, steps_completed),
-                        error_message = $5,
-                        completed_at = CASE WHEN $2 IN ('success', 'failed') THEN NOW() ELSE completed_at END
+                        error_message = $5::TEXT,
+                        completed_at = CASE WHEN $2::VARCHAR IN ('success', 'failed') THEN NOW() ELSE completed_at END
                     WHERE workflow_id = $1
                     """,
                     workflow_id,
-                    status,
+                    status_str,
                     draft_id,
                     steps_json,
                     error_message,
                 )
-                logger.info(f"Updated workflow run {workflow_id}: status={status}")
+                logger.info(f"Updated workflow run {workflow_id}: status={status_str}")
                 return True
             except Exception as e:
                 logger.error(f"Error updating workflow run: {e}")
