@@ -105,6 +105,15 @@ async def agents_page():
     return JSONResponse({"error": "Page not found"}, status_code=404)
 
 
+@app.get("/admin", tags=["Dashboard"])
+async def admin_page():
+    """Admin panel page."""
+    page_path = os.path.join(os.path.dirname(__file__), "static", "admin.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return JSONResponse({"error": "Page not found"}, status_code=404)
+
+
 @app.get("/api/status", tags=["Health"])
 async def system_status() -> JSONResponse:
     """System status endpoint with dashboard stats."""

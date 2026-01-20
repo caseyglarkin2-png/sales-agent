@@ -180,11 +180,59 @@ async def get_recent_workflows(limit: int = 50) -> List[Dict[str, Any]]:
         from src.db.workflow_db import get_workflow_db
         db = await get_workflow_db()
         workflows = await db.get_recent_workflows(limit=limit)
+        # Convert datetime objects to strings
+        for w in workflows:
+            for k, v in w.items():
+                if hasattr(v, 'isoformat'):
+                    w[k] = v.isoformat()
         logger.info(f"Retrieved {len(workflows)} recent workflows")
         return workflows
     except Exception as e:
         logger.error(f"Error getting workflows: {e}")
         return []
+
+
+@router.post("/workflows/{workflow_id}/retry", response_model=Dict[str, Any])
+async def retry_workflow(workflow_id: str) -> Dict[str, Any]:
+    """Retry a failed workflow."""
+    try:
+        from src.db.workflow_db import get_workflow_db
+        db = await get_workflow_db()
+        
+        # Get the original workflow
+        workflows = await db.get_recent_workflows(limit=100)
+        workflow = next((w for w in workflows if w.get("workflow_id") == workflow_id), None)
+        
+        if not workflow:
+            raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_id}")
+        
+        if workflow.get("status") != "failed":
+            raise HTTPException(status_code=400, detail=f"Can only retry failed workflows, current status: {workflow.get('status')}")
+        
+        # Re-trigger the workflow with the original data
+        from src.formlead_orchestrator import FormLeadOrchestrator
+        orchestrator = FormLeadOrchestrator()
+        
+        result = await orchestrator.process_formlead({
+            "email": workflow.get("contact_email"),
+            "company": workflow.get("company_name"),
+            "formId": "workflow-trigger",  # Use workflow trigger form ID
+            "formSubmissionId": f"retry-{workflow_id}",
+        })
+        
+        logger.info(f"Retried workflow {workflow_id}, new result: {result.get('status')}")
+        
+        return {
+            "original_workflow_id": workflow_id,
+            "new_workflow_id": result.get("workflow_id"),
+            "status": result.get("status"),
+            "message": "Workflow retry initiated"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrying workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/workflows/stats", response_model=Dict[str, Any])
@@ -198,3 +246,4 @@ async def get_workflow_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting workflow stats: {e}")
         return {"today": {"total": 0, "success": 0, "failed": 0, "running": 0}}
+
