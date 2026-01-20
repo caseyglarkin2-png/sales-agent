@@ -10,11 +10,13 @@ def test_base_settings_validates_required_fields() -> None:
     # Development should not require fields
     settings = Settings(api_env="development")
     assert settings.api_env == "development"
+    # Calling validate should not raise in development
+    settings.validate_required_fields()
 
-    # Production should validate
-    with pytest.raises(RuntimeError, match="Configuration error"):
-        settings = Settings(api_env="production")
-        settings.validate_required_fields()
+    # Production should validate - missing required fields raises ValueError
+    prod_settings = Settings(api_env="production")
+    with pytest.raises(ValueError, match="Missing required fields"):
+        prod_settings.validate_required_fields()
 
 
 def test_settings_loads_from_env(monkeypatch) -> None:

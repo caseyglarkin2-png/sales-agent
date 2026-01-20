@@ -99,6 +99,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Allow extra environment variables
 
     def validate_required_fields(self) -> None:
         """Validate that required fields are set."""
@@ -111,17 +112,17 @@ class Settings(BaseSettings):
             ]
             missing = [f for f in required if not getattr(self, f, None)]
             if missing:
-                raise ValidationError(f"Missing required fields for production: {missing}")
+                raise ValueError(f"Missing required fields for production: {missing}")
             
             # Production safety checks
             if self.secret_key == "dev-secret-key-change-in-production":
-                raise ValidationError("SECRET_KEY must be changed from default in production")
+                raise ValueError("SECRET_KEY must be changed from default in production")
             if self.mode_draft_only and not self.allow_auto_send:
                 # This is safe - DRAFT_ONLY enforced
                 pass
             elif not self.mode_draft_only and self.allow_auto_send and not self.require_approval:
                 # Dangerous - auto-send without approval in production
-                raise ValidationError(
+                raise ValueError(
                     "Production safety: Cannot enable AUTO_SEND without DRAFT_ONLY and REQUIRE_APPROVAL"
                 )
 
@@ -143,6 +144,6 @@ def get_settings() -> Settings:
     settings = Settings()
     try:
         settings.validate_required_fields()
-    except ValidationError as e:
+    except ValueError as e:
         raise RuntimeError(f"Configuration error: {e}") from e
     return settings

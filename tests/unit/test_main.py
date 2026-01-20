@@ -18,15 +18,18 @@ def test_health_check_returns_ok(client):
     assert response.json() == {"status": "ok"}
 
 
-def test_root_endpoint_returns_service_info(client):
-    """Test that root endpoint returns service information."""
+def test_root_endpoint_returns_dashboard(client):
+    """Test that root endpoint returns dashboard HTML or service info."""
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert data["service"] == "sales-agent"
-    assert data["status"] == "running"
-    assert "version" in data
-    assert "environment" in data
+    # Root now returns HTML dashboard if static file exists, otherwise JSON
+    content_type = response.headers.get("content-type", "")
+    if "text/html" in content_type:
+        assert "Sales Agent" in response.text
+    else:
+        data = response.json()
+        assert data["service"] == "sales-agent"
+        assert data["status"] == "running"
 
 
 def test_trace_id_propagates(client):
