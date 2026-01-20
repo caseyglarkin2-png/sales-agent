@@ -1,6 +1,13 @@
 #!/bin/sh
-# Railway start script - handles PORT variable
+# Railway start script
 
-PORT="${PORT:-8000}"
-echo "Starting uvicorn on port $PORT"
-exec python -m uvicorn src.main:app --host 0.0.0.0 --port "$PORT"
+# Debug: show environment
+echo "PORT env var is: $PORT"
+echo "Starting uvicorn..."
+
+# Use PORT if set, otherwise 8000
+if [ -z "$PORT" ]; then
+    PORT=8000
+fi
+
+exec uvicorn src.main:app --host 0.0.0.0 --port "$PORT"
