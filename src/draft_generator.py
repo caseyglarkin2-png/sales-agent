@@ -1,0 +1,204 @@
+"""OpenAI-powered email draft generation.
+
+This module uses OpenAI's GPT models to generate personalized
+email drafts based on voice profiles, context, and meeting slots.
+"""
+import os
+from typing import Any, Dict, List, Optional
+
+from openai import AsyncOpenAI
+
+from src.logger import get_logger
+from src.voice_profile import VoiceProfile, get_voice_profile
+
+logger = get_logger(__name__)
+
+
+class DraftGenerator:
+    """Generates email drafts using OpenAI."""
+    
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize draft generator."""
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
+        self.model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+    
+    async def generate_draft(
+        self,
+        prospect_email: str,
+        prospect_name: str,
+        company_name: str,
+        thread_context: Optional[str] = None,
+        meeting_slots: Optional[List[Dict[str, Any]]] = None,
+        asset_link: Optional[str] = None,
+        voice_profile: Optional[VoiceProfile] = None,
+    ) -> Dict[str, Any]:
+        """Generate a personalized email draft.
+        
+        Args:
+            prospect_email: Recipient email
+            prospect_name: Recipient first name
+            company_name: Company name
+            thread_context: Summary of previous email thread
+            meeting_slots: Available meeting times
+            asset_link: Link to relevant asset (case study, proposal)
+            voice_profile: Voice profile for tone/style
+        
+        Returns:
+            Dict with subject, body, and metadata
+        """
+        profile = voice_profile or get_voice_profile()
+        
+        if not self.client:
+            logger.warning("OpenAI client not configured, using fallback draft")
+            return self._fallback_draft(
+                prospect_name, company_name, meeting_slots, asset_link, profile
+            )
+        
+        # Build the prompt
+        system_prompt = self._build_system_prompt(profile)
+        user_prompt = self._build_user_prompt(
+            prospect_name, company_name, thread_context, 
+            meeting_slots, asset_link, profile
+        )
+        
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.7,
+                max_tokens=500,
+            )
+            
+            content = response.choices[0].message.content
+            subject, body = self._parse_response(content)
+            
+            logger.info(f"Generated draft for {prospect_email}")
+            return {
+                "subject": subject,
+                "body": body,
+                "model": self.model,
+                "tokens_used": response.usage.total_tokens if response.usage else 0,
+                "voice_profile": profile.name,
+            }
+        
+        except Exception as e:
+            logger.error(f"Error generating draft: {e}")
+            return self._fallback_draft(
+                prospect_name, company_name, meeting_slots, asset_link, profile
+            )
+    
+    def _build_system_prompt(self, profile: VoiceProfile) -> str:
+        """Build system prompt with voice profile."""
+        return f"""You are an expert B2B sales email writer. Your task is to write 
+personalized, effective outreach emails that get responses.
+
+{profile.to_prompt_context()}
+
+OUTPUT FORMAT:
+Subject: [email subject line]
+---
+[email body]
+
+IMPORTANT:
+- Keep it short and scannable
+- Lead with value, not features
+- End with exactly ONE clear question/CTA
+- Never be pushy or desperate
+- Sound human, not like a template
+"""
+    
+    def _build_user_prompt(
+        self,
+        prospect_name: str,
+        company_name: str,
+        thread_context: Optional[str],
+        meeting_slots: Optional[List[Dict[str, Any]]],
+        asset_link: Optional[str],
+        profile: VoiceProfile,
+    ) -> str:
+        """Build user prompt with context."""
+        parts = [
+            f"Write an email to {prospect_name} at {company_name}.",
+        ]
+        
+        if thread_context:
+            parts.append(f"\nPrevious conversation context:\n{thread_context}")
+        else:
+            parts.append("\nThis is initial outreach after they submitted a form.")
+        
+        if meeting_slots:
+            slots_text = "\n".join([
+                f"- {slot.get('display', slot.get('start', 'TBD'))}"
+                for slot in meeting_slots[:profile.slot_count]
+            ])
+            parts.append(f"\nOffer these meeting times:\n{slots_text}")
+        
+        if asset_link:
+            parts.append(f"\nInclude this relevant resource: {asset_link}")
+        
+        return "\n".join(parts)
+    
+    def _parse_response(self, content: str) -> tuple[str, str]:
+        """Parse subject and body from response."""
+        if "---" in content:
+            parts = content.split("---", 1)
+            subject_line = parts[0].replace("Subject:", "").strip()
+            body = parts[1].strip()
+        else:
+            lines = content.split("\n", 1)
+            subject_line = lines[0].replace("Subject:", "").strip()
+            body = lines[1].strip() if len(lines) > 1 else content
+        
+        return subject_line, body
+    
+    def _fallback_draft(
+        self,
+        prospect_name: str,
+        company_name: str,
+        meeting_slots: Optional[List[Dict[str, Any]]],
+        asset_link: Optional[str],
+        profile: VoiceProfile,
+    ) -> Dict[str, Any]:
+        """Generate fallback draft without OpenAI."""
+        subject = f"Quick question for {company_name}"
+        
+        body_parts = [
+            f"Hi {prospect_name},",
+            "",
+            "Thanks for reaching out. I'd love to learn more about what you're working on "
+            f"at {company_name} and see if there's a way we can help.",
+        ]
+        
+        if meeting_slots:
+            body_parts.append("")
+            body_parts.append("I have a few times available for a quick chat:")
+            for i, slot in enumerate(meeting_slots[:profile.slot_count], 1):
+                display = slot.get("display", slot.get("start", "TBD"))
+                body_parts.append(f"  {i}. {display}")
+        
+        body_parts.append("")
+        body_parts.append("Would any of these work for you?")
+        body_parts.append("")
+        body_parts.append(profile.signature_style)
+        
+        if profile.include_ps and asset_link:
+            body_parts.append("")
+            body_parts.append(f"P.S. Thought you might find this helpful: {asset_link}")
+        
+        return {
+            "subject": subject,
+            "body": "\n".join(body_parts),
+            "model": "fallback",
+            "tokens_used": 0,
+            "voice_profile": profile.name,
+        }
+
+
+# Factory function
+def create_draft_generator() -> DraftGenerator:
+    """Create a draft generator with API key from environment."""
+    return DraftGenerator()

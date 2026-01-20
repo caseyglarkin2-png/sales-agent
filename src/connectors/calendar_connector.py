@@ -99,36 +99,76 @@ class CalendarConnector:
         num_slots: int = 3,
         time_min: Optional[datetime] = None,
         time_max: Optional[datetime] = None,
+        business_hours_only: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Find available time slots."""
+        """Find available time slots.
+        
+        Args:
+            duration_minutes: Slot duration (default 30)
+            num_slots: Number of slots to find (default 3)
+            time_min: Start of search window
+            time_max: End of search window
+            business_hours_only: Only find slots 9am-5pm weekdays
+        
+        Returns:
+            List of available slots with start, end, and display format
+        """
         if not self.service:
             self._build_service()
 
         if not time_min:
             time_min = datetime.utcnow()
             # Round up to next 30 minutes
-            if time_min.minute % 30 != 0:
-                time_min = time_min.replace(minute=(time_min.minute // 30 + 1) * 30, second=0, microsecond=0)
+            mins = time_min.minute
+            if mins % 30 != 0:
+                time_min = time_min.replace(
+                    minute=((mins // 30) + 1) * 30 % 60,
+                    second=0, 
+                    microsecond=0
+                )
+                if mins >= 30:
+                    time_min += timedelta(hours=1)
+        
         if not time_max:
-            time_max = time_min + timedelta(days=7)
+            time_max = time_min + timedelta(days=5)  # Look 5 days ahead
+
+        # If no service, return mock slots for testing
+        if not self.service:
+            return self._generate_mock_slots(time_min, num_slots, duration_minutes)
 
         try:
             freebusy = await self.get_freebusy(time_min=time_min, time_max=time_max)
             
             slots = []
             current = time_min
-            busy_times = set()
+            busy_times = []
             
             # Parse busy times
             if "calendars" in freebusy and "primary" in freebusy["calendars"]:
                 for busy_period in freebusy["calendars"]["primary"].get("busy", []):
                     busy_start = datetime.fromisoformat(busy_period["start"].replace("Z", "+00:00"))
                     busy_end = datetime.fromisoformat(busy_period["end"].replace("Z", "+00:00"))
-                    busy_times.add((busy_start, busy_end))
+                    busy_times.append((busy_start, busy_end))
             
             # Find available slots
             while current < time_max and len(slots) < num_slots:
                 slot_end = current + timedelta(minutes=duration_minutes)
+                
+                # Skip weekends if business hours only
+                if business_hours_only and current.weekday() >= 5:
+                    current += timedelta(days=1)
+                    current = current.replace(hour=9, minute=0)
+                    continue
+                
+                # Skip outside business hours (9am-5pm)
+                if business_hours_only:
+                    if current.hour < 9:
+                        current = current.replace(hour=9, minute=0)
+                        continue
+                    if current.hour >= 17:
+                        current += timedelta(days=1)
+                        current = current.replace(hour=9, minute=0)
+                        continue
                 
                 # Check if slot is free
                 is_available = True
@@ -142,6 +182,7 @@ class CalendarConnector:
                         "start": current.isoformat() + "Z",
                         "end": slot_end.isoformat() + "Z",
                         "duration_minutes": duration_minutes,
+                        "display": self._format_slot_display(current, duration_minutes),
                     })
                 
                 current += timedelta(minutes=30)
@@ -181,3 +222,59 @@ class CalendarConnector:
         except Exception as e:
             logger.error(f"Error creating calendar event: {e}")
             return None
+
+    def _format_slot_display(self, dt: datetime, duration_minutes: int) -> str:
+        """Format a datetime as human-readable slot display."""
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_name = day_names[dt.weekday()]
+        
+        # Format time in 12-hour format
+        hour = dt.hour
+        am_pm = "AM" if hour < 12 else "PM"
+        if hour == 0:
+            hour = 12
+        elif hour > 12:
+            hour -= 12
+        
+        minute = f":{dt.minute:02d}" if dt.minute else ""
+        
+        return f"{day_name}, {dt.strftime('%b %d')} at {hour}{minute} {am_pm}"
+    
+    def _generate_mock_slots(
+        self, 
+        start: datetime, 
+        num_slots: int, 
+        duration_minutes: int
+    ) -> List[Dict[str, Any]]:
+        """Generate mock slots for testing when Calendar API unavailable."""
+        slots = []
+        current = start
+        
+        while len(slots) < num_slots:
+            # Skip weekends
+            if current.weekday() >= 5:
+                current += timedelta(days=1)
+                current = current.replace(hour=9, minute=0)
+                continue
+            
+            # Skip outside business hours
+            if current.hour < 9:
+                current = current.replace(hour=9, minute=0)
+                continue
+            if current.hour >= 17:
+                current += timedelta(days=1)
+                current = current.replace(hour=9, minute=0)
+                continue
+            
+            slot_end = current + timedelta(minutes=duration_minutes)
+            slots.append({
+                "start": current.isoformat() + "Z",
+                "end": slot_end.isoformat() + "Z",
+                "duration_minutes": duration_minutes,
+                "display": self._format_slot_display(current, duration_minutes),
+            })
+            
+            # Jump to different times to spread out options
+            current += timedelta(hours=4)
+        
+        return slots
