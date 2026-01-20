@@ -171,3 +171,30 @@ async def get_quota(contact_email: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting quota: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/workflows", response_model=List[Dict[str, Any]])
+async def get_recent_workflows(limit: int = 50) -> List[Dict[str, Any]]:
+    """Get recent workflow runs."""
+    try:
+        from src.db.workflow_db import get_workflow_db
+        db = await get_workflow_db()
+        workflows = await db.get_recent_workflows(limit=limit)
+        logger.info(f"Retrieved {len(workflows)} recent workflows")
+        return workflows
+    except Exception as e:
+        logger.error(f"Error getting workflows: {e}")
+        return []
+
+
+@router.get("/workflows/stats", response_model=Dict[str, Any])
+async def get_workflow_stats() -> Dict[str, Any]:
+    """Get workflow statistics for dashboard."""
+    try:
+        from src.db.workflow_db import get_workflow_db
+        db = await get_workflow_db()
+        stats = await db.get_workflow_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting workflow stats: {e}")
+        return {"today": {"total": 0, "success": 0, "failed": 0, "running": 0}}

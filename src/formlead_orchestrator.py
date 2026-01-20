@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from src.logger import get_logger
 from src.audit import AuditTrail
+from src.db.workflow_db import get_workflow_db
 from src.agents.specialized import (
     ThreadReaderAgent,
     LongMemoryAgent,
@@ -69,6 +70,24 @@ class FormleadOrchestrator:
             "mode": "DRAFT_ONLY",
             "steps": {},
         }
+
+        # Extract email and company for DB logging
+        email = form_submission.get("email", "")
+        company = form_submission.get("company", "")
+        submission_id = form_submission.get("formSubmissionId", "")
+
+        # Persist workflow start to database
+        try:
+            db = await get_workflow_db()
+            await db.create_workflow_run(
+                workflow_id=workflow_id,
+                workflow_type="formlead",
+                submission_id=submission_id,
+                contact_email=email,
+                company_name=company,
+            )
+        except Exception as e:
+            logger.warning(f"Could not persist workflow to DB: {e}")
 
         try:
             # Step 1: Validate webhook payload
@@ -176,6 +195,18 @@ class FormleadOrchestrator:
             self.context["draft_id"] = draft_id
             self.context["task_id"] = hubspot_task.get("task_id")
 
+            # Persist success to database
+            try:
+                db = await get_workflow_db()
+                await db.update_workflow_run(
+                    workflow_id=workflow_id,
+                    status="success",
+                    draft_id=draft_id,
+                    steps_completed=self.context.get("steps"),
+                )
+            except Exception as db_err:
+                logger.warning(f"Could not update workflow in DB: {db_err}")
+
             logger.info(f"Formlead workflow {workflow_id} completed successfully (DRAFT_ONLY)")
             return self.context
 
@@ -183,6 +214,19 @@ class FormleadOrchestrator:
             logger.error(f"Formlead workflow {workflow_id} failed: {e}", exc_info=True)
             self.context["final_status"] = "failed"
             self.context["error"] = str(e)
+
+            # Persist failure to database
+            try:
+                db = await get_workflow_db()
+                await db.update_workflow_run(
+                    workflow_id=workflow_id,
+                    status="failed",
+                    steps_completed=self.context.get("steps"),
+                    error_message=str(e),
+                )
+            except Exception as db_err:
+                logger.warning(f"Could not update failed workflow in DB: {db_err}")
+
             return self.context
 
     async def _validate_form_payload(self, form_submission: Dict[str, Any]) -> bool:

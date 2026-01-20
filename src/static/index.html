@@ -191,27 +191,60 @@
             }
         }
 
-        // Load recent workflows (mock for now)
+        // Load recent workflows from database
         async function loadWorkflows() {
             const container = document.getElementById('workflows-container');
-            container.innerHTML = `
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Workflow ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+            container.innerHTML = '<div class="p-6 text-center text-gray-500">Loading...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/operator/workflows?limit=20`);
+                const workflows = await response.json();
+                
+                let tableHtml = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Workflow ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y" id="workflows-body">
+                `;
+                
+                if (!workflows || workflows.length === 0) {
+                    tableHtml += '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No recent workflows</td></tr>';
+                } else {
+                    workflows.forEach(wf => {
+                        const statusColor = wf.status === 'success' ? 'green' : wf.status === 'failed' ? 'red' : 'yellow';
+                        const startTime = wf.started_at ? new Date(wf.started_at).toLocaleString() : '-';
+                        tableHtml += `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-mono text-gray-600">${wf.workflow_id || '-'}</td>
+                                <td class="px-6 py-4 text-sm text-gray-800">${wf.contact_email || '-'}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">${wf.company_name || '-'}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-${statusColor}-100 text-${statusColor}-800">
+                                        ${wf.status || 'unknown'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">${startTime}</td>
                             </tr>
-                        </thead>
-                        <tbody class="divide-y" id="workflows-body">
-                            <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No recent workflows</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
+                        `;
+                    });
+                }
+                
+                tableHtml += '</tbody></table></div>';
+                container.innerHTML = tableHtml;
+                
+                // Update workflow count
+                document.getElementById('workflow-count').textContent = workflows.length;
+            } catch (e) {
+                container.innerHTML = `<div class="p-6 text-center text-red-500">Error loading workflows: ${e.message}</div>`;
+            }
         }
 
         // Approve draft
