@@ -195,7 +195,9 @@ class FormleadOrchestrator:
 
             # Step 10: Create Gmail draft + HubSpot note/task
             logger.info("Step 10: Creating Gmail draft and HubSpot task")
-            draft_id = await self._create_gmail_draft(prospect_data, draft_subject, draft_body, threads)
+            draft_id = await self._create_gmail_draft(
+                prospect_data, draft_subject, draft_body, threads, workflow_id=workflow_id
+            )
             hubspot_task = await self._create_hubspot_task(prospect_data, draft_id)
             self.context["steps"]["create_draft"] = {"status": "success", "draft_id": draft_id, "mode": "DRAFT_ONLY"}
             self.context["steps"]["create_task"] = {"status": "success", "task_id": hubspot_task.get("task_id")}
@@ -347,8 +349,9 @@ class FormleadOrchestrator:
         subject: str,
         body: str,
         threads: list,
+        workflow_id: Optional[str] = None,
     ) -> str:
-        """Create Gmail draft (DRAFT_ONLY mode)."""
+        """Create Gmail draft (DRAFT_ONLY mode) and persist to database."""
         try:
             email = prospect_data.get("email", "")
             
@@ -361,11 +364,39 @@ class FormleadOrchestrator:
             final_subject = subject or f"Following up - {prospect_data.get('company', 'inquiry')}"
             final_body = body or "Thanks for reaching out. I'd like to schedule a time to connect."
 
-            draft_id = await self.gmail_connector.create_draft(email, final_subject, final_body)
+            gmail_draft_id = await self.gmail_connector.create_draft(email, final_subject, final_body)
             
-            if draft_id:
-                logger.info(f"Gmail draft created: {draft_id} (DRAFT_ONLY - not sent)")
-                return draft_id
+            if gmail_draft_id:
+                logger.info(f"Gmail draft created: {gmail_draft_id} (DRAFT_ONLY - not sent)")
+                
+                # Persist to database via DraftQueue for UI visibility
+                try:
+                    from src.operator_mode import get_draft_queue
+                    queue = get_draft_queue()
+                    
+                    # Use a unique internal draft ID
+                    internal_draft_id = f"draft-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{gmail_draft_id[:8]}"
+                    
+                    await queue.create_draft(
+                        draft_id=internal_draft_id,
+                        recipient=email,
+                        subject=final_subject,
+                        body=final_body,
+                        gmail_draft_id=gmail_draft_id,
+                        workflow_id=workflow_id,
+                        contact_id=prospect_data.get("hubspot_contact_id"),
+                        company_name=prospect_data.get("company"),
+                        metadata={
+                            "prospect_first_name": prospect_data.get("first_name"),
+                            "prospect_last_name": prospect_data.get("last_name"),
+                            "threads_found": len(threads) if threads else 0,
+                        }
+                    )
+                    logger.info(f"Draft {internal_draft_id} persisted for operator review")
+                except Exception as e:
+                    logger.error(f"Failed to persist draft to queue: {e}")
+                
+                return gmail_draft_id
             else:
                 fallback_id = f"draft-failed-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
                 logger.warning(f"Draft creation returned None, fallback: {fallback_id}")

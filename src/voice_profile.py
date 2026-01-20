@@ -73,19 +73,21 @@ Meeting Slots:
 
 # Default voice profiles
 DEFAULT_PROFILES: Dict[str, VoiceProfile] = {
-    "charlie_pesti": VoiceProfile(
-        name="Charlie Pesti",
+    "casey_larkin": VoiceProfile(
+        name="Casey Larkin",
         tone="professional",
         style_notes=[
             "Direct but warm",
             "Focus on value, not features",
             "Reference specific pain points",
             "Never pushy or salesy",
+            "Freight and logistics industry expert",
+            "Conversational but professional",
         ],
         use_contractions=True,
         max_paragraphs=3,
         include_ps=True,
-        signature_style="Best",
+        signature_style="Best,\nCasey",
         single_cta=True,
         cta_style="question",
         slot_count=3,
@@ -144,7 +146,7 @@ class VoiceProfileManager:
         profile = self.profiles.get(name.lower().replace(" ", "_"))
         if not profile:
             logger.warning(f"Profile '{name}' not found, using default")
-            profile = self.profiles.get("charlie_pesti", VoiceProfile(name="default"))
+            profile = self.profiles.get("casey_larkin", VoiceProfile(name="default"))
         return profile
     
     def list_profiles(self) -> List[str]:
@@ -170,6 +172,6 @@ def get_voice_profile_manager() -> VoiceProfileManager:
     return _voice_profile_manager
 
 
-def get_voice_profile(name: str = "charlie_pesti") -> VoiceProfile:
+def get_voice_profile(name: str = "casey_larkin") -> VoiceProfile:
     """Get a voice profile by name."""
     return get_voice_profile_manager().get_profile(name)

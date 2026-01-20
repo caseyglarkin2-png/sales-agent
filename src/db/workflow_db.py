@@ -33,10 +33,78 @@ class WorkflowDB:
                 command_timeout=30,
             )
             logger.info("Database connection pool created")
+            
+            # Ensure tables exist
+            await self._ensure_tables()
+            
             return True
         except Exception as e:
             logger.error(f"Failed to connect to database: {e}")
             return False
+    
+    async def _ensure_tables(self):
+        """Create tables if they don't exist."""
+        async with self.get_connection() as conn:
+            if not conn:
+                return
+            
+            try:
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS workflow_runs (
+                        id SERIAL PRIMARY KEY,
+                        workflow_id VARCHAR(255) UNIQUE NOT NULL,
+                        workflow_type VARCHAR(100) NOT NULL,
+                        status VARCHAR(50) DEFAULT 'running',
+                        submission_id VARCHAR(255),
+                        contact_email VARCHAR(255),
+                        company_name VARCHAR(255),
+                        draft_id VARCHAR(255),
+                        steps_completed JSONB,
+                        error_message TEXT,
+                        started_at TIMESTAMP DEFAULT NOW(),
+                        completed_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS pending_drafts (
+                        id SERIAL PRIMARY KEY,
+                        draft_id VARCHAR(255) UNIQUE NOT NULL,
+                        gmail_draft_id VARCHAR(255),
+                        recipient VARCHAR(255) NOT NULL,
+                        subject TEXT,
+                        body TEXT,
+                        status VARCHAR(50) DEFAULT 'pending',
+                        workflow_id VARCHAR(255),
+                        approved_by VARCHAR(255),
+                        approved_at TIMESTAMP,
+                        rejected_by VARCHAR(255),
+                        rejected_at TIMESTAMP,
+                        rejection_reason TEXT,
+                        sent_at TIMESTAMP,
+                        metadata JSONB,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                
+                # Create indexes
+                await conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_workflow_runs_status 
+                    ON workflow_runs(status)
+                """)
+                await conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_workflow_runs_email 
+                    ON workflow_runs(contact_email)
+                """)
+                await conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_pending_drafts_status 
+                    ON pending_drafts(status)
+                """)
+                
+                logger.info("Database tables ensured")
+            except Exception as e:
+                logger.error(f"Error ensuring tables: {e}")
     
     async def disconnect(self):
         """Close connection pool."""
@@ -194,6 +262,147 @@ class WorkflowDB:
             except Exception as e:
                 logger.error(f"Error fetching workflow stats: {e}")
                 return {}
+    
+    # ==================== Pending Drafts Management ====================
+    
+    async def save_pending_draft(
+        self,
+        draft_id: str,
+        gmail_draft_id: str,
+        recipient: str,
+        subject: str,
+        body: str,
+        workflow_id: Optional[str] = None,
+        contact_id: Optional[str] = None,
+        company_name: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Save a pending draft to the database."""
+        async with self.get_connection() as conn:
+            if not conn:
+                logger.error("No database connection for save_pending_draft")
+                return False
+            
+            try:
+                import json
+                meta_json = json.dumps(metadata) if metadata else None
+                
+                await conn.execute(
+                    """
+                    INSERT INTO pending_drafts (
+                        draft_id, gmail_draft_id, recipient, subject, body,
+                        status, workflow_id, contact_id, company_name, metadata
+                    ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9::jsonb)
+                    ON CONFLICT (draft_id) DO UPDATE SET
+                        gmail_draft_id = EXCLUDED.gmail_draft_id,
+                        subject = EXCLUDED.subject,
+                        body = EXCLUDED.body,
+                        updated_at = NOW()
+                    """,
+                    draft_id,
+                    gmail_draft_id,
+                    recipient,
+                    subject,
+                    body,
+                    workflow_id,
+                    contact_id,
+                    company_name,
+                    meta_json,
+                )
+                logger.info(f"Saved pending draft {draft_id} to database")
+                return True
+            except Exception as e:
+                logger.error(f"Error saving pending draft: {e}")
+                return False
+    
+    async def get_pending_drafts(self, status: str = "pending") -> List[Dict[str, Any]]:
+        """Get all pending drafts with a specific status."""
+        async with self.get_connection() as conn:
+            if not conn:
+                return []
+            
+            try:
+                rows = await conn.fetch(
+                    """
+                    SELECT 
+                        draft_id, gmail_draft_id, recipient, subject, body,
+                        status, workflow_id, contact_id, company_name, metadata,
+                        created_at, updated_at
+                    FROM pending_drafts
+                    WHERE status = $1
+                    ORDER BY created_at DESC
+                    """,
+                    status,
+                )
+                return [dict(row) for row in rows]
+            except Exception as e:
+                logger.error(f"Error fetching pending drafts: {e}")
+                return []
+    
+    async def update_draft_status(
+        self,
+        draft_id: str,
+        status: str,
+        reason: Optional[str] = None,
+    ) -> bool:
+        """Update the status of a pending draft."""
+        async with self.get_connection() as conn:
+            if not conn:
+                return False
+            
+            try:
+                result = await conn.execute(
+                    """
+                    UPDATE pending_drafts
+                    SET status = $2, updated_at = NOW()
+                    WHERE draft_id = $1
+                    """,
+                    draft_id,
+                    status,
+                )
+                return "UPDATE 1" in result
+            except Exception as e:
+                logger.error(f"Error updating draft status: {e}")
+                return False
+    
+    async def get_draft_by_id(self, draft_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific pending draft by ID."""
+        async with self.get_connection() as conn:
+            if not conn:
+                return None
+            
+            try:
+                row = await conn.fetchrow(
+                    """
+                    SELECT 
+                        draft_id, gmail_draft_id, recipient, subject, body,
+                        status, workflow_id, contact_id, company_name, metadata,
+                        created_at, updated_at
+                    FROM pending_drafts
+                    WHERE draft_id = $1
+                    """,
+                    draft_id,
+                )
+                return dict(row) if row else None
+            except Exception as e:
+                logger.error(f"Error fetching draft by id: {e}")
+                return None
+    
+    async def delete_draft(self, draft_id: str) -> bool:
+        """Delete a pending draft."""
+        async with self.get_connection() as conn:
+            if not conn:
+                return False
+            
+            try:
+                result = await conn.execute(
+                    "DELETE FROM pending_drafts WHERE draft_id = $1",
+                    draft_id,
+                )
+                return "DELETE 1" in result
+            except Exception as e:
+                logger.error(f"Error deleting draft: {e}")
+                return False
     
     async def create_audit_log(
         self,

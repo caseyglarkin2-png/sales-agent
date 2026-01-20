@@ -108,6 +108,22 @@ async def agents_page():
 @app.get("/api/status", tags=["Health"])
 async def system_status() -> JSONResponse:
     """System status endpoint with dashboard stats."""
+    # Get actual stats from database
+    pending_count = 0
+    workflows_today = 0
+    try:
+        from src.operator_mode import get_draft_queue
+        queue = get_draft_queue()
+        pending = await queue.get_pending_approvals()
+        pending_count = len(pending)
+        
+        from src.db.workflow_db import get_workflow_db
+        db = await get_workflow_db()
+        stats = await db.get_workflow_stats()
+        workflows_today = stats.get("today", {}).get("total", 0)
+    except Exception as e:
+        logger.warning(f"Could not fetch dashboard stats: {e}")
+    
     return JSONResponse(
         {
             "status": "operational",
@@ -118,11 +134,10 @@ async def system_status() -> JSONResponse:
                 "max_emails_per_day": settings.max_emails_per_day,
                 "max_emails_per_week": settings.max_emails_per_week,
             },
-            # Dashboard stats (mocked for now - will connect to DB later)
-            "pending_drafts": 0,
+            "pending_drafts": pending_count,
             "approved_today": 0,
             "sent_today": 0,
-            "workflows_today": 0,
+            "workflows_today": workflows_today,
         }
     )
 
@@ -130,17 +145,32 @@ async def system_status() -> JSONResponse:
 @app.get("/api/drafts", tags=["Dashboard"])
 async def get_drafts() -> JSONResponse:
     """Get pending drafts for dashboard."""
-    # TODO: Connect to database when ready
-    # For now return empty list
-    return JSONResponse({"drafts": [], "total": 0})
+    try:
+        from src.operator_mode import get_draft_queue
+        queue = get_draft_queue()
+        pending = await queue.get_pending_approvals()
+        return JSONResponse({"drafts": pending, "total": len(pending)})
+    except Exception as e:
+        logger.error(f"Error fetching drafts: {e}")
+        return JSONResponse({"drafts": [], "total": 0, "error": str(e)})
 
 
 @app.get("/api/workflows", tags=["Dashboard"])
 async def get_workflows() -> JSONResponse:
     """Get recent workflow runs for dashboard."""
-    # TODO: Connect to database when ready
-    # For now return empty list
-    return JSONResponse({"workflows": [], "total": 0})
+    try:
+        from src.db.workflow_db import get_workflow_db
+        db = await get_workflow_db()
+        recent = await db.get_recent_workflows(limit=50)
+        # Convert datetime objects to strings
+        for w in recent:
+            for k, v in w.items():
+                if hasattr(v, 'isoformat'):
+                    w[k] = v.isoformat()
+        return JSONResponse({"workflows": recent, "total": len(recent)})
+    except Exception as e:
+        logger.error(f"Error fetching workflows: {e}")
+        return JSONResponse({"workflows": [], "total": 0, "error": str(e)})
 
 
 if __name__ == "__main__":
