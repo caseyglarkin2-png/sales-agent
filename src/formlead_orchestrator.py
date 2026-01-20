@@ -1,6 +1,6 @@
 """End-to-end orchestration for HubSpot form leads (DRAFT_ONLY mode)."""
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from src.logger import get_logger
@@ -45,13 +45,13 @@ class FormleadOrchestrator:
         self.voice_profile_manager = voice_profile_manager or VoiceProfileManager()
         self.charlie_pesti_folder_id = charlie_pesti_folder_id
 
-        # Initialize specialized agents
+        # Initialize specialized agents with connectors
         self.thread_reader = ThreadReaderAgent()
-        self.long_memory = LongMemoryAgent()
-        self.asset_hunter = AssetHunterAgent()
-        self.meeting_slot = MeetingSlotAgent()
+        self.long_memory = LongMemoryAgent(gmail_connector=gmail_connector)
+        self.asset_hunter = AssetHunterAgent(drive_connector=drive_connector)
+        self.meeting_slot = MeetingSlotAgent(calendar_connector=calendar_connector)
         self.next_step_planner = NextStepPlannerAgent()
-        self.draft_writer = DraftWriterAgent()
+        self.draft_writer = DraftWriterAgent(draft_generator=self.draft_generator)
 
         self.context: Dict[str, Any] = {}
 
@@ -61,10 +61,11 @@ class FormleadOrchestrator:
         voice_profile: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Process form lead through 11-step workflow (DRAFT_ONLY)."""
-        workflow_id = f"formlead-{datetime.utcnow().isoformat()}"
+        now = datetime.now(timezone.utc)
+        workflow_id = f"formlead-{now.strftime('%Y%m%d%H%M%S')}"
         self.context = {
             "workflow_id": workflow_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now.isoformat(),
             "mode": "DRAFT_ONLY",
             "steps": {},
         }
@@ -277,18 +278,30 @@ class FormleadOrchestrator:
     ) -> str:
         """Create Gmail draft (DRAFT_ONLY mode)."""
         try:
-            if not self.gmail_connector:
-                draft_id = f"draft-{datetime.utcnow().isoformat()}"
-                logger.info(f"Mocked draft creation: {draft_id}")
-                return draft_id
-
             email = prospect_data.get("email", "")
-            draft_id = await self.gmail_connector.create_draft(email, subject, body)
-            logger.info(f"Draft created: {draft_id} (DRAFT_ONLY - not sent)")
-            return draft_id
+            
+            if not self.gmail_connector:
+                draft_id = f"mock-draft-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+                logger.info(f"Gmail connector not available, mock draft: {draft_id}")
+                return draft_id
+            
+            # Ensure subject and body have defaults
+            final_subject = subject or f"Following up - {prospect_data.get('company', 'inquiry')}"
+            final_body = body or "Thanks for reaching out. I'd like to schedule a time to connect."
+
+            draft_id = await self.gmail_connector.create_draft(email, final_subject, final_body)
+            
+            if draft_id:
+                logger.info(f"Gmail draft created: {draft_id} (DRAFT_ONLY - not sent)")
+                return draft_id
+            else:
+                fallback_id = f"draft-failed-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+                logger.warning(f"Draft creation returned None, fallback: {fallback_id}")
+                return fallback_id
+                
         except Exception as e:
             logger.error(f"Error creating Gmail draft: {e}")
-            return f"draft-error-{datetime.utcnow().isoformat()}"
+            return f"draft-error-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
     async def _create_hubspot_task(
         self,
@@ -303,7 +316,7 @@ class FormleadOrchestrator:
                 return {"task_id": None}
 
             if not self.hubspot_connector:
-                task_id = f"task-{datetime.utcnow().isoformat()}"
+                task_id = f"task-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
                 logger.info(f"Mocked task creation: {task_id}")
                 return {"task_id": task_id}
 
