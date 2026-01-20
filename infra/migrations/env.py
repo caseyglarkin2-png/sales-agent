@@ -45,10 +45,13 @@ async def run_migrations_online() -> None:
 
     settings = get_settings()
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = settings.database_url
+    
+    # Use async database URL for asyncpg driver
+    db_url = settings.async_database_url
+    configuration["sqlalchemy.url"] = db_url
 
     connectable = create_async_engine(
-        settings.database_url, poolclass=pool.NullPool, echo=False
+        db_url, poolclass=pool.NullPool, echo=False
     )
 
     async with connectable.connect() as connection:
