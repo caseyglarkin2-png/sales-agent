@@ -27,9 +27,10 @@ def create_gmail_connector() -> "GmailConnector":
     
     Looks for:
     1. GOOGLE_CREDENTIALS_FILE - path to service account JSON
-    2. GOOGLE_CREDENTIALS_JSON - JSON content directly
+    2. GOOGLE_CREDENTIALS_JSON - JSON content directly (or base64 encoded)
     3. Application Default Credentials
     """
+    import base64
     creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE")
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     delegated_user = os.environ.get("GMAIL_DELEGATED_USER")  # For service account impersonation
@@ -45,7 +46,13 @@ def create_gmail_connector() -> "GmailConnector":
             credentials = credentials.with_subject(delegated_user)
     elif creds_json:
         logger.info("Loading Google credentials from JSON env var")
-        creds_data = json.loads(creds_json)
+        # Try to decode base64 first, fall back to raw JSON
+        try:
+            decoded = base64.b64decode(creds_json).decode('utf-8')
+            creds_data = json.loads(decoded)
+        except Exception:
+            # Not base64, try raw JSON
+            creds_data = json.loads(creds_json)
         credentials = service_account.Credentials.from_service_account_info(
             creds_data, scopes=SCOPES
         )

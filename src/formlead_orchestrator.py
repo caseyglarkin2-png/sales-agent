@@ -201,6 +201,8 @@ class FormleadOrchestrator:
                 "db8b22de-c3d4-4fc6-9a16-011fe322e82c",  # Production HubSpot form
                 "form1",  # Test form
                 "form2",  # Test form
+                "test-demo-form",  # Demo test form
+                "lead-interest-form",  # Example form
             ]
             if form_id not in allowed_form_ids:
                 logger.warning(f"Form ID {form_id} not in allowlist")

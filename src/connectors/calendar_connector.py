@@ -20,11 +20,12 @@ def create_calendar_connector() -> "CalendarConnector":
     
     Looks for:
     1. GOOGLE_CREDENTIALS_FILE - path to service account JSON
-    2. GOOGLE_CREDENTIALS_JSON - JSON content directly
+    2. GOOGLE_CREDENTIALS_JSON - JSON content directly (or base64 encoded)
     """
+    import base64
     creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE")
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    delegated_user = os.environ.get("CALENDAR_DELEGATED_USER")  # For service account impersonation
+    delegated_user = os.environ.get("CALENDAR_DELEGATED_USER") or os.environ.get("GMAIL_DELEGATED_USER")
     
     credentials = None
     
@@ -37,7 +38,13 @@ def create_calendar_connector() -> "CalendarConnector":
             credentials = credentials.with_subject(delegated_user)
     elif creds_json:
         logger.info("Loading Calendar credentials from JSON env var")
-        creds_data = json.loads(creds_json)
+        # Try to decode base64 first, fall back to raw JSON
+        try:
+            decoded = base64.b64decode(creds_json).decode('utf-8')
+            creds_data = json.loads(decoded)
+        except Exception:
+            # Not base64, try raw JSON
+            creds_data = json.loads(creds_json)
         credentials = service_account.Credentials.from_service_account_info(
             creds_data, scopes=SCOPES
         )

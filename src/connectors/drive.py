@@ -212,8 +212,10 @@ class DriveConnector:
 
 def create_drive_connector() -> DriveConnector:
     """Create a DriveConnector with credentials from environment."""
+    import base64
     creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE")
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    delegated_user = os.environ.get("GMAIL_DELEGATED_USER")
     
     credentials = None
     
@@ -221,10 +223,20 @@ def create_drive_connector() -> DriveConnector:
         credentials = service_account.Credentials.from_service_account_file(
             creds_file, scopes=SCOPES
         )
+        if delegated_user:
+            credentials = credentials.with_subject(delegated_user)
     elif creds_json:
-        creds_data = json.loads(creds_json)
+        # Try to decode base64 first, fall back to raw JSON
+        try:
+            decoded = base64.b64decode(creds_json).decode('utf-8')
+            creds_data = json.loads(decoded)
+        except Exception:
+            # Not base64, try raw JSON
+            creds_data = json.loads(creds_json)
         credentials = service_account.Credentials.from_service_account_info(
             creds_data, scopes=SCOPES
         )
+        if delegated_user:
+            credentials = credentials.with_subject(delegated_user)
     
     return DriveConnector(credentials=credentials)
