@@ -88,6 +88,13 @@ from src.routes import webhook_subscriptions_routes
 from src.routes import activity_feed_routes
 from src.routes import quota_routes
 from src.routes import social_selling_routes
+from src.routes import scheduling_routes
+from src.routes import connectors_routes
+from src.routes import outreach_routes
+from src.routes import queue_routes
+from src.routes import reporting_routes
+from src.routes import auth_routes
+from src.routes import commands_routes
 
 # Configure logging
 settings = get_settings()
@@ -185,6 +192,13 @@ app.include_router(webhook_subscriptions_routes.router)
 app.include_router(activity_feed_routes.router)
 app.include_router(quota_routes.router)
 app.include_router(social_selling_routes.router)
+app.include_router(scheduling_routes.router)
+app.include_router(connectors_routes.router)
+app.include_router(outreach_routes.router)
+app.include_router(queue_routes.router)
+app.include_router(reporting_routes.router)
+app.include_router(auth_routes.router)
+app.include_router(commands_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
