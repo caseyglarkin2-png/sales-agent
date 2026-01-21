@@ -11,6 +11,7 @@ from src.audit.audit_service import (
     ResourceType,
     get_audit_service,
 )
+from src.audit_trail import AuditTrail, AuditEvent
 
 __all__ = [
     "AuditService",
@@ -18,4 +19,6 @@ __all__ = [
     "AuditAction",
     "ResourceType",
     "get_audit_service",
+    "AuditTrail",
+    "AuditEvent",
 ]
