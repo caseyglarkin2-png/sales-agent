@@ -69,8 +69,97 @@
             </div>
         </div>
 
+        <!-- JARVIS Voice Control Panel (integrated) -->
+        <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg shadow mt-8 border-2 border-purple-200">
+            <div class="px-6 py-4 border-b border-purple-200 flex justify-between items-center cursor-pointer" onclick="toggleVoicePanel()">
+                <div class="flex items-center space-x-3">
+                    <h2 class="text-lg font-semibold text-purple-800">🎤 JARVIS Voice Control</h2>
+                    <span class="text-xs text-purple-600">(Click to expand)</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span id="voice-status" class="text-sm px-3 py-1 rounded-full bg-gray-200 text-gray-700">Ready</span>
+                    <span id="voice-toggle-icon" class="text-purple-600">▼</span>
+                </div>
+            </div>
+            <div id="voice-panel-content" class="p-6 hidden">
+                <p class="text-sm text-gray-600 mb-4">Use voice commands or text to approve, reject, or navigate drafts. Press and hold the microphone button to speak.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <!-- Microphone Button -->
+                    <div class="flex flex-col items-center justify-center bg-white rounded-lg p-6 border-2 border-purple-200">
+                        <button id="voice-record-btn" 
+                            class="w-20 h-20 rounded-full bg-purple-600 text-white flex items-center justify-center text-3xl hover:bg-purple-700 active:bg-purple-800 transition-all"
+                            onmousedown="startVoiceRecording()" 
+                            onmouseup="stopVoiceRecording()"
+                            ontouchstart="startVoiceRecording()"
+                            ontouchend="stopVoiceRecording()">
+                            🎤
+                        </button>
+                        <span class="text-sm text-gray-500 mt-2">Hold to speak</span>
+                    </div>
+                    
+                    <!-- Text Input Fallback -->
+                    <div class="bg-white rounded-lg p-4 border">
+                        <label class="text-sm font-medium text-gray-700 mb-2 block">Or type a command:</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="voice-text-input" 
+                                placeholder="e.g., approve the first draft"
+                                class="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                onkeypress="if(event.key==='Enter')sendTextCommand()">
+                            <button onclick="sendTextCommand()" 
+                                class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
+                                Send
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-lg p-4 border">
+                        <label class="text-sm font-medium text-gray-700 mb-2 block">Quick Actions:</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="voiceQuickAction('approve next')" 
+                                class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200">
+                                ✓ Approve Next
+                            </button>
+                            <button onclick="voiceQuickAction('skip')" 
+                                class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">
+                                ⏭ Skip
+                            </button>
+                            <button onclick="voiceQuickAction('reject')" 
+                                class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200">
+                                ✗ Reject
+                            </button>
+                            <button onclick="voiceQuickAction('approve top 5')" 
+                                class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">
+                                ✓✓ Approve Top 5
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Last Command Display -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-medium text-gray-700">Last Command:</span>
+                        <span id="voice-last-time" class="text-xs text-gray-400"></span>
+                    </div>
+                    <div id="voice-last-command" class="text-gray-800 font-mono text-sm">No commands yet</div>
+                    <div id="voice-last-response" class="text-gray-600 text-sm mt-2 hidden"></div>
+                </div>
+                
+                <!-- Keyboard Shortcuts Help -->
+                <div class="mt-4 text-xs text-gray-500">
+                    <strong>Keyboard shortcuts:</strong> 
+                    <span class="ml-2">Space = Push-to-talk</span>
+                    <span class="ml-2">A = Approve</span>
+                    <span class="ml-2">R = Reject</span>
+                    <span class="ml-2">S = Skip</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Recent Workflows Section -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow mt-8">
             <div class="px-6 py-4 border-b flex justify-between items-center">
                 <h2 class="text-lg font-semibold text-gray-800">Recent Form Submissions</h2>
                 <button 
@@ -351,6 +440,193 @@
 
     <script>
         const API_BASE = '';
+
+        // ========================================
+        // JARVIS Voice Control Functions
+        // ========================================
+        
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        
+        function toggleVoicePanel() {
+            const content = document.getElementById('voice-panel-content');
+            const icon = document.getElementById('voice-toggle-icon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.textContent = '▲';
+            } else {
+                content.classList.add('hidden');
+                icon.textContent = '▼';
+            }
+        }
+        
+        async function startVoiceRecording() {
+            if (isRecording) return;
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop());
+                    await processVoiceCommand(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('voice-record-btn').classList.add('bg-red-600');
+                document.getElementById('voice-record-btn').classList.remove('bg-purple-600');
+                document.getElementById('voice-status').textContent = '🔴 Listening...';
+                document.getElementById('voice-status').className = 'text-sm px-3 py-1 rounded-full bg-red-100 text-red-700';
+                
+            } catch (e) {
+                console.error('Microphone access denied:', e);
+                alert('Please allow microphone access to use voice commands');
+            }
+        }
+        
+        function stopVoiceRecording() {
+            if (!isRecording || !mediaRecorder) return;
+            
+            mediaRecorder.stop();
+            isRecording = false;
+            
+            document.getElementById('voice-record-btn').classList.remove('bg-red-600');
+            document.getElementById('voice-record-btn').classList.add('bg-purple-600');
+            document.getElementById('voice-status').textContent = '⏳ Processing...';
+            document.getElementById('voice-status').className = 'text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-700';
+        }
+        
+        async function processVoiceCommand(audioBlob) {
+            try {
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'command.webm');
+                
+                const response = await fetch(`${API_BASE}/api/voice-approval/voice-input/audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                handleVoiceResponse(result);
+                
+            } catch (e) {
+                console.error('Voice processing error:', e);
+                document.getElementById('voice-status').textContent = '❌ Error';
+                document.getElementById('voice-status').className = 'text-sm px-3 py-1 rounded-full bg-red-100 text-red-700';
+            }
+        }
+        
+        async function sendTextCommand() {
+            const input = document.getElementById('voice-text-input');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            document.getElementById('voice-status').textContent = '⏳ Processing...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice-approval/voice-input`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                
+                const result = await response.json();
+                handleVoiceResponse(result);
+                input.value = '';
+                
+            } catch (e) {
+                console.error('Text command error:', e);
+                document.getElementById('voice-status').textContent = '❌ Error';
+            }
+        }
+        
+        async function voiceQuickAction(action) {
+            document.getElementById('voice-status').textContent = '⏳ Processing...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice-approval/voice-input`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: action })
+                });
+                
+                const result = await response.json();
+                handleVoiceResponse(result);
+                
+            } catch (e) {
+                console.error('Quick action error:', e);
+            }
+        }
+        
+        function handleVoiceResponse(result) {
+            const now = new Date().toLocaleTimeString();
+            document.getElementById('voice-last-time').textContent = now;
+            document.getElementById('voice-last-command').textContent = result.transcription || result.command || 'Unknown';
+            
+            const responseEl = document.getElementById('voice-last-response');
+            if (result.message || result.response) {
+                responseEl.textContent = result.message || result.response;
+                responseEl.classList.remove('hidden');
+            }
+            
+            document.getElementById('voice-status').textContent = result.success ? '✅ Done' : '⚠️ Action required';
+            document.getElementById('voice-status').className = result.success 
+                ? 'text-sm px-3 py-1 rounded-full bg-green-100 text-green-700'
+                : 'text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-700';
+            
+            // Refresh drafts list if action was taken
+            if (result.action_taken) {
+                loadDrafts();
+                loadStats();
+            }
+            
+            // Reset status after 3 seconds
+            setTimeout(() => {
+                document.getElementById('voice-status').textContent = 'Ready';
+                document.getElementById('voice-status').className = 'text-sm px-3 py-1 rounded-full bg-gray-200 text-gray-700';
+            }, 3000);
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ignore if typing in input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch (e.key.toLowerCase()) {
+                case ' ':
+                    e.preventDefault();
+                    startVoiceRecording();
+                    break;
+                case 'a':
+                    voiceQuickAction('approve next');
+                    break;
+                case 'r':
+                    voiceQuickAction('reject');
+                    break;
+                case 's':
+                    voiceQuickAction('skip');
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === ' ' && isRecording) {
+                stopVoiceRecording();
+            }
+        });
+
+        // ========================================
+        // Dashboard Functions
+        // ========================================
 
         // Load stats on page load
         async function loadStats() {

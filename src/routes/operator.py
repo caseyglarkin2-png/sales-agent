@@ -1,7 +1,8 @@
 """API routes for operator mode and draft management."""
+import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from src.logger import get_logger
 from src.operator_mode import get_draft_queue, DraftStatus
@@ -29,6 +30,22 @@ class RejectDraftRequest(BaseModel):
     """Request to reject a draft."""
     reason: str
     rejected_by: str
+
+
+class BulkDraftItem(BaseModel):
+    """Single draft for bulk loading."""
+    recipient: str
+    recipient_name: Optional[str] = None
+    company_name: Optional[str] = None
+    subject: str
+    body: str
+    request: Optional[str] = None  # Original request/context
+
+
+class BulkLoadDraftsRequest(BaseModel):
+    """Request to bulk load drafts."""
+    drafts: List[BulkDraftItem]
+    source: str = "bulk_import"
 
 
 @router.post("/drafts", response_model=Dict[str, Any])
@@ -246,4 +263,62 @@ async def get_workflow_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting workflow stats: {e}")
         return {"today": {"total": 0, "success": 0, "failed": 0, "running": 0}}
+
+
+@router.post("/bulk-load-drafts", response_model=Dict[str, Any])
+async def bulk_load_drafts(request: BulkLoadDraftsRequest) -> Dict[str, Any]:
+    """Bulk load drafts from external source (e.g., JSON file).
+    
+    This endpoint allows loading pre-generated email drafts into the 
+    pending approval queue. Used for migrating drafts from local development
+    or batch processing results.
+    """
+    try:
+        queue = get_draft_queue()
+        loaded = 0
+        skipped = 0
+        errors = []
+        
+        for item in request.drafts:
+            try:
+                # Generate unique draft ID
+                draft_id = str(uuid.uuid4())
+                
+                # Create draft
+                await queue.create_draft(
+                    draft_id=draft_id,
+                    recipient=item.recipient,
+                    subject=item.subject,
+                    body=item.body,
+                    company_name=item.company_name,
+                    metadata={
+                        "source": request.source,
+                        "recipient_name": item.recipient_name,
+                        "original_request": item.request,
+                    }
+                )
+                loaded += 1
+                
+                # Log progress every 50
+                if loaded % 50 == 0:
+                    logger.info(f"Bulk load progress: {loaded} drafts loaded")
+                    
+            except Exception as e:
+                skipped += 1
+                errors.append({"recipient": item.recipient, "error": str(e)})
+                logger.warning(f"Skipped draft for {item.recipient}: {e}")
+        
+        logger.info(f"Bulk load complete: {loaded} loaded, {skipped} skipped")
+        
+        return {
+            "status": "success",
+            "loaded": loaded,
+            "skipped": skipped,
+            "total": len(request.drafts),
+            "errors": errors[:10] if errors else [],  # First 10 errors only
+        }
+        
+    except Exception as e:
+        logger.error(f"Bulk load failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
