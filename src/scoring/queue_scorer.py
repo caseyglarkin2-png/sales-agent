@@ -367,8 +367,17 @@ class QueueScorer:
             name = draft.get("contact_name", draft.get("name", ""))
             company = draft.get("company_name", draft.get("company", ""))
             
-            # Check metadata for more fields
+            # Check metadata for more fields - handle if it's a string
             metadata = draft.get("metadata", {})
+            if isinstance(metadata, str):
+                try:
+                    import json
+                    metadata = json.loads(metadata)
+                except Exception:
+                    metadata = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+                
             job_title = metadata.get("job_title", "")
             request = metadata.get("request", metadata.get("original_request", ""))
             
