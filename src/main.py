@@ -21,6 +21,16 @@ from src.routes import sequences as sequences_routes
 from src.routes import docs as docs_routes
 from src.routes import accounts as accounts_routes
 from src.routes import history as history_routes
+from src.routes import analytics as analytics_routes
+from src.routes import agenda as agenda_routes
+from src.routes import tracking as tracking_routes
+from src.routes import linkedin as linkedin_routes
+from src.routes import meetings as meetings_routes
+from src.routes import dashboard as dashboard_routes
+from src.routes import ab_testing as ab_testing_routes
+from src.routes import scoring as scoring_routes
+from src.routes import notifications as notifications_routes
+from src.routes import templates as templates_routes
 
 # Configure logging
 settings = get_settings()
@@ -51,6 +61,16 @@ app.include_router(sequences_routes.router)
 app.include_router(docs_routes.router)
 app.include_router(accounts_routes.router)
 app.include_router(history_routes.router)
+app.include_router(analytics_routes.router)
+app.include_router(agenda_routes.router)
+app.include_router(tracking_routes.router)
+app.include_router(linkedin_routes.router)
+app.include_router(meetings_routes.router)
+app.include_router(dashboard_routes.router)
+app.include_router(ab_testing_routes.router)
+app.include_router(scoring_routes.router)
+app.include_router(notifications_routes.router)
+app.include_router(templates_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
