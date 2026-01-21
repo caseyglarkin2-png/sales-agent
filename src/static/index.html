@@ -53,35 +53,19 @@
             </div>
         </div>
 
-        <!-- Pending Drafts Section -->
-        <div class="bg-white rounded-lg shadow mb-8">
-            <div class="px-6 py-4 border-b flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-gray-800">Pending Drafts</h2>
-                <button 
-                    onclick="loadDrafts()" 
-                    class="text-sm text-blue-600 hover:text-blue-800"
-                >
-                    ↻ Refresh
-                </button>
-            </div>
-            <div id="drafts-container" class="divide-y">
-                <div class="p-6 text-center text-gray-500">Loading...</div>
-            </div>
-        </div>
-
-        <!-- JARVIS Voice Control Panel (integrated) -->
-        <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg shadow mt-8 border-2 border-purple-200">
+        <!-- JARVIS Voice Control Panel - VISIBLE BY DEFAULT -->
+        <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg shadow mb-8 border-2 border-purple-200">
             <div class="px-6 py-4 border-b border-purple-200 flex justify-between items-center cursor-pointer" onclick="toggleVoicePanel()">
                 <div class="flex items-center space-x-3">
                     <h2 class="text-lg font-semibold text-purple-800">🎤 JARVIS Voice Control</h2>
-                    <span class="text-xs text-purple-600">(Click to expand)</span>
+                    <span class="text-xs text-purple-600">(Click to collapse)</span>
                 </div>
                 <div class="flex items-center space-x-3">
                     <span id="voice-status" class="text-sm px-3 py-1 rounded-full bg-gray-200 text-gray-700">Ready</span>
-                    <span id="voice-toggle-icon" class="text-purple-600">▼</span>
+                    <span id="voice-toggle-icon" class="text-purple-600">▲</span>
                 </div>
             </div>
-            <div id="voice-panel-content" class="p-6 hidden">
+            <div id="voice-panel-content" class="p-6">
                 <p class="text-sm text-gray-600 mb-4">Use voice commands or text to approve, reject, or navigate drafts. Press and hold the microphone button to speak.</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -143,6 +127,38 @@
                         <span class="text-sm font-medium text-gray-700">Last Command:</span>
                         <span id="voice-last-time" class="text-xs text-gray-400"></span>
                     </div>
+                    <div id="voice-last-command" class="text-gray-800 font-mono text-sm">No commands yet</div>
+                    <div id="voice-last-response" class="text-gray-600 text-sm mt-2 hidden"></div>
+                </div>
+                
+                <!-- Keyboard Shortcuts Help -->
+                <div class="mt-4 text-xs text-gray-500">
+                    <strong>Keyboard shortcuts:</strong> 
+                    <span class="ml-2">Space = Push-to-talk</span>
+                    <span class="ml-2">A = Approve</span>
+                    <span class="ml-2">R = Reject</span>
+                    <span class="ml-2">S = Skip</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Drafts Section -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800">Pending Drafts</h2>
+                <button 
+                    onclick="loadDrafts()" 
+                    class="text-sm text-blue-600 hover:text-blue-800"
+                >
+                    ↻ Refresh
+                </button>
+            </div>
+            <div id="drafts-container" class="divide-y">
+                <div class="p-6 text-center text-gray-500">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Recent Workflows Section -->
                     <div id="voice-last-command" class="text-gray-800 font-mono text-sm">No commands yet</div>
                     <div id="voice-last-response" class="text-gray-600 text-sm mt-2 hidden"></div>
                 </div>
