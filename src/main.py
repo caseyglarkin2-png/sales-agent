@@ -148,6 +148,10 @@ from src.routes import task_automation_routes
 from src.routes import partner_management_routes
 from src.routes import meeting_scheduler_v2_routes
 from src.routes import roi_calculator_routes
+from src.routes import proposal_templates_routes
+from src.routes import sales_objections_routes
+from src.routes import sales_contests_routes
+from src.routes import commission_calculator_routes
 
 # Configure logging
 settings = get_settings()
@@ -302,6 +306,10 @@ app.include_router(task_automation_routes.router)
 app.include_router(partner_management_routes.router)
 app.include_router(meeting_scheduler_v2_routes.router)
 app.include_router(roi_calculator_routes.router)
+app.include_router(proposal_templates_routes.router)
+app.include_router(sales_objections_routes.router)
+app.include_router(sales_contests_routes.router)
+app.include_router(commission_calculator_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
