@@ -118,6 +118,16 @@ from src.routes import gamification_v2_routes
 from src.routes import document_generation_routes
 from src.routes import customer_360_routes
 from src.routes import multi_channel_routes
+from src.routes import workflows_v2_routes
+from src.routes import activity_capture_routes
+from src.routes import ai_assistant_routes
+from src.routes import mobile_sync_routes
+from src.routes import forecasting_v2_routes
+from src.routes import calendar_routes
+from src.routes import pipeline_analytics_routes
+from src.routes import deliverability_v2_routes
+from src.routes import proposals_v2_routes
+from src.routes import integration_hub_routes
 
 # Configure logging
 settings = get_settings()
@@ -245,6 +255,16 @@ app.include_router(gamification_v2_routes.router)
 app.include_router(document_generation_routes.router)
 app.include_router(customer_360_routes.router)
 app.include_router(multi_channel_routes.router)
+app.include_router(workflows_v2_routes.router)
+app.include_router(activity_capture_routes.router)
+app.include_router(ai_assistant_routes.router)
+app.include_router(mobile_sync_routes.router)
+app.include_router(forecasting_v2_routes.router)
+app.include_router(calendar_routes.router)
+app.include_router(pipeline_analytics_routes.router)
+app.include_router(deliverability_v2_routes.router)
+app.include_router(proposals_v2_routes.router)
+app.include_router(integration_hub_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
