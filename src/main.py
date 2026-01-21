@@ -17,6 +17,10 @@ from src.routes import metrics as metrics_routes
 from src.routes import bulk as bulk_routes
 from src.routes import enrichment as enrichment_routes
 from src.routes import proposals as proposals_routes
+from src.routes import sequences as sequences_routes
+from src.routes import docs as docs_routes
+from src.routes import accounts as accounts_routes
+from src.routes import history as history_routes
 
 # Configure logging
 settings = get_settings()
@@ -43,6 +47,10 @@ app.include_router(metrics_routes.router)
 app.include_router(bulk_routes.router)
 app.include_router(enrichment_routes.router)
 app.include_router(proposals_routes.router)
+app.include_router(sequences_routes.router)
+app.include_router(docs_routes.router)
+app.include_router(accounts_routes.router)
+app.include_router(history_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")

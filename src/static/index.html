@@ -142,6 +142,128 @@
             </div>
         </div>
 
+        <!-- Sequences Panel -->
+        <div class="bg-white rounded-lg shadow mt-8">
+            <div class="px-6 py-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800">🔄 Multi-Channel Sequences</h2>
+                <button onclick="loadSequences()" class="text-sm text-blue-600 hover:text-blue-800">↻ Refresh</button>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="sequence-templates">
+                    <div class="p-4 text-center text-gray-500">Loading templates...</div>
+                </div>
+                
+                <div class="border-t pt-4 mt-4">
+                    <h3 class="font-medium text-gray-700 mb-3">Active Enrollments</h3>
+                    <div id="enrollments-list" class="divide-y border rounded-lg">
+                        <div class="p-4 text-center text-gray-500">No active enrollments</div>
+                    </div>
+                </div>
+                
+                <div class="border-t pt-4 mt-4">
+                    <h3 class="font-medium text-gray-700 mb-3">Due Steps</h3>
+                    <div id="due-steps-list" class="text-sm text-gray-600">
+                        No steps due
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline View -->
+        <div class="bg-white rounded-lg shadow mt-8">
+            <div class="px-6 py-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800">📊 Contact Pipeline</h2>
+                <button onclick="loadPipeline()" class="text-sm text-blue-600 hover:text-blue-800">↻ Refresh</button>
+            </div>
+            <div class="p-6">
+                <div class="flex overflow-x-auto space-x-4 pb-4">
+                    <div class="flex-shrink-0 w-64 bg-gray-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-gray-700">🆕 New</h3>
+                            <span class="text-xs bg-gray-200 px-2 py-0.5 rounded-full" id="pipeline-new-count">0</span>
+                        </div>
+                        <div id="pipeline-new" class="space-y-2 min-h-32"></div>
+                    </div>
+                    <div class="flex-shrink-0 w-64 bg-blue-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-blue-700">📧 Outreached</h3>
+                            <span class="text-xs bg-blue-200 px-2 py-0.5 rounded-full" id="pipeline-outreached-count">0</span>
+                        </div>
+                        <div id="pipeline-outreached" class="space-y-2 min-h-32"></div>
+                    </div>
+                    <div class="flex-shrink-0 w-64 bg-green-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-green-700">💬 Replied</h3>
+                            <span class="text-xs bg-green-200 px-2 py-0.5 rounded-full" id="pipeline-replied-count">0</span>
+                        </div>
+                        <div id="pipeline-replied" class="space-y-2 min-h-32"></div>
+                    </div>
+                    <div class="flex-shrink-0 w-64 bg-purple-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-purple-700">📅 Meeting</h3>
+                            <span class="text-xs bg-purple-200 px-2 py-0.5 rounded-full" id="pipeline-meeting-count">0</span>
+                        </div>
+                        <div id="pipeline-meeting" class="space-y-2 min-h-32"></div>
+                    </div>
+                    <div class="flex-shrink-0 w-64 bg-yellow-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-yellow-700">📄 Proposal</h3>
+                            <span class="text-xs bg-yellow-200 px-2 py-0.5 rounded-full" id="pipeline-proposal-count">0</span>
+                        </div>
+                        <div id="pipeline-proposal" class="space-y-2 min-h-32"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Analyzer Panel -->
+        <div class="bg-white rounded-lg shadow mt-8">
+            <div class="px-6 py-4 border-b">
+                <h2 class="text-lg font-semibold text-gray-800">🏢 Account Analyzer</h2>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                        <input type="text" id="analyze-company" placeholder="Acme Corp"
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Contact Title (optional)</label>
+                        <input type="text" id="analyze-title" placeholder="VP of Marketing"
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="analyzeAccount()" 
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Analyze Account
+                        </button>
+                    </div>
+                </div>
+                <div id="analysis-result" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-700 mb-2">Viability Score</h4>
+                            <div class="text-4xl font-bold text-blue-600" id="viability-score">-</div>
+                            <ul id="viability-reasons" class="text-sm text-gray-600 mt-2 list-disc list-inside"></ul>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-700 mb-2">Recommended Approach</h4>
+                            <p id="recommended-approach" class="text-sm text-gray-700"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-700 mb-2">Pain Points</h4>
+                            <ul id="pain-points" class="text-sm text-gray-600 space-y-1"></ul>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-700 mb-2">Value Propositions</h4>
+                            <ul id="value-props" class="text-sm text-gray-600 space-y-1"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Voice Training Panel -->
         <div class="bg-white rounded-lg shadow mt-8">
             <div class="px-6 py-4 border-b flex justify-between items-center">
@@ -481,6 +603,8 @@
         loadDrafts();
         loadWorkflows();
         loadBulkStatus();
+        loadSequences();
+        loadPipeline();
 
         // Auto-refresh every 30 seconds
         setInterval(() => {
@@ -488,6 +612,245 @@
             loadDrafts();
             loadBulkStatus();
         }, 30000);
+
+        // Sequences Functions
+        async function loadSequences() {
+            try {
+                const response = await fetch(`${API_BASE}/api/sequences/templates`);
+                const data = await response.json();
+                
+                const container = document.getElementById('sequence-templates');
+                const templates = data.templates || [];
+                
+                if (templates.length === 0) {
+                    container.innerHTML = '<div class="p-4 text-center text-gray-500">No templates available</div>';
+                    return;
+                }
+                
+                container.innerHTML = templates.map(t => `
+                    <div class="border rounded-lg p-4 hover:shadow-md transition cursor-pointer" onclick="showSequence('${t.id}')">
+                        <div class="font-medium text-gray-800">${t.name}</div>
+                        <div class="text-sm text-gray-500 mt-1">${t.description || ''}</div>
+                        <div class="flex items-center mt-2 text-xs">
+                            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">${t.step_count} steps</span>
+                            <span class="ml-2 text-gray-400">${t.target_persona || 'General'}</span>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Load enrollments
+                await loadEnrollments();
+                await loadDueSteps();
+            } catch (e) {
+                console.error('Failed to load sequences:', e);
+            }
+        }
+
+        async function loadEnrollments() {
+            try {
+                const response = await fetch(`${API_BASE}/api/sequences/enrollments?status=active`);
+                const data = await response.json();
+                
+                const container = document.getElementById('enrollments-list');
+                const enrollments = data.enrollments || [];
+                
+                if (enrollments.length === 0) {
+                    container.innerHTML = '<div class="p-4 text-center text-gray-500">No active enrollments</div>';
+                    return;
+                }
+                
+                container.innerHTML = enrollments.map(e => `
+                    <div class="px-4 py-3 flex justify-between items-center hover:bg-gray-50">
+                        <div>
+                            <span class="font-medium">${e.contact_email}</span>
+                            <span class="text-gray-500 ml-2">→ ${e.sequence_name}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-gray-500">Step ${e.current_step}/${e.total_steps}</span>
+                            <span class="px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800">${e.status}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load enrollments:', e);
+            }
+        }
+
+        async function loadDueSteps() {
+            try {
+                const response = await fetch(`${API_BASE}/api/sequences/due`);
+                const data = await response.json();
+                
+                const container = document.getElementById('due-steps-list');
+                const dueSteps = data.due_steps || [];
+                
+                if (dueSteps.length === 0) {
+                    container.textContent = 'No steps due';
+                    return;
+                }
+                
+                container.innerHTML = dueSteps.map(d => `
+                    <div class="flex items-center space-x-2 mb-2">
+                        <span class="font-medium">${d.enrollment.contact_email}</span>
+                        <span class="text-gray-400">-</span>
+                        <span class="text-blue-600">${d.step.channel}</span>
+                        <button onclick="executeStep('${d.enrollment.id}')" 
+                            class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600">
+                            Execute
+                        </button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load due steps:', e);
+            }
+        }
+
+        function showSequence(seqId) {
+            const email = prompt('Enter contact email to enroll in this sequence:');
+            if (!email) return;
+            enrollInSequence(seqId, email);
+        }
+
+        async function enrollInSequence(sequenceId, email) {
+            try {
+                const response = await fetch(`${API_BASE}/api/sequences/enroll`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sequence_id: sequenceId,
+                        contact_email: email,
+                        start_immediately: true
+                    })
+                });
+                const result = await response.json();
+                alert('Enrolled: ' + result.status);
+                loadSequences();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function executeStep(enrollmentId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/sequences/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        enrollment_id: enrollmentId,
+                        contact_data: {}
+                    })
+                });
+                const result = await response.json();
+                alert('Step executed: ' + JSON.stringify(result.result));
+                loadSequences();
+                loadDrafts();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Pipeline Functions
+        async function loadPipeline() {
+            // This would normally load from a real pipeline API
+            // For now, populate from bulk queue and workflow data
+            try {
+                const [bulkRes, workflowRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/bulk/queue`),
+                    fetch(`${API_BASE}/api/operator/workflows?limit=50`)
+                ]);
+                
+                const bulkData = await bulkRes.json();
+                const workflows = await workflowRes.json();
+                
+                // Categorize contacts
+                const queued = (bulkData.contacts || []).slice(0, 5);
+                const outreached = (workflows || []).filter(w => w.status === 'success').slice(0, 5);
+                const replied = []; // Would come from email tracking
+                const meetings = []; // Would come from calendar
+                const proposals = []; // Would come from proposals API
+                
+                // Render pipeline columns
+                renderPipelineColumn('new', queued.map(c => ({
+                    email: c.email,
+                    company: c.company || '',
+                    score: c.priority_score
+                })));
+                
+                renderPipelineColumn('outreached', outreached.map(w => ({
+                    email: w.contact_email,
+                    company: w.company_name || '',
+                    date: w.started_at
+                })));
+                
+                document.getElementById('pipeline-new-count').textContent = queued.length;
+                document.getElementById('pipeline-outreached-count').textContent = outreached.length;
+                document.getElementById('pipeline-replied-count').textContent = replied.length;
+                document.getElementById('pipeline-meeting-count').textContent = meetings.length;
+                document.getElementById('pipeline-proposal-count').textContent = proposals.length;
+                
+            } catch (e) {
+                console.error('Failed to load pipeline:', e);
+            }
+        }
+
+        function renderPipelineColumn(stage, contacts) {
+            const container = document.getElementById(`pipeline-${stage}`);
+            if (contacts.length === 0) {
+                container.innerHTML = '<div class="text-xs text-gray-400 text-center">No contacts</div>';
+                return;
+            }
+            
+            container.innerHTML = contacts.map(c => `
+                <div class="bg-white rounded p-2 shadow-sm text-sm">
+                    <div class="font-medium text-gray-800 truncate">${c.email}</div>
+                    <div class="text-xs text-gray-500 truncate">${c.company}</div>
+                </div>
+            `).join('');
+        }
+
+        // Account Analyzer Functions
+        async function analyzeAccount() {
+            const company = document.getElementById('analyze-company').value;
+            const title = document.getElementById('analyze-title').value;
+            
+            if (!company) {
+                alert('Please enter a company name');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/accounts/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_name: company,
+                        contact_title: title || null
+                    })
+                });
+                const data = await response.json();
+                const analysis = data.analysis;
+                
+                document.getElementById('analysis-result').classList.remove('hidden');
+                document.getElementById('viability-score').textContent = analysis.viability_score?.toFixed(0) || '-';
+                document.getElementById('recommended-approach').textContent = analysis.recommended_approach || '-';
+                
+                const reasonsList = document.getElementById('viability-reasons');
+                reasonsList.innerHTML = (analysis.viability_reasons || []).map(r => `<li>${r}</li>`).join('');
+                
+                const painList = document.getElementById('pain-points');
+                painList.innerHTML = (analysis.pain_points || []).map(p => 
+                    `<li><strong>${p.pain}</strong> → ${p.solution}</li>`
+                ).join('');
+                
+                const propsList = document.getElementById('value-props');
+                propsList.innerHTML = (analysis.value_propositions || []).map(v => 
+                    `<li><strong>${v.prop}</strong> - ${v.proof}</li>`
+                ).join('');
+                
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
 
         // Bulk Processing Functions
         let bulkIsPaused = false;

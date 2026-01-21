@@ -391,3 +391,298 @@ class HubSpotConnector:
                 logger.error(f"Error getting form submissions: {e}")
                 return []
 
+    async def get_contact_engagements(
+        self,
+        contact_id: str,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Get engagements associated with a contact.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            limit: Max engagements to return
+            
+        Returns:
+            List of engagement objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                # Get engagement associations
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v4/objects/contacts/{contact_id}/associations/engagements",
+                    headers=self.headers,
+                    params={"limit": limit},
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                engagements = []
+                for result in data.get("results", []):
+                    eng_id = result.get("toObjectId")
+                    if eng_id:
+                        # Get engagement details
+                        eng_response = await client.get(
+                            f"{self.BASE_URL}/crm/v3/objects/engagements/{eng_id}",
+                            headers=self.headers,
+                            params={"properties": "hs_engagement_type,hs_timestamp,hs_body_preview"},
+                        )
+                        if eng_response.status_code == 200:
+                            eng_data = eng_response.json()
+                            props = eng_data.get("properties", {})
+                            engagements.append({
+                                "id": eng_id,
+                                "type": props.get("hs_engagement_type"),
+                                "timestamp": props.get("hs_timestamp"),
+                                "preview": props.get("hs_body_preview"),
+                            })
+                
+                return engagements
+                
+            except Exception as e:
+                logger.warning(f"Error getting contact engagements: {e}")
+                return []
+
+    async def get_contact_deals(
+        self,
+        contact_id: str,
+    ) -> List[Dict[str, Any]]:
+        """Get deals associated with a contact.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            
+        Returns:
+            List of deal objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                # Get deal associations
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v4/objects/contacts/{contact_id}/associations/deals",
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                deals = []
+                for result in data.get("results", []):
+                    deal_id = result.get("toObjectId")
+                    if deal_id:
+                        deal_response = await client.get(
+                            f"{self.BASE_URL}/crm/v3/objects/deals/{deal_id}",
+                            headers=self.headers,
+                            params={"properties": "dealname,dealstage,amount,closedate"},
+                        )
+                        if deal_response.status_code == 200:
+                            deal_data = deal_response.json()
+                            deals.append({
+                                "id": deal_id,
+                                **deal_data.get("properties", {}),
+                            })
+                
+                return deals
+                
+            except Exception as e:
+                logger.warning(f"Error getting contact deals: {e}")
+                return []
+
+    async def get_contact_notes(
+        self,
+        contact_id: str,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Get notes associated with a contact.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            limit: Max notes to return
+            
+        Returns:
+            List of note objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v4/objects/contacts/{contact_id}/associations/notes",
+                    headers=self.headers,
+                    params={"limit": limit},
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                notes = []
+                for result in data.get("results", []):
+                    note_id = result.get("toObjectId")
+                    if note_id:
+                        note_response = await client.get(
+                            f"{self.BASE_URL}/crm/v3/objects/notes/{note_id}",
+                            headers=self.headers,
+                            params={"properties": "hs_note_body,hs_timestamp"},
+                        )
+                        if note_response.status_code == 200:
+                            note_data = note_response.json()
+                            notes.append({
+                                "id": note_id,
+                                **note_data.get("properties", {}),
+                            })
+                
+                return notes[:limit]
+                
+            except Exception as e:
+                logger.warning(f"Error getting contact notes: {e}")
+                return []
+
+    async def get_contact_tasks(
+        self,
+        contact_id: str,
+    ) -> List[Dict[str, Any]]:
+        """Get tasks associated with a contact.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            
+        Returns:
+            List of task objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v4/objects/contacts/{contact_id}/associations/tasks",
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                tasks = []
+                for result in data.get("results", []):
+                    task_id = result.get("toObjectId")
+                    if task_id:
+                        task_response = await client.get(
+                            f"{self.BASE_URL}/crm/v3/objects/tasks/{task_id}",
+                            headers=self.headers,
+                            params={"properties": "hs_task_subject,hs_task_status,hs_task_due_date,hs_task_type"},
+                        )
+                        if task_response.status_code == 200:
+                            task_data = task_response.json()
+                            tasks.append({
+                                "id": task_id,
+                                **task_data.get("properties", {}),
+                            })
+                
+                return tasks
+                
+            except Exception as e:
+                logger.warning(f"Error getting contact tasks: {e}")
+                return []
+
+    async def get_contact_meetings(
+        self,
+        contact_id: str,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Get meetings associated with a contact.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            limit: Max meetings to return
+            
+        Returns:
+            List of meeting objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v4/objects/contacts/{contact_id}/associations/meetings",
+                    headers=self.headers,
+                    params={"limit": limit},
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                meetings = []
+                for result in data.get("results", []):
+                    meeting_id = result.get("toObjectId")
+                    if meeting_id:
+                        meeting_response = await client.get(
+                            f"{self.BASE_URL}/crm/v3/objects/meetings/{meeting_id}",
+                            headers=self.headers,
+                            params={"properties": "hs_meeting_title,hs_meeting_body,hs_meeting_outcome,hs_timestamp"},
+                        )
+                        if meeting_response.status_code == 200:
+                            meeting_data = meeting_response.json()
+                            meetings.append({
+                                "id": meeting_id,
+                                **meeting_data.get("properties", {}),
+                            })
+                
+                return meetings[:limit]
+                
+            except Exception as e:
+                logger.warning(f"Error getting contact meetings: {e}")
+                return []
+
+    async def search_contacts_by_company(
+        self,
+        company_name: str,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Search for contacts at a specific company.
+        
+        Args:
+            company_name: Company name to search
+            limit: Max contacts to return
+            
+        Returns:
+            List of contact objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                payload = {
+                    "filterGroups": [{
+                        "filters": [{
+                            "propertyName": "company",
+                            "operator": "CONTAINS_TOKEN",
+                            "value": company_name,
+                        }]
+                    }],
+                    "properties": ["email", "firstname", "lastname", "jobtitle", "company"],
+                    "limit": limit,
+                }
+                
+                response = await client.post(
+                    f"{self.BASE_URL}/crm/v3/objects/contacts/search",
+                    headers=self.headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                contacts = []
+                for result in data.get("results", []):
+                    contacts.append({
+                        "id": result.get("id"),
+                        **result.get("properties", {}),
+                    })
+                
+                return contacts
+                
+            except Exception as e:
+                logger.warning(f"Error searching contacts by company: {e}")
+                return []
+
+
+_hubspot_connector: Optional["HubSpotConnector"] = None
+
+
+def get_hubspot_connector() -> Optional["HubSpotConnector"]:
+    """Get singleton HubSpot connector."""
+    global _hubspot_connector
+    if _hubspot_connector is None:
+        api_key = os.getenv("HUBSPOT_API_KEY")
+        if api_key:
+            _hubspot_connector = HubSpotConnector(api_key)
+        else:
+            logger.warning("HUBSPOT_API_KEY not configured")
+            return None
+    return _hubspot_connector
+
