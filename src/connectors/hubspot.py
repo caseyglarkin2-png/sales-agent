@@ -219,7 +219,7 @@ class HubSpotConnector:
         """
         async with httpx.AsyncClient(timeout=60) as client:
             try:
-                # Use the search API to filter by sender email for sent emails
+                # Fetch emails without API filter - filter in code for reliability
                 emails = []
                 after = 0
                 
@@ -234,28 +234,14 @@ class HubSpotConnector:
                     "hs_createdate",
                 ]
                 
+                owner_local = owner_email.split("@")[0].lower()
+                
                 while len(emails) < limit:
-                    # Build search payload to filter by sender
-                    filters = []
-                    
-                    if sent_only:
-                        # For sent emails, filter by from_email matching owner
-                        filters.append({
-                            "propertyName": "hs_email_from_email",
-                            "operator": "CONTAINS_TOKEN",
-                            "value": owner_email.split("@")[0]  # Match on local part
-                        })
-                        filters.append({
-                            "propertyName": "hs_email_direction",
-                            "operator": "EQ",
-                            "value": "EMAIL"  # Outbound emails
-                        })
-                    
+                    # Get emails without filter, filter in code
                     payload = {
-                        "filterGroups": [{"filters": filters}] if filters else [],
                         "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}],
                         "properties": properties,
-                        "limit": min(100, limit - len(emails)),
+                        "limit": 100,
                         "after": after,
                     }
                     
@@ -269,30 +255,16 @@ class HubSpotConnector:
                     
                     results = data.get("results", [])
                     if not results:
-                        # No more results, try without filter to see if any emails exist
-                        if len(emails) == 0 and after == 0:
-                            logger.info("No filtered emails found, trying unfiltered search")
-                            # Try getting any recent emails for debugging
-                            unfiltered_payload = {
-                                "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}],
-                                "properties": properties,
-                                "limit": 10,
-                            }
-                            debug_resp = await client.post(
-                                f"{self.BASE_URL}/crm/v3/objects/emails/search",
-                                headers=self.headers,
-                                json=unfiltered_payload,
-                            )
-                            debug_data = debug_resp.json()
-                            debug_results = debug_data.get("results", [])
-                            if debug_results:
-                                logger.info(f"Found {len(debug_results)} unfiltered emails, sample sender: {debug_results[0].get('properties', {}).get('hs_email_from_email', 'N/A')}")
                         break
                     
                     for email in results:
                         props = email.get("properties", {})
+                        sender = (props.get("hs_email_from_email") or "").lower()
                         
-                        # Extract email content
+                        # Filter by sender containing owner email local part
+                        if sent_only and owner_local not in sender:
+                            continue
+                        
                         body = props.get("hs_email_text") or props.get("hs_email_html", "")
                         subject = props.get("hs_email_subject", "")
                         
@@ -301,16 +273,16 @@ class HubSpotConnector:
                             "subject": subject,
                             "body": body,
                             "recipient": props.get("hs_email_to_email", ""),
-                            "sender": props.get("hs_email_from_email", ""),
+                            "sender": sender,
                             "timestamp": props.get("hs_timestamp") or props.get("hs_createdate"),
                             "direction": props.get("hs_email_direction", ""),
                         }
                         
-                        # Only include if has content
                         if email_obj["body"] and len(email_obj["body"]) > 50:
                             emails.append(email_obj)
+                            if len(emails) >= limit:
+                                break
                     
-                    # Check for pagination
                     paging = data.get("paging", {})
                     if paging.get("next", {}).get("after"):
                         after = int(paging["next"]["after"])
