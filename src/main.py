@@ -164,6 +164,10 @@ from src.routes import revops_v2_routes
 from src.routes import win_loss_routes
 from src.routes import sales_coaching_ai_routes
 from src.routes import quote_management_routes
+from src.routes import contract_lifecycle_routes
+from src.routes import churn_prediction_routes
+from src.routes import sales_compensation_routes
+from src.routes import onboarding_workflows_routes
 
 # Configure logging
 settings = get_settings()
