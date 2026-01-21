@@ -339,7 +339,7 @@ class BulkProcessor:
             }
             
             # Run through orchestrator
-            result = await orchestrator.process_form_submission(form_data)
+            result = await orchestrator.run_complete_workflow(form_data)
             
             # Update status
             contact.status = ProcessingStatus.COMPLETED

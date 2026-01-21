@@ -148,7 +148,7 @@ async def start_bulk_from_hubspot(request: BulkStartRequest) -> Dict[str, Any]:
 @router.post("/process-one")
 async def process_one_contact() -> Dict[str, Any]:
     """Manually trigger processing of one contact."""
-    from src.orchestrator import create_orchestrator
+    from src.orchestrator import get_orchestrator
     
     processor = get_bulk_processor()
     
@@ -160,7 +160,7 @@ async def process_one_contact() -> Dict[str, Any]:
         }
     
     try:
-        orchestrator = create_orchestrator()
+        orchestrator = get_orchestrator()
         result = await processor.process_one(orchestrator)
         
         if result:
