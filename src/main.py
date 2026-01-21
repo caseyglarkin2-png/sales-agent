@@ -145,6 +145,9 @@ from src.routes import content_library_routes
 from src.routes import email_warmup_routes
 from src.routes import referral_tracking_routes
 from src.routes import task_automation_routes
+from src.routes import partner_management_routes
+from src.routes import meeting_scheduler_v2_routes
+from src.routes import roi_calculator_routes
 
 # Configure logging
 settings = get_settings()
@@ -296,6 +299,9 @@ app.include_router(content_library_routes.router)
 app.include_router(email_warmup_routes.router)
 app.include_router(referral_tracking_routes.router)
 app.include_router(task_automation_routes.router)
+app.include_router(partner_management_routes.router)
+app.include_router(meeting_scheduler_v2_routes.router)
+app.include_router(roi_calculator_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
