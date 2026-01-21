@@ -34,6 +34,7 @@ from src.routes import templates as templates_routes
 from src.routes import campaigns as campaigns_routes
 from src.routes import insights as insights_routes
 from src.routes import reports as reports_routes
+from src.routes import imports as imports_routes
 
 # Configure logging
 settings = get_settings()
@@ -77,6 +78,7 @@ app.include_router(templates_routes.router)
 app.include_router(campaigns_routes.router)
 app.include_router(insights_routes.router)
 app.include_router(reports_routes.router)
+app.include_router(imports_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
