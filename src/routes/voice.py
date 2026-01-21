@@ -63,6 +63,12 @@ class TrainFromSentEmailsRequest(BaseModel):
     limit: int = 50
 
 
+class ManualTrainingSamplesRequest(BaseModel):
+    """Request to add multiple training samples at once."""
+    samples: List[str]
+    profile_name: str = "casey_trained"
+
+
 class AddTrainingSampleRequest(BaseModel):
     """Request to add a training sample."""
     text: str
@@ -421,5 +427,141 @@ async def train_from_sent_emails(request: TrainFromSentEmailsRequest) -> Dict[st
         }
     except Exception as e:
         logger.error(f"Error training from sent emails: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hubspot/diagnostic", response_model=Dict[str, Any])
+async def hubspot_diagnostic() -> Dict[str, Any]:
+    """Diagnose HubSpot connection and available emails."""
+    try:
+        from src.connectors.hubspot import create_hubspot_connector
+        import os
+        
+        hubspot = create_hubspot_connector()
+        api_key = os.environ.get("HUBSPOT_API_KEY", "")
+        
+        result = {
+            "api_key_set": bool(api_key),
+            "api_key_preview": f"{api_key[:10]}...{api_key[-4:]}" if len(api_key) > 14 else "too_short",
+            "tests": {}
+        }
+        
+        # Test 1: Try to list any emails
+        import httpx
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Test contacts access
+            try:
+                resp = await client.get(
+                    f"{hubspot.BASE_URL}/crm/v3/objects/contacts?limit=1",
+                    headers=hubspot.headers
+                )
+                result["tests"]["contacts_access"] = {
+                    "status_code": resp.status_code,
+                    "success": resp.status_code == 200,
+                    "count": resp.json().get("total", 0) if resp.status_code == 200 else None
+                }
+            except Exception as e:
+                result["tests"]["contacts_access"] = {"error": str(e)}
+            
+            # Test emails access
+            try:
+                resp = await client.post(
+                    f"{hubspot.BASE_URL}/crm/v3/objects/emails/search",
+                    headers=hubspot.headers,
+                    json={"limit": 5, "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}]}
+                )
+                result["tests"]["emails_access"] = {
+                    "status_code": resp.status_code,
+                    "success": resp.status_code == 200
+                }
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result["tests"]["emails_access"]["total"] = data.get("total", 0)
+                    result["tests"]["emails_access"]["sample_count"] = len(data.get("results", []))
+                    if data.get("results"):
+                        sample = data["results"][0].get("properties", {})
+                        result["tests"]["emails_access"]["sample_from"] = sample.get("hs_email_from_email", "N/A")
+                        result["tests"]["emails_access"]["sample_subject"] = sample.get("hs_email_subject", "N/A")[:50]
+            except Exception as e:
+                result["tests"]["emails_access"] = {"error": str(e)}
+            
+            # Test owners access (to find valid email addresses)
+            try:
+                resp = await client.get(
+                    f"{hubspot.BASE_URL}/crm/v3/owners",
+                    headers=hubspot.headers
+                )
+                result["tests"]["owners_access"] = {
+                    "status_code": resp.status_code,
+                    "success": resp.status_code == 200
+                }
+                if resp.status_code == 200:
+                    owners = resp.json().get("results", [])
+                    result["tests"]["owners_access"]["owners"] = [
+                        {"email": o.get("email"), "name": f"{o.get('firstName', '')} {o.get('lastName', '')}".strip()}
+                        for o in owners[:5]
+                    ]
+            except Exception as e:
+                result["tests"]["owners_access"] = {"error": str(e)}
+        
+        return result
+    except Exception as e:
+        logger.error(f"Diagnostic error: {e}")
+        return {"error": str(e)}
+
+
+@router.post("/training/quick", response_model=Dict[str, Any])
+async def quick_train_from_samples(request: ManualTrainingSamplesRequest) -> Dict[str, Any]:
+    """Quickly train a voice profile from provided email samples.
+    
+    Provide a list of example emails and get a trained voice profile.
+    """
+    try:
+        trainer = get_trainer()
+        
+        # Clear existing samples
+        trainer.training_samples = []
+        
+        # Add all samples
+        for i, sample in enumerate(request.samples):
+            if len(sample) >= 50:  # Minimum viable sample
+                trainer.add_text_sample(
+                    text=sample,
+                    source=f"quick_train_{i}",
+                    subject=f"Sample {i+1}",
+                )
+        
+        if not trainer.training_samples:
+            raise HTTPException(
+                status_code=400, 
+                detail="No valid samples provided (each sample needs at least 50 characters)"
+            )
+        
+        # Analyze and create profile
+        analysis = await trainer.analyze_samples()
+        profile = await trainer.create_profile_from_analysis(request.profile_name, analysis)
+        
+        # Save the profile
+        manager = get_voice_profile_manager()
+        profile_id = request.profile_name.lower().replace(" ", "_")
+        manager.profiles[profile_id] = profile
+        
+        return {
+            "status": "success",
+            "profile_id": profile_id,
+            "profile_name": profile.name,
+            "tone": profile.tone,
+            "samples_used": len(trainer.training_samples),
+            "analysis": {
+                "formality_level": analysis.formality_level,
+                "uses_contractions": analysis.uses_contractions,
+                "common_phrases": analysis.common_phrases[:5] if analysis.common_phrases else [],
+                "style_notes": analysis.style_notes[:5] if analysis.style_notes else [],
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in quick training: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
