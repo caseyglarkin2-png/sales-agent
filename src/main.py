@@ -159,6 +159,11 @@ from src.routes import deal_insights_routes
 from src.routes import customer_journey_routes
 from src.routes import engagement_scoring_routes
 from src.routes import deal_velocity_routes
+from src.routes import sales_playbook_ai_routes
+from src.routes import revops_v2_routes
+from src.routes import win_loss_routes
+from src.routes import sales_coaching_ai_routes
+from src.routes import quote_management_routes
 
 # Configure logging
 settings = get_settings()
@@ -324,6 +329,11 @@ app.include_router(deal_insights_routes.router)
 app.include_router(customer_journey_routes.router)
 app.include_router(engagement_scoring_routes.router)
 app.include_router(deal_velocity_routes.router)
+app.include_router(sales_playbook_ai_routes.router)
+app.include_router(revops_v2_routes.router)
+app.include_router(win_loss_routes.router)
+app.include_router(sales_coaching_ai_routes.router)
+app.include_router(quote_management_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
