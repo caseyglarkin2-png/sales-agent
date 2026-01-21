@@ -50,6 +50,12 @@ from src.routes import tasks as tasks_routes
 from src.routes import pipeline as pipeline_routes
 from src.routes import email_generator as email_generator_routes
 from src.routes import notes as notes_routes
+from src.routes import companies as companies_routes
+from src.routes import audit as audit_routes
+from src.routes import outbound_webhooks as outbound_webhooks_routes
+from src.routes import exports as exports_routes
+from src.routes import api_keys as api_keys_routes
+from src.routes import users as users_routes
 
 # Configure logging
 settings = get_settings()
@@ -109,6 +115,12 @@ app.include_router(tasks_routes.router)
 app.include_router(pipeline_routes.router)
 app.include_router(email_generator_routes.router)
 app.include_router(notes_routes.router)
+app.include_router(companies_routes.router)
+app.include_router(audit_routes.router)
+app.include_router(outbound_webhooks_routes.router)
+app.include_router(exports_routes.router)
+app.include_router(api_keys_routes.router)
+app.include_router(users_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
