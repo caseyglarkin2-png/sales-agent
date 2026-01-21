@@ -430,8 +430,8 @@ async def score_pending_queue(check_hubspot: bool = True) -> List[Dict[str, Any]
     """
     from src.operator_mode import get_draft_queue
     
-    queue = await get_draft_queue()
-    drafts = await queue.get_pending()
+    queue = get_draft_queue()  # Not async
+    drafts = await queue.get_pending_approvals()  # Correct method name
     
     scorer = await get_queue_scorer()
     scores = await scorer.score_queue(drafts, check_hubspot=check_hubspot)
