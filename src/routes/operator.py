@@ -88,6 +88,67 @@ async def get_pending_drafts() -> List[Dict[str, Any]]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/drafts/scored", response_model=List[Dict[str, Any]])
+async def get_scored_drafts(check_hubspot: bool = True) -> List[Dict[str, Any]]:
+    """Get pending drafts scored and sorted by priority.
+    
+    Scores leads based on:
+    - Recency: Have we emailed them recently? (DEPRIORITIZE if yes)
+    - ICP fit: Does their title/function match target buyers?
+    - TAM fit: Is the company in our target market?
+    
+    Args:
+        check_hubspot: Check HubSpot for email history (slower but accurate)
+        
+    Returns:
+        List of scored drafts sorted by priority (best leads first)
+    """
+    try:
+        from src.scoring.queue_scorer import score_pending_queue
+        
+        scores = await score_pending_queue(check_hubspot=check_hubspot)
+        logger.info(f"Returned {len(scores)} scored drafts")
+        return scores
+        
+    except Exception as e:
+        logger.error(f"Error scoring drafts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/drafts/scored/summary", response_model=Dict[str, Any])
+async def get_scoring_summary(check_hubspot: bool = False) -> Dict[str, Any]:
+    """Get summary of queue scoring without HubSpot check (fast).
+    
+    Returns tier breakdown and top leads without checking HubSpot.
+    """
+    try:
+        from src.scoring.queue_scorer import score_pending_queue
+        
+        # Fast scoring without HubSpot
+        scores = await score_pending_queue(check_hubspot=check_hubspot)
+        
+        # Calculate tier breakdown
+        tiers = {"A": 0, "B": 0, "C": 0, "D": 0}
+        recently_contacted = 0
+        
+        for s in scores:
+            tiers[s.get("tier", "C")] += 1
+            if s.get("recently_contacted"):
+                recently_contacted += 1
+        
+        return {
+            "total": len(scores),
+            "tiers": tiers,
+            "recently_contacted": recently_contacted,
+            "top_10": scores[:10],
+            "skip_recommended": [s for s in scores if s.get("recently_contacted")][:5],
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting scoring summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/drafts/{draft_id}", response_model=Dict[str, Any])
 async def get_draft(draft_id: str) -> Dict[str, Any]:
     """Get draft details."""
@@ -322,63 +383,3 @@ async def bulk_load_drafts(request: BulkLoadDraftsRequest) -> Dict[str, Any]:
         logger.error(f"Bulk load failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.get("/drafts/scored", response_model=List[Dict[str, Any]])
-async def get_scored_drafts(check_hubspot: bool = True) -> List[Dict[str, Any]]:
-    """Get pending drafts scored and sorted by priority.
-    
-    Scores leads based on:
-    - Recency: Have we emailed them recently? (DEPRIORITIZE if yes)
-    - ICP fit: Does their title/function match target buyers?
-    - TAM fit: Is the company in our target market?
-    
-    Args:
-        check_hubspot: Check HubSpot for email history (slower but accurate)
-        
-    Returns:
-        List of scored drafts sorted by priority (best leads first)
-    """
-    try:
-        from src.scoring.queue_scorer import score_pending_queue
-        
-        scores = await score_pending_queue(check_hubspot=check_hubspot)
-        logger.info(f"Returned {len(scores)} scored drafts")
-        return scores
-        
-    except Exception as e:
-        logger.error(f"Error scoring drafts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/drafts/scored/summary", response_model=Dict[str, Any])
-async def get_scoring_summary(check_hubspot: bool = False) -> Dict[str, Any]:
-    """Get summary of queue scoring without HubSpot check (fast).
-    
-    Returns tier breakdown and top leads without checking HubSpot.
-    """
-    try:
-        from src.scoring.queue_scorer import score_pending_queue
-        
-        # Fast scoring without HubSpot
-        scores = await score_pending_queue(check_hubspot=check_hubspot)
-        
-        # Calculate tier breakdown
-        tiers = {"A": 0, "B": 0, "C": 0, "D": 0}
-        recently_contacted = 0
-        
-        for s in scores:
-            tiers[s.get("tier", "C")] += 1
-            if s.get("recently_contacted"):
-                recently_contacted += 1
-        
-        return {
-            "total": len(scores),
-            "tiers": tiers,
-            "recently_contacted": recently_contacted,
-            "top_10": scores[:10],
-            "skip_recommended": [s for s in scores if s.get("recently_contacted")][:5],
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting scoring summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
