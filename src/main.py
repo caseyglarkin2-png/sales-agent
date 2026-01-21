@@ -141,6 +141,10 @@ from src.routes import sales_metrics_routes
 from src.routes import notifications_routes as notifications_v2_routes
 from src.routes import webhooks_routes as webhooks_v2_routes
 from src.routes import sequences_routes as sequences_v2_routes
+from src.routes import content_library_routes
+from src.routes import email_warmup_routes
+from src.routes import referral_tracking_routes
+from src.routes import task_automation_routes
 
 # Configure logging
 settings = get_settings()
@@ -288,6 +292,10 @@ app.include_router(playbooks_v2_routes.router)
 app.include_router(team_performance_routes.router)
 app.include_router(email_analytics_routes.router)
 app.include_router(sales_metrics_routes.router)
+app.include_router(content_library_routes.router)
+app.include_router(email_warmup_routes.router)
+app.include_router(referral_tracking_routes.router)
+app.include_router(task_automation_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
