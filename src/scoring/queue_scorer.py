@@ -80,33 +80,54 @@ class QueueScore:
         }
 
 
-# ICP title scoring - CHAINge NA is logistics/supply chain conference
+# ICP title scoring - Marketing/Communications/Leadership focus
 ICP_TITLES = {
-    # Executive buyer titles (highest)
-    "vp": 30, "vice president": 30, "chief": 25, "director": 25,
-    "head of": 25, "svp": 30, "evp": 30,
+    # C-suite / Founders (especially for startups)
+    "ceo": 40, "cmo": 45, "cro": 45, "cco": 40, "founder": 40, "co-founder": 40,
+    "chief": 40, "president": 35, "owner": 35,
+    # Executive buyer titles
+    "vp": 35, "vice president": 35, "svp": 38, "evp": 38,
+    "head of": 30, "director": 30,
     # Manager level
-    "manager": 15, "senior": 12, "lead": 12,
-    # Lower but still relevant
-    "coordinator": 8, "specialist": 8,
+    "manager": 20, "senior": 15, "lead": 18, "principal": 20,
+    # Entry but engaged
+    "coordinator": 10, "specialist": 10, "associate": 8,
 }
 
-# Target functions for logistics/supply chain event
+# Target functions - Marketing/PR/Communications/Revenue focus
 ICP_FUNCTIONS = {
-    "logistics": 40, "supply chain": 40, "operations": 35,
-    "procurement": 35, "sourcing": 30, "transportation": 35,
-    "warehouse": 30, "distribution": 30, "fulfillment": 30,
-    "freight": 35, "shipping": 30, "3pl": 35,
-    "marketing": 25, "events": 30, "demand gen": 25,
-    "sales": 15, "business development": 15,
+    # HIGH PRIORITY - Marketing functions
+    "marketing": 40, "demand gen": 45, "demand generation": 45,
+    "field marketing": 45, "content marketing": 40, "digital marketing": 40,
+    "growth marketing": 40, "product marketing": 35,
+    "brand": 30, "marketing ops": 35, "marketing operations": 35,
+    # HIGH PRIORITY - PR/Communications
+    "pr": 45, "public relations": 45, "communications": 45, "comms": 40,
+    "corporate communications": 45, "media relations": 40,
+    # HIGH PRIORITY - Revenue/Lead Gen
+    "revenue": 40, "lead gen": 45, "lead generation": 45,
+    "pipeline": 35, "abm": 40, "account based": 40,
+    # Events (direct relevance to CHAINge)
+    "events": 45, "event marketing": 45, "conferences": 40,
+    # Sales adjacent
+    "sales": 25, "business development": 25, "partnerships": 25,
+    # Logistics/Supply Chain (core conference topic)
+    "logistics": 35, "supply chain": 35, "operations": 30,
+    "procurement": 30, "freight": 30, "transportation": 30,
 }
 
 # Company types that fit TAM
 TAM_COMPANY_SIGNALS = {
-    "software": 20, "technology": 20, "tech": 20,
-    "logistics": 30, "supply chain": 30, "freight": 30,
-    "manufacturing": 25, "retail": 20, "ecommerce": 20,
-    "consulting": 15, "solutions": 15, "services": 10,
+    # Startups (high priority per user)
+    "startup": 35, "venture": 30, "series": 25,
+    # Tech companies
+    "software": 25, "saas": 30, "technology": 25, "tech": 25, "platform": 25,
+    # Logistics/Supply Chain
+    "logistics": 30, "supply chain": 30, "freight": 30, "3pl": 30,
+    # Enterprise
+    "enterprise": 20, "manufacturing": 20, "retail": 20, "ecommerce": 25,
+    # Services
+    "consulting": 15, "agency": 20, "solutions": 15, "services": 10,
 }
 
 
