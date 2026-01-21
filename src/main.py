@@ -95,6 +95,29 @@ from src.routes import queue_routes
 from src.routes import reporting_routes
 from src.routes import auth_routes
 from src.routes import commands_routes
+from src.routes import partner_portal_routes
+from src.routes import meeting_intelligence_routes
+from src.routes import revenue_intelligence_routes
+from src.routes import customer_success_routes
+from src.routes import email_templates_v2_routes
+from src.routes import cpq_routes
+from src.routes import sales_enablement_routes
+from src.routes import lead_scoring_v2_routes
+from src.routes import abm_routes
+from src.routes import conversation_intelligence_routes
+from src.routes import sales_coaching_routes
+from src.routes import buyer_intent_routes
+from src.routes import data_quality_routes
+from src.routes import contact_enrichment_routes
+from src.routes import competitive_intelligence_routes
+from src.routes import territories_v2_routes
+from src.routes import deal_room_routes
+from src.routes import subscriptions_v2_routes
+from src.routes import revops_routes
+from src.routes import gamification_v2_routes
+from src.routes import document_generation_routes
+from src.routes import customer_360_routes
+from src.routes import multi_channel_routes
 
 # Configure logging
 settings = get_settings()
@@ -199,6 +222,29 @@ app.include_router(queue_routes.router)
 app.include_router(reporting_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(commands_routes.router)
+app.include_router(partner_portal_routes.router)
+app.include_router(meeting_intelligence_routes.router)
+app.include_router(revenue_intelligence_routes.router)
+app.include_router(customer_success_routes.router)
+app.include_router(email_templates_v2_routes.router)
+app.include_router(cpq_routes.router)
+app.include_router(sales_enablement_routes.router)
+app.include_router(lead_scoring_v2_routes.router)
+app.include_router(abm_routes.router)
+app.include_router(conversation_intelligence_routes.router)
+app.include_router(sales_coaching_routes.router)
+app.include_router(buyer_intent_routes.router)
+app.include_router(data_quality_routes.router)
+app.include_router(contact_enrichment_routes.router)
+app.include_router(competitive_intelligence_routes.router)
+app.include_router(territories_v2_routes.router)
+app.include_router(deal_room_routes.router)
+app.include_router(subscriptions_v2_routes.router)
+app.include_router(revops_routes.router)
+app.include_router(gamification_v2_routes.router)
+app.include_router(document_generation_routes.router)
+app.include_router(customer_360_routes.router)
+app.include_router(multi_channel_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
