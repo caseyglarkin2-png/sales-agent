@@ -156,6 +156,9 @@ from src.routes import territory_mapping_routes
 from src.routes import lead_enrichment_v2_routes
 from src.routes import sales_forecasting_ai_routes
 from src.routes import deal_insights_routes
+from src.routes import customer_journey_routes
+from src.routes import engagement_scoring_routes
+from src.routes import deal_velocity_routes
 
 # Configure logging
 settings = get_settings()
@@ -318,6 +321,9 @@ app.include_router(territory_mapping_routes.router)
 app.include_router(lead_enrichment_v2_routes.router)
 app.include_router(sales_forecasting_ai_routes.router)
 app.include_router(deal_insights_routes.router)
+app.include_router(customer_journey_routes.router)
+app.include_router(engagement_scoring_routes.router)
+app.include_router(deal_velocity_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
