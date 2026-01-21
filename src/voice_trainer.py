@@ -19,8 +19,8 @@ logger = get_logger(__name__)
 
 @dataclass
 class TrainingSample:
-    """A training sample from an email."""
-    source: str  # hubspot, gmail, upload
+    """A training sample from an email or transcript."""
+    source: str  # hubspot, gmail, upload, youtube, video
     source_id: str
     subject: str
     body: str
@@ -55,6 +55,62 @@ class VoiceProfileTrainer:
         self.api_key = os.environ.get("OPENAI_API_KEY", "")
         self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
         self.training_samples: List[TrainingSample] = []
+    
+    async def fetch_hubspot_newsletters(
+        self,
+        search_query: str = "freight marketer",
+        limit: int = 20,
+    ) -> List[TrainingSample]:
+        """Fetch marketing emails/newsletters from HubSpot for training.
+        
+        Args:
+            search_query: Search term for finding emails (e.g., "freight marketer")
+            limit: Maximum emails to fetch
+        
+        Returns:
+            List of TrainingSample objects
+        """
+        samples = []
+        
+        if not self.hubspot_connector:
+            logger.warning("HubSpot connector not available for newsletter fetch")
+            return samples
+        
+        try:
+            # Fetch marketing emails (newsletters)
+            emails = await self.hubspot_connector.get_marketing_emails(
+                search=search_query,
+                limit=limit
+            )
+            
+            for email in emails:
+                # Extract the body/content
+                body = ""
+                if isinstance(email.get("content"), dict):
+                    body = email["content"].get("body", "")
+                elif isinstance(email.get("content"), str):
+                    body = email["content"]
+                
+                sample = TrainingSample(
+                    source="hubspot_newsletter",
+                    source_id=email.get("id", ""),
+                    subject=email.get("subject", ""),
+                    body=body,
+                    from_address=email.get("from", {}).get("email", "") if isinstance(email.get("from"), dict) else "",
+                    date=email.get("publishDate"),
+                    metadata={
+                        "campaign_name": email.get("name"),
+                        "type": email.get("type"),
+                        "status": email.get("status"),
+                    }
+                )
+                samples.append(sample)
+            
+            logger.info(f"Fetched {len(samples)} HubSpot newsletters/marketing emails")
+        except Exception as e:
+            logger.error(f"Error fetching HubSpot newsletters: {e}")
+        
+        return samples
     
     async def fetch_hubspot_marketing_emails(
         self,
@@ -212,6 +268,38 @@ class VoiceProfileTrainer:
             from_address="training",
         )
         self.training_samples.append(sample)
+    
+    def add_video_transcripts(
+        self,
+        transcripts: List[Any],  # List of VideoTranscript objects
+    ) -> int:
+        """Add video transcripts as training samples.
+        
+        Args:
+            transcripts: List of VideoTranscript objects from youtube_transcriber
+            
+        Returns:
+            Number of transcripts added
+        """
+        count = 0
+        for transcript in transcripts:
+            sample = TrainingSample(
+                source="youtube_video",
+                source_id=transcript.video_id,
+                subject=transcript.title,
+                body=transcript.transcript_text,
+                from_address="video",
+                metadata={
+                    "duration_seconds": transcript.duration_seconds,
+                    "language": transcript.language,
+                    "video_url": f"https://www.youtube.com/watch?v={transcript.video_id}",
+                }
+            )
+            self.training_samples.append(sample)
+            count += 1
+            logger.info(f"Added video transcript: {transcript.title}")
+        
+        return count
     
     async def analyze_samples(self) -> VoiceAnalysis:
         """Analyze all training samples to extract voice patterns."""
