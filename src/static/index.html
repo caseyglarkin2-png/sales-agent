@@ -1291,6 +1291,29 @@
                 alert('Error: ' + e.message);
             }
         }
+        
+        // Auto-refresh dashboard every 30 seconds
+        let autoRefreshInterval = null;
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) return;
+            autoRefreshInterval = setInterval(() => {
+                loadStats();
+                loadDrafts();
+            }, 30000);
+            console.log('Auto-refresh enabled (30s)');
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                console.log('Auto-refresh disabled');
+            }
+        }
+        
+        // Start auto-refresh on page load
+        startAutoRefresh();
     </script>
 </body>
 </html>

@@ -2,6 +2,8 @@
 
 This module provides voice interaction for reviewing and approving
 agent outputs (email drafts, campaigns, etc.).
+
+INTEGRATED with src/operator_mode.py for actual draft management.
 """
 import os
 import json
@@ -226,118 +228,229 @@ Common patterns:
         return {"action": "unknown", "error": "Command not recognized"}
     
     async def _approve_item(self, item_id: Optional[str]) -> Dict[str, Any]:
-        """Approve an item."""
-        if not item_id or item_id not in self.pending_items:
-            return {"action": "error", "message": "Item not found"}
+        """Approve an item - integrates with actual draft queue."""
+        # If no item_id, try to get the first pending draft
+        if not item_id:
+            pending = await self._get_pending_drafts()
+            if pending:
+                item_id = pending[0].get("id")
+            else:
+                return {"action": "error", "message": "No pending drafts to approve"}
         
-        item = self.pending_items.pop(item_id)
-        logger.info(f"Approved: {item.id} - {item.title}")
-        
-        # Move to next item
-        next_item = await self._next_item()
-        
-        return {
-            "action": "approved",
-            "item_id": item_id,
-            "item_title": item.title,
-            "next_item": next_item.get("item") if next_item else None,
-            "remaining": len(self.pending_items)
-        }
+        # Approve via the actual operator API
+        try:
+            from src.operator_mode import get_draft_queue
+            queue = get_draft_queue()
+            success = await queue.approve_draft(item_id, "jarvis_voice")
+            
+            if success:
+                draft = await queue.get_draft(item_id)
+                logger.info(f"Voice approved: {item_id}")
+                
+                # Get next pending draft
+                next_drafts = await self._get_pending_drafts()
+                next_item = next_drafts[0] if next_drafts else None
+                
+                return {
+                    "action": "approved",
+                    "action_taken": True,
+                    "success": True,
+                    "item_id": item_id,
+                    "item_title": draft.get("subject", "Draft"),
+                    "next_item": next_item,
+                    "remaining": len(next_drafts),
+                    "message": f"Approved draft for {draft.get('recipient', 'recipient')}"
+                }
+            else:
+                return {"action": "error", "message": f"Could not approve draft {item_id}"}
+                
+        except Exception as e:
+            logger.error(f"Error approving draft: {e}")
+            return {"action": "error", "message": str(e)}
     
     async def _reject_item(self, item_id: Optional[str], reason: Optional[str] = None) -> Dict[str, Any]:
-        """Reject an item."""
-        if not item_id or item_id not in self.pending_items:
-            return {"action": "error", "message": "Item not found"}
+        """Reject an item - integrates with actual draft queue."""
+        # If no item_id, try to get the first pending draft
+        if not item_id:
+            pending = await self._get_pending_drafts()
+            if pending:
+                item_id = pending[0].get("id")
+            else:
+                return {"action": "error", "message": "No pending drafts to reject"}
         
-        item = self.pending_items.pop(item_id)
-        logger.info(f"Rejected: {item.id} - {item.title} (Reason: {reason})")
-        
-        # Move to next item
-        next_item = await self._next_item()
-        
-        return {
-            "action": "rejected",
-            "item_id": item_id,
-            "item_title": item.title,
-            "reason": reason,
-            "next_item": next_item.get("item") if next_item else None,
-            "remaining": len(self.pending_items)
-        }
+        # Reject via the actual operator API
+        try:
+            from src.operator_mode import get_draft_queue
+            queue = get_draft_queue()
+            success = await queue.reject_draft(item_id, reason or "Rejected via voice", "jarvis_voice")
+            
+            if success:
+                draft = await queue.get_draft(item_id)
+                logger.info(f"Voice rejected: {item_id} (Reason: {reason})")
+                
+                # Get next pending draft
+                next_drafts = await self._get_pending_drafts()
+                next_item = next_drafts[0] if next_drafts else None
+                
+                return {
+                    "action": "rejected",
+                    "action_taken": True,
+                    "success": True,
+                    "item_id": item_id,
+                    "item_title": draft.get("subject", "Draft"),
+                    "reason": reason,
+                    "next_item": next_item,
+                    "remaining": len(next_drafts),
+                    "message": f"Rejected draft for {draft.get('recipient', 'recipient')}"
+                }
+            else:
+                return {"action": "error", "message": f"Could not reject draft {item_id}"}
+                
+        except Exception as e:
+            logger.error(f"Error rejecting draft: {e}")
+            return {"action": "error", "message": str(e)}
+    
+    async def _get_pending_drafts(self) -> List[Dict[str, Any]]:
+        """Get pending drafts from the actual queue."""
+        try:
+            from src.operator_mode import get_draft_queue
+            queue = get_draft_queue()
+            return await queue.get_pending_approvals()
+        except Exception as e:
+            logger.error(f"Error getting pending drafts: {e}")
+            return []
     
     async def _edit_item(self, item_id: Optional[str], edits: Dict[str, Any]) -> Dict[str, Any]:
-        """Edit an item."""
-        if not item_id or item_id not in self.pending_items:
-            return {"action": "error", "message": "Item not found"}
-        
-        item = self.pending_items[item_id]
-        
-        # Apply edits
-        for field, value in edits.items():
-            if field in item.content:
-                item.content[field] = value
-        
-        logger.info(f"Edited: {item.id} - {list(edits.keys())}")
-        
+        """Edit an item - NOT YET IMPLEMENTED for real drafts."""
         return {
-            "action": "edited",
-            "item_id": item_id,
-            "edits_applied": list(edits.keys()),
-            "updated_content": item.content
+            "action": "edit_pending",
+            "message": "Draft editing via voice is not yet implemented. Please edit in the dashboard.",
+            "action_taken": False,
+            "success": False
         }
     
     async def _next_item(self) -> Dict[str, Any]:
-        """Move to next item in queue."""
-        if not self.pending_items:
-            self.current_item = None
+        """Get info about next item in queue."""
+        pending = await self._get_pending_drafts()
+        if not pending:
             return {"action": "queue_empty", "message": "No more items to review"}
         
-        # Get next item (prioritize by priority field)
-        next_id = list(self.pending_items.keys())[0]
-        self.current_item = self.pending_items[next_id]
-        
+        next_draft = pending[0]
         return {
             "action": "next",
-            "item": self._format_item_for_presentation(self.current_item)
+            "action_taken": False,
+            "item": {
+                "id": next_draft.get("id"),
+                "recipient": next_draft.get("recipient"),
+                "subject": next_draft.get("subject"),
+                "company": next_draft.get("company_name"),
+                "preview": next_draft.get("body", "")[:150]
+            }
         }
     
     async def _get_item_details(self, item_id: Optional[str]) -> Dict[str, Any]:
         """Get detailed information about an item."""
-        if not item_id or item_id not in self.pending_items:
-            return {"action": "error", "message": "Item not found"}
+        pending = await self._get_pending_drafts()
         
-        item = self.pending_items[item_id]
+        if item_id:
+            draft = next((d for d in pending if d.get("id") == item_id), None)
+        elif pending:
+            draft = pending[0]
+        else:
+            return {"action": "error", "message": "No drafts to show"}
+        
+        if not draft:
+            return {"action": "error", "message": "Draft not found"}
         
         return {
             "action": "details",
-            "item": self._format_item_for_presentation(item),
-            "full_context": item.context
+            "action_taken": False,
+            "item": draft,
+            "message": f"Draft for {draft.get('recipient')}: {draft.get('subject')}"
         }
     
     async def _approve_all(self) -> Dict[str, Any]:
-        """Approve all pending items."""
-        count = len(self.pending_items)
-        self.pending_items.clear()
-        self.current_item = None
+        """Approve all pending items (limited to first N for safety)."""
+        MAX_BATCH = 10  # Safety limit
+        pending = await self._get_pending_drafts()
         
-        logger.info(f"Approved all {count} items")
+        if not pending:
+            return {"action": "queue_empty", "message": "No pending drafts to approve"}
+        
+        approved = 0
+        errors = 0
+        
+        # Approve up to MAX_BATCH
+        from src.operator_mode import get_draft_queue
+        queue = get_draft_queue()
+        
+        for draft in pending[:MAX_BATCH]:
+            try:
+                success = await queue.approve_draft(draft.get("id"), "jarvis_voice_batch")
+                if success:
+                    approved += 1
+                else:
+                    errors += 1
+            except Exception as e:
+                logger.error(f"Batch approve error: {e}")
+                errors += 1
+        
+        remaining = await self._get_pending_drafts()
+        
+        logger.info(f"Batch approved {approved} items, {errors} errors")
         
         return {
             "action": "approved_all",
-            "count": count
+            "action_taken": True,
+            "success": True,
+            "count": approved,
+            "errors": errors,
+            "remaining": len(remaining),
+            "message": f"Approved {approved} drafts. {len(remaining)} remaining."
         }
     
     async def _reject_all(self, reason: Optional[str] = None) -> Dict[str, Any]:
-        """Reject all pending items."""
-        count = len(self.pending_items)
-        self.pending_items.clear()
-        self.current_item = None
+        """Reject all pending items (limited to first N for safety)."""
+        MAX_BATCH = 10
+        pending = await self._get_pending_drafts()
         
-        logger.info(f"Rejected all {count} items (Reason: {reason})")
+        if not pending:
+            return {"action": "queue_empty", "message": "No pending drafts to reject"}
+        
+        rejected = 0
+        errors = 0
+        
+        from src.operator_mode import get_draft_queue
+        queue = get_draft_queue()
+        
+        for draft in pending[:MAX_BATCH]:
+            try:
+                success = await queue.reject_draft(
+                    draft.get("id"), 
+                    reason or "Batch rejected via voice", 
+                    "jarvis_voice_batch"
+                )
+                if success:
+                    rejected += 1
+                else:
+                    errors += 1
+            except Exception as e:
+                logger.error(f"Batch reject error: {e}")
+                errors += 1
+        
+        remaining = await self._get_pending_drafts()
+        
+        logger.info(f"Batch rejected {rejected} items (Reason: {reason})")
         
         return {
             "action": "rejected_all",
-            "count": count,
-            "reason": reason
+            "action_taken": True,
+            "success": True,
+            "count": rejected,
+            "errors": errors,
+            "remaining": len(remaining),
+            "reason": reason,
+            "message": f"Rejected {rejected} drafts. {len(remaining)} remaining."
         }
     
     async def _generate_response(self, command: VoiceCommand, result: Dict[str, Any]) -> Dict[str, Any]:
@@ -454,16 +567,38 @@ Examples:
         )
         self.add_item(item)
     
+    async def get_status_async(self) -> Dict[str, Any]:
+        """Get current status of approval queue from real draft queue."""
+        try:
+            pending = await self._get_pending_drafts()
+            current = pending[0] if pending else None
+            
+            return {
+                "pending_count": len(pending),
+                "current_item": current,
+                "queue": pending[:10]
+            }
+        except Exception as e:
+            logger.error(f"Error getting status: {e}")
+            return {
+                "pending_count": 0,
+                "current_item": None,
+                "queue": [],
+                "error": str(e)
+            }
+    
     def get_status(self) -> Dict[str, Any]:
-        """Get current status of approval queue."""
-        return {
-            "pending_count": len(self.pending_items),
-            "current_item": self._format_item_for_presentation(self.current_item) if self.current_item else None,
-            "queue": [
-                self._format_item_for_presentation(item)
-                for item in list(self.pending_items.values())[:10]
-            ]
-        }
+        """Sync wrapper for get_status_async - for backwards compatibility."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If already in async context, create a task
+                future = asyncio.ensure_future(self.get_status_async())
+                return {"pending_count": len(self.pending_items), "note": "Use async get_status_async for real data"}
+            return loop.run_until_complete(self.get_status_async())
+        except Exception:
+            return {"pending_count": len(self.pending_items), "current_item": None, "queue": []}
 
 
 # Global instance

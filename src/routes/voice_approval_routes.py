@@ -138,10 +138,10 @@ async def add_item(request: AddItemRequest) -> Dict[str, Any]:
 
 @router.get("/status", response_model=Dict[str, Any])
 async def get_status() -> Dict[str, Any]:
-    """Get current approval queue status."""
+    """Get current approval queue status from real draft queue."""
     try:
         jarvis = get_voice_approval()
-        return jarvis.get_status()
+        return await jarvis.get_status_async()
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
