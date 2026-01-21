@@ -60,10 +60,19 @@ def load_and_transform(input_file: str) -> list[dict]:
     with open(input_file, "r") as f:
         raw_data = json.load(f)
     
-    print(f"   Found {len(raw_data)} raw items")
+    # Handle both formats: direct list or wrapped in {"results": [...]}
+    if isinstance(raw_data, dict) and "results" in raw_data:
+        items = raw_data["results"]
+        print(f"   Found {len(items)} items in 'results' array")
+    elif isinstance(raw_data, list):
+        items = raw_data
+        print(f"   Found {len(items)} items in list")
+    else:
+        print(f"   Unknown format: {type(raw_data)}")
+        return []
     
     transformed = []
-    for item in raw_data:
+    for item in items:
         draft = transform_draft(item)
         if draft:
             transformed.append(draft)
