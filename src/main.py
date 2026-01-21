@@ -68,6 +68,26 @@ from src.routes import approvals_routes
 from src.routes import subscriptions_routes
 from src.routes import playbooks_routes
 from src.routes import learning_routes
+from src.routes import integrations_routes
+from src.routes import invoices_routes
+from src.routes import documents_routes
+from src.routes import events_routes
+from src.routes import calls_routes
+from src.routes import email_tracking_routes
+from src.routes import roles_routes
+from src.routes import teams_routes
+from src.routes import custom_fields_routes
+from src.routes import tags_routes
+from src.routes import automation_routes
+from src.routes import notification_prefs_routes
+from src.routes import data_sync_routes
+from src.routes import gamification_routes
+from src.routes import search_routes
+from src.routes import recommendations_routes
+from src.routes import webhook_subscriptions_routes
+from src.routes import activity_feed_routes
+from src.routes import quota_routes
+from src.routes import social_selling_routes
 
 # Configure logging
 settings = get_settings()
@@ -145,6 +165,26 @@ app.include_router(approvals_routes.router)
 app.include_router(subscriptions_routes.router)
 app.include_router(playbooks_routes.router)
 app.include_router(learning_routes.router)
+app.include_router(integrations_routes.router)
+app.include_router(invoices_routes.router)
+app.include_router(documents_routes.router)
+app.include_router(events_routes.router)
+app.include_router(calls_routes.router)
+app.include_router(email_tracking_routes.router)
+app.include_router(roles_routes.router)
+app.include_router(teams_routes.router)
+app.include_router(custom_fields_routes.router)
+app.include_router(tags_routes.router)
+app.include_router(automation_routes.router)
+app.include_router(notification_prefs_routes.router)
+app.include_router(data_sync_routes.router)
+app.include_router(gamification_routes.router)
+app.include_router(search_routes.router)
+app.include_router(recommendations_routes.router)
+app.include_router(webhook_subscriptions_routes.router)
+app.include_router(activity_feed_routes.router)
+app.include_router(quota_routes.router)
+app.include_router(social_selling_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
