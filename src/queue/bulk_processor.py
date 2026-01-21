@@ -12,7 +12,6 @@ from collections import deque
 from pydantic import BaseModel, Field
 
 from src.logger import get_logger
-from src.database import get_database
 
 logger = get_logger(__name__)
 
