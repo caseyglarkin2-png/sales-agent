@@ -128,6 +128,13 @@ from src.routes import pipeline_analytics_routes
 from src.routes import deliverability_v2_routes
 from src.routes import proposals_v2_routes
 from src.routes import integration_hub_routes
+from src.routes import deal_scoring_routes
+from src.routes import product_analytics_routes
+from src.routes import revenue_attribution_routes
+from src.routes import lead_routing_routes
+from src.routes import account_planning_routes
+from src.routes import customer_health_v2_routes
+from src.routes import playbooks_v2_routes
 
 # Configure logging
 settings = get_settings()
@@ -265,6 +272,13 @@ app.include_router(pipeline_analytics_routes.router)
 app.include_router(deliverability_v2_routes.router)
 app.include_router(proposals_v2_routes.router)
 app.include_router(integration_hub_routes.router)
+app.include_router(deal_scoring_routes.router)
+app.include_router(product_analytics_routes.router)
+app.include_router(revenue_attribution_routes.router)
+app.include_router(lead_routing_routes.router)
+app.include_router(account_planning_routes.router)
+app.include_router(customer_health_v2_routes.router)
+app.include_router(playbooks_v2_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
