@@ -56,6 +56,18 @@ from src.routes import outbound_webhooks as outbound_webhooks_routes
 from src.routes import exports as exports_routes
 from src.routes import api_keys as api_keys_routes
 from src.routes import users as users_routes
+from src.routes import settings_routes
+from src.routes import quotes_routes
+from src.routes import products_routes
+from src.routes import forecasts_routes
+from src.routes import territories_routes
+from src.routes import competitors_routes
+from src.routes import commissions_routes
+from src.routes import contracts_routes
+from src.routes import approvals_routes
+from src.routes import subscriptions_routes
+from src.routes import playbooks_routes
+from src.routes import learning_routes
 
 # Configure logging
 settings = get_settings()
@@ -121,6 +133,18 @@ app.include_router(outbound_webhooks_routes.router)
 app.include_router(exports_routes.router)
 app.include_router(api_keys_routes.router)
 app.include_router(users_routes.router)
+app.include_router(settings_routes.router)
+app.include_router(quotes_routes.router)
+app.include_router(products_routes.router)
+app.include_router(forecasts_routes.router)
+app.include_router(territories_routes.router)
+app.include_router(competitors_routes.router)
+app.include_router(commissions_routes.router)
+app.include_router(contracts_routes.router)
+app.include_router(approvals_routes.router)
+app.include_router(subscriptions_routes.router)
+app.include_router(playbooks_routes.router)
+app.include_router(learning_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
