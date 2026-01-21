@@ -2,6 +2,7 @@
 import requests
 import json
 import sys
+import os
 
 STATUS_FILE = "/workspaces/sales-agent/import_status.txt"
 OUTPUT_FILE = "/workspaces/sales-agent/chainge_contacts.json"
@@ -17,8 +18,8 @@ try:
     with open(STATUS_FILE, "w") as f:
         f.write("Starting import...\n")
     
-    API_KEY = "pat-na1-d0dca073-79c0-43fd-a2d2-124c27c6e247"
-    FORM_ID = "db8b22de-c3d4-4fc6-9a16-011fe322e82c"
+    API_KEY = os.environ.get("HUBSPOT_API_KEY", "")
+    FORM_ID = os.environ.get("EXPECTED_HUBSPOT_FORM_ID", "db8b22de-c3d4-4fc6-9a16-011fe322e82c")
     
     log("="*60)
     log("CHAINGE NA IMPORT")

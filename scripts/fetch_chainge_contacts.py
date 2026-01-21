@@ -5,10 +5,11 @@ Runs standalone and saves results.
 """
 import requests
 import json
+import os
 from datetime import datetime
 
-API_KEY = "pat-na1-d0dca073-79c0-43fd-a2d2-124c27c6e247"
-FORM_ID = "db8b22de-c3d4-4fc6-9a16-011fe322e82c"
+API_KEY = os.environ.get("HUBSPOT_API_KEY", "")
+FORM_ID = os.environ.get("EXPECTED_HUBSPOT_FORM_ID", "db8b22de-c3d4-4fc6-9a16-011fe322e82c")
 OUTPUT_FILE = "/workspaces/sales-agent/chainge_contacts.json"
 
 def main():
