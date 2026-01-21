@@ -35,6 +35,18 @@ from src.routes import campaigns as campaigns_routes
 from src.routes import insights as insights_routes
 from src.routes import reports as reports_routes
 from src.routes import imports as imports_routes
+from src.routes import workflows as workflows_routes
+from src.routes import classification as classification_routes
+from src.routes import personalization as personalization_routes
+from src.routes import monitoring as monitoring_routes
+from src.routes import deliverability as deliverability_routes
+from src.routes import deduplication as deduplication_routes
+from src.routes import collaboration as collaboration_routes
+from src.routes import segmentation as segmentation_routes
+from src.routes import timeline as timeline_routes
+from src.routes import goals as goals_routes
+from src.routes import crm_sync as crm_sync_routes
+from src.routes import tasks as tasks_routes
 
 # Configure logging
 settings = get_settings()
@@ -79,6 +91,18 @@ app.include_router(campaigns_routes.router)
 app.include_router(insights_routes.router)
 app.include_router(reports_routes.router)
 app.include_router(imports_routes.router)
+app.include_router(workflows_routes.router)
+app.include_router(classification_routes.router)
+app.include_router(personalization_routes.router)
+app.include_router(monitoring_routes.router)
+app.include_router(deliverability_routes.router)
+app.include_router(deduplication_routes.router)
+app.include_router(collaboration_routes.router)
+app.include_router(segmentation_routes.router)
+app.include_router(timeline_routes.router)
+app.include_router(goals_routes.router)
+app.include_router(crm_sync_routes.router)
+app.include_router(tasks_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
