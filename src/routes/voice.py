@@ -510,6 +510,76 @@ async def hubspot_diagnostic() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+@router.get("/hubspot/raw-emails", response_model=Dict[str, Any])
+async def get_raw_emails_debug() -> Dict[str, Any]:
+    """Debug endpoint: Get raw email samples to see what fields are available."""
+    try:
+        from src.connectors.hubspot import create_hubspot_connector
+        import httpx
+        
+        hubspot = create_hubspot_connector()
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Get a sample of emails with ALL properties to see what's available
+            resp = await client.post(
+                f"{hubspot.BASE_URL}/crm/v3/objects/emails/search",
+                headers=hubspot.headers,
+                json={
+                    "limit": 10,
+                    "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}],
+                    "properties": [
+                        "hs_email_subject",
+                        "hs_email_text",
+                        "hs_email_html", 
+                        "hs_email_to_email",
+                        "hs_email_from_email",
+                        "hs_email_from_firstname",
+                        "hs_email_from_lastname",
+                        "hs_email_direction",
+                        "hs_timestamp",
+                        "hs_createdate",
+                        "hubspot_owner_id",
+                        "hs_email_sender_email",
+                        "hs_email_sender_firstname",
+                        "hs_email_sender_lastname",
+                    ]
+                }
+            )
+            
+            if resp.status_code != 200:
+                return {"error": f"API returned {resp.status_code}", "body": resp.text[:500]}
+            
+            data = resp.json()
+            
+            # Extract key info from each email
+            samples = []
+            for email in data.get("results", [])[:10]:
+                props = email.get("properties", {})
+                samples.append({
+                    "id": email.get("id"),
+                    "from": props.get("hs_email_from_email"),
+                    "from_firstname": props.get("hs_email_from_firstname"),
+                    "from_lastname": props.get("hs_email_from_lastname"),
+                    "to": props.get("hs_email_to_email"),
+                    "subject": (props.get("hs_email_subject") or "")[:60],
+                    "direction": props.get("hs_email_direction"),
+                    "sender_email": props.get("hs_email_sender_email"),
+                    "owner_id": props.get("hubspot_owner_id"),
+                    "created": props.get("hs_createdate"),
+                    "has_text": bool(props.get("hs_email_text")),
+                    "has_html": bool(props.get("hs_email_html")),
+                })
+            
+            return {
+                "total_emails": data.get("total", 0),
+                "samples": samples,
+                "tip": "Look at 'from', 'sender_email', 'direction' fields to understand structure"
+            }
+    except Exception as e:
+        logger.error(f"Raw emails debug error: {e}")
+        return {"error": str(e)}
+
+
 @router.post("/training/quick", response_model=Dict[str, Any])
 async def quick_train_from_samples(request: ManualTrainingSamplesRequest) -> Dict[str, Any]:
     """Quickly train a voice profile from provided email samples.
