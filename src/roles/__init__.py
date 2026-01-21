@@ -12,6 +12,7 @@ from .role_service import (
     ResourceType,
     Action,
     get_role_service,
+    AccessScope,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "ResourceType",
     "Action",
     "get_role_service",
+    "AccessScope",
 ]

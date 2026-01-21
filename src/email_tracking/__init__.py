@@ -11,6 +11,8 @@ from .email_tracking_service import (
     EmailClick,
     EmailReply,
     get_email_tracking_service,
+    EmailStatus,
+    BounceType,
 )
 
 __all__ = [
@@ -20,4 +22,6 @@ __all__ = [
     "EmailClick",
     "EmailReply",
     "get_email_tracking_service",
+    "EmailStatus",
+    "BounceType",
 ]

@@ -12,6 +12,7 @@ from .call_service import (
     CallRecording,
     CallNote,
     get_call_service,
+    SentimentScore,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "CallRecording",
     "CallNote",
     "get_call_service",
+    "SentimentScore",
 ]

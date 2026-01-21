@@ -6,5 +6,7 @@ from .integration_service import (
     IntegrationType,
     IntegrationStatus,
     SyncConfig,
+    SyncDirection,
+    SyncFrequency,
     get_integration_service,
 )

@@ -11,6 +11,8 @@ from .document_service import (
     DocumentVersion,
     DocumentShare,
     DocumentType,
+    DocumentStatus,
+    SharePermission,
     get_document_service,
 )
 
@@ -21,5 +23,7 @@ __all__ = [
     "DocumentVersion",
     "DocumentShare",
     "DocumentType",
+    "DocumentStatus",
+    "SharePermission",
     "get_document_service",
 ]

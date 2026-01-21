@@ -138,10 +138,12 @@ class ApprovalRequest:
     # The item being approved
     entity_type: str
     entity_id: str
-    entity_data: dict[str, Any] = field(default_factory=dict)
     
     # Requester
     requester_id: str
+    
+    # Fields with defaults
+    entity_data: dict[str, Any] = field(default_factory=dict)
     requester_name: str = ""
     
     # Request details

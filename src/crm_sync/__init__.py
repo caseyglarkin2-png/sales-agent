@@ -11,6 +11,7 @@ from src.crm_sync.sync_engine import (
     SyncDirection,
     SyncStatus,
     FieldMapping,
+    ConflictResolution,
     get_crm_sync_engine,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "SyncDirection",
     "SyncStatus",
     "FieldMapping",
+    "ConflictResolution",
     "get_crm_sync_engine",
 ]
