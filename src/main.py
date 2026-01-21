@@ -47,6 +47,9 @@ from src.routes import timeline as timeline_routes
 from src.routes import goals as goals_routes
 from src.routes import crm_sync as crm_sync_routes
 from src.routes import tasks as tasks_routes
+from src.routes import pipeline as pipeline_routes
+from src.routes import email_generator as email_generator_routes
+from src.routes import notes as notes_routes
 
 # Configure logging
 settings = get_settings()
@@ -103,6 +106,9 @@ app.include_router(timeline_routes.router)
 app.include_router(goals_routes.router)
 app.include_router(crm_sync_routes.router)
 app.include_router(tasks_routes.router)
+app.include_router(pipeline_routes.router)
+app.include_router(email_generator_routes.router)
+app.include_router(notes_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
