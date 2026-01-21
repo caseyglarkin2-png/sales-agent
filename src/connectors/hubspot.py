@@ -217,79 +217,111 @@ class HubSpotConnector:
         Returns:
             List of email objects with subject, body, recipient, timestamp
         """
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             try:
-                # First find the owner ID by email
-                owner_response = await client.get(
-                    f"{self.BASE_URL}/crm/v3/owners",
-                    headers=self.headers,
-                    params={"email": owner_email}
-                )
-                owner_response.raise_for_status()
-                owners = owner_response.json().get("results", [])
-                
-                if not owners:
-                    logger.warning(f"No HubSpot owner found for email {owner_email}")
-                    return []
-                
-                owner_id = owners[0]["id"]
-                logger.info(f"Found HubSpot owner {owner_id} for {owner_email}")
-                
-                # Search for email engagements
-                # Using the engagements API to get emails
+                # Use the search API to filter by sender email for sent emails
                 emails = []
-                after = None
+                after = 0
+                
+                properties = [
+                    "hs_email_subject",
+                    "hs_email_text", 
+                    "hs_email_html",
+                    "hs_email_to_email",
+                    "hs_email_from_email",
+                    "hs_email_direction",
+                    "hs_timestamp",
+                    "hs_createdate",
+                ]
                 
                 while len(emails) < limit:
-                    params = {
-                        "limit": min(100, limit - len(emails)),
-                    }
-                    if after:
-                        params["after"] = after
+                    # Build search payload to filter by sender
+                    filters = []
                     
-                    response = await client.get(
-                        f"{self.BASE_URL}/crm/v3/objects/emails",
+                    if sent_only:
+                        # For sent emails, filter by from_email matching owner
+                        filters.append({
+                            "propertyName": "hs_email_from_email",
+                            "operator": "CONTAINS_TOKEN",
+                            "value": owner_email.split("@")[0]  # Match on local part
+                        })
+                        filters.append({
+                            "propertyName": "hs_email_direction",
+                            "operator": "EQ",
+                            "value": "EMAIL"  # Outbound emails
+                        })
+                    
+                    payload = {
+                        "filterGroups": [{"filters": filters}] if filters else [],
+                        "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}],
+                        "properties": properties,
+                        "limit": min(100, limit - len(emails)),
+                        "after": after,
+                    }
+                    
+                    response = await client.post(
+                        f"{self.BASE_URL}/crm/v3/objects/emails/search",
                         headers=self.headers,
-                        params=params,
+                        json=payload,
                     )
                     response.raise_for_status()
                     data = response.json()
                     
-                    for email in data.get("results", []):
+                    results = data.get("results", [])
+                    if not results:
+                        # No more results, try without filter to see if any emails exist
+                        if len(emails) == 0 and after == 0:
+                            logger.info("No filtered emails found, trying unfiltered search")
+                            # Try getting any recent emails for debugging
+                            unfiltered_payload = {
+                                "sorts": [{"propertyName": "hs_createdate", "direction": "DESCENDING"}],
+                                "properties": properties,
+                                "limit": 10,
+                            }
+                            debug_resp = await client.post(
+                                f"{self.BASE_URL}/crm/v3/objects/emails/search",
+                                headers=self.headers,
+                                json=unfiltered_payload,
+                            )
+                            debug_data = debug_resp.json()
+                            debug_results = debug_data.get("results", [])
+                            if debug_results:
+                                logger.info(f"Found {len(debug_results)} unfiltered emails, sample sender: {debug_results[0].get('properties', {}).get('hs_email_from_email', 'N/A')}")
+                        break
+                    
+                    for email in results:
                         props = email.get("properties", {})
                         
-                        # Filter for sent emails if requested
-                        direction = props.get("hs_email_direction", "")
-                        if sent_only and direction != "EMAIL":
-                            continue
-                        
                         # Extract email content
+                        body = props.get("hs_email_text") or props.get("hs_email_html", "")
+                        subject = props.get("hs_email_subject", "")
+                        
                         email_obj = {
                             "id": email.get("id"),
-                            "subject": props.get("hs_email_subject", ""),
-                            "body": props.get("hs_email_text") or props.get("hs_email_html", ""),
+                            "subject": subject,
+                            "body": body,
                             "recipient": props.get("hs_email_to_email", ""),
                             "sender": props.get("hs_email_from_email", ""),
                             "timestamp": props.get("hs_timestamp") or props.get("hs_createdate"),
-                            "direction": direction,
+                            "direction": props.get("hs_email_direction", ""),
                         }
                         
                         # Only include if has content
-                        if email_obj["body"] and email_obj["subject"]:
+                        if email_obj["body"] and len(email_obj["body"]) > 50:
                             emails.append(email_obj)
                     
                     # Check for pagination
                     paging = data.get("paging", {})
                     if paging.get("next", {}).get("after"):
-                        after = paging["next"]["after"]
+                        after = int(paging["next"]["after"])
                     else:
                         break
                 
-                logger.info(f"Retrieved {len(emails)} sent emails from HubSpot")
+                logger.info(f"Retrieved {len(emails)} sent emails from HubSpot for {owner_email}")
                 return emails[:limit]
                 
             except Exception as e:
-                logger.error(f"Error getting email engagements: {e}")
+                logger.error(f"Error getting email engagements: {e}", exc_info=True)
                 return []
 
     async def get_form_submissions(

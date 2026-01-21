@@ -58,7 +58,7 @@ class VoiceProfileTrainer:
     
     async def fetch_hubspot_marketing_emails(
         self,
-        search_query: str = "Freight Marketer Newsletter",
+        search_query: str = "casey.l@pesti.io",
         limit: int = 20,
     ) -> List[TrainingSample]:
         """Fetch marketing emails from HubSpot for training.
@@ -347,7 +347,7 @@ EMAIL SAMPLES:
     async def train_from_hubspot(
         self,
         profile_name: str,
-        search_query: str = "Freight Marketer Newsletter",
+        search_query: str = "casey.l@pesti.io",
         limit: int = 20,
     ) -> VoiceProfile:
         """Complete training pipeline from HubSpot emails.

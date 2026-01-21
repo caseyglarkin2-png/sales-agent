@@ -228,10 +228,10 @@ class ResearchAgent:
         if email_history.get("has_prior_contact"):
             hooks.append("Reference previous conversation")
         
-        # Company-specific
+        # Company-specific hooks based on industry
         industry = research.get("company_intel", {}).get("industry_guess")
-        if industry == "logistics":
-            hooks.append("Mention freight/logistics expertise")
+        if industry and industry != "general":
+            hooks.append(f"Reference {industry} industry challenges")
         
         # If no hooks, suggest cold opener
         if not hooks:

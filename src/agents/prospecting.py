@@ -1,10 +1,15 @@
 """Prospecting agent implementation."""
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from src.agents.base import BaseAgent
+from src.agents.persona_router import detect_persona, get_messaging_context, Persona
 from src.analysis import MessageAnalyzer
 from src.connectors.llm import LLMConnector
 from src.logger import get_logger
+from src.voice_profile import get_voice_profile_manager, VoiceProfile
+
+if TYPE_CHECKING:
+    from src.models.prospect import Prospect
 
 logger = get_logger(__name__)
 
@@ -20,6 +25,7 @@ class ProspectingAgent(BaseAgent):
         )
         self.llm = llm_connector
         self.analyzer = MessageAnalyzer()
+        self.voice_manager = get_voice_profile_manager()
 
     async def validate_input(self, context: Dict[str, Any]) -> bool:
         """Validate input has required fields."""
@@ -95,3 +101,144 @@ Response:"""
         except Exception as e:
             logger.error(f"Error generating response prompt: {e}")
             return None
+
+    async def generate_message(
+        self,
+        prospect: Any,  # Prospect model from src.models.prospect
+        context: Dict[str, Any] = None,
+        available_slots: List[Dict[str, Any]] = None,
+        profile_id: str = "casey_larkin",
+    ) -> Optional[str]:
+        """Generate a personalized prospecting email using persona-based messaging.
+        
+        Args:
+            prospect: Prospect data with email, name, company, job_title
+            context: Additional context (email threads, HubSpot data, etc.)
+            available_slots: Calendar slots to offer
+            profile_id: Voice profile to use
+            
+        Returns:
+            Generated email body text
+        """
+        try:
+            # Get voice profile
+            profile = self.voice_manager.get_profile(profile_id)
+            if not profile:
+                profile = self.voice_manager.get_profile("casey_larkin")
+            
+            # Get job_title - support both Pydantic model and dict
+            job_title = getattr(prospect, 'job_title', None) or ""
+            company = getattr(prospect, 'company', None) or ""
+            
+            # Get persona-based messaging context
+            persona_context = get_messaging_context(
+                job_title=job_title,
+                company_name=company,
+            )
+            persona = persona_context["persona"]
+            
+            logger.info(f"Generating message for {prospect.email} with persona: {persona}")
+            
+            # Build prompt with persona-specific messaging
+            prompt = self._build_prospecting_prompt(
+                prospect=prospect,
+                persona_context=persona_context,
+                voice_profile=profile,
+                email_context=context,
+                available_slots=available_slots,
+            )
+            
+            # Generate with LLM
+            response = await self.llm.generate_text(
+                prompt,
+                temperature=0.7,
+                max_tokens=500,
+            )
+            
+            logger.info(f"Generated {len(response)} char message for {prospect.email}")
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error generating message: {e}")
+            return None
+    
+    def _build_prospecting_prompt(
+        self,
+        prospect: Any,
+        persona_context: Dict[str, Any],
+        voice_profile: VoiceProfile,
+        email_context: Optional[Dict[str, Any]] = None,
+        available_slots: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
+        """Build the LLM prompt for prospecting email generation."""
+        
+        # Extract prospect attributes (handle both Pydantic and dict)
+        first_name = getattr(prospect, 'first_name', '') or ''
+        last_name = getattr(prospect, 'last_name', '') or ''
+        company = getattr(prospect, 'company', '') or ''
+        job_title = getattr(prospect, 'job_title', '') or ''
+        email = getattr(prospect, 'email', '') or ''
+        
+        # Voice profile guidance
+        style_notes = "\n".join(f"- {note}" for note in voice_profile.style_notes)
+        
+        # Persona-specific guidance
+        focus_area = persona_context.get("focus_area", "GTM execution")
+        pain_points = persona_context.get("pain_points", [])
+        value_props = persona_context.get("value_props", [])
+        cta_style = persona_context.get("cta_style", "Quick chat to learn more")
+        
+        pain_points_str = "\n".join(f"- {p}" for p in pain_points[:3])
+        value_props_str = "\n".join(f"- {v}" for v in value_props[:3])
+        
+        # Build email context section
+        context_section = ""
+        if email_context and email_context.get("threads"):
+            context_section = "\nPrevious email context exists - reference the ongoing conversation naturally."
+        
+        # Available slots section
+        slots_section = ""
+        if available_slots and len(available_slots) > 0:
+            slots_section = "\nOffer to find a time that works (don't list specific slots)."
+        
+        prompt = f"""You are writing a prospecting email as Casey from Pesti, a GTM execution partner.
+
+PROSPECT INFORMATION:
+- Name: {first_name} {last_name}
+- Company: {company}
+- Job Title: {job_title}
+- Email: {email}
+
+PERSONA: {persona_context.get('persona', 'unknown').upper()}
+Focus Area: {focus_area}
+
+RELEVANT PAIN POINTS TO ADDRESS:
+{pain_points_str}
+
+VALUE PROPOSITIONS:
+{value_props_str}
+
+CTA STYLE: {cta_style}
+{context_section}
+{slots_section}
+
+VOICE PROFILE (write in this style):
+Tone: {voice_profile.tone}
+{style_notes}
+Signature: {voice_profile.signature_style}
+Use contractions: {"Yes" if voice_profile.use_contractions else "No"}
+Max paragraphs: {voice_profile.max_paragraphs}
+Include P.S.: {"Yes" if voice_profile.include_ps else "No"}
+
+IMPORTANT:
+- Do NOT mention freight, logistics, or shipping - Pesti does NOT work in that industry
+- Pesti is a GTM/demand generation company
+- Focus on field marketing, lead gen, nurturing, ABM
+- Keep it short (2-3 paragraphs max)
+- Be genuine and helpful, not salesy
+- Reference their specific role/challenges
+
+Write the email body only (no subject line):"""
+
+        return prompt
+

@@ -14,6 +14,7 @@ from src.routes import operator as operator_routes
 from src.routes import webhooks as webhooks_routes
 from src.routes import voice as voice_routes
 from src.routes import metrics as metrics_routes
+from src.routes import bulk as bulk_routes
 
 # Configure logging
 settings = get_settings()
@@ -37,6 +38,7 @@ app.include_router(operator_routes.router)
 app.include_router(webhooks_routes.router)
 app.include_router(voice_routes.router)
 app.include_router(metrics_routes.router)
+app.include_router(bulk_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")

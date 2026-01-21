@@ -52,7 +52,7 @@ class CreateProfileRequest(BaseModel):
 class TrainFromHubSpotRequest(BaseModel):
     """Request to train from HubSpot emails."""
     profile_name: str
-    search_query: str = "Freight Marketer Newsletter"
+    search_query: str = "casey.l@pesti.io"
     limit: int = 20
 
 
