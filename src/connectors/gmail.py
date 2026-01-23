@@ -2,6 +2,7 @@
 import base64
 import json
 import os
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from google.auth.transport.requests import Request
@@ -10,6 +11,7 @@ from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth import default
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from src.logger import get_logger
 
@@ -19,6 +21,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/gmail.compose",
+    "https://www.googleapis.com/auth/gmail.send",  # Added for email sending
 ]
 
 
@@ -66,12 +69,161 @@ def create_gmail_connector() -> "GmailConnector":
 
 
 class GmailConnector:
-    """Connector for Google Gmail API."""
+    """Connector for Google Gmail API with OAuth token management."""
 
-    def __init__(self, credentials: Optional[Credentials] = None):
-        """Initialize Gmail connector."""
+    def __init__(self, credentials: Optional[Credentials] = None, user_email: Optional[str] = None):
+        """Initialize Gmail connector.
+        
+        Args:
+            credentials: Google OAuth2 credentials
+            user_email: Email address for token storage (used as DB key)
+        """
         self.credentials = credentials
         self.service = None
+        self.user_email = user_email
+        self._token_storage = None  # Will be set when needed
+
+    async def refresh_token_if_needed(self) -> bool:
+        """Refresh OAuth token if expired or about to expire.
+        
+        Returns:
+            bool: True if token is valid (refreshed if needed), False if refresh failed
+        """
+        if not self.credentials:
+            logger.warning("No credentials available for refresh")
+            return False
+        
+        # Check if token is expired or will expire in next 5 minutes
+        if self.credentials.expired or self._token_expiring_soon():
+            logger.info("OAuth token expired or expiring soon, refreshing...")
+            
+            try:
+                self.credentials.refresh(Request())
+                logger.info("OAuth token refreshed successfully")
+                
+                # Persist refreshed token
+                await self._save_token()
+                return True
+            
+            except Exception as e:
+                logger.error(f"Failed to refresh OAuth token: {e}")
+                return False
+        
+        return True
+    
+    def _token_expiring_soon(self, threshold_minutes: int = 5) -> bool:
+        """Check if token will expire within threshold minutes."""
+        if not self.credentials or not self.credentials.expiry:
+            return False
+        
+        time_until_expiry = self.credentials.expiry - datetime.utcnow()
+        return time_until_expiry < timedelta(minutes=threshold_minutes)
+    
+    async def _save_token(self) -> None:
+        """Save OAuth token to database for persistence.
+        
+        Stores token info in oauth_tokens table with user_email as key.
+        This ensures tokens survive server restarts.
+        """
+        if not self.credentials or not self.user_email:
+            return
+        
+        try:
+            from src.auth import store_oauth_token
+            
+            token_data = {
+                "token": self.credentials.token,
+                "refresh_token": self.credentials.refresh_token,
+                "token_uri": self.credentials.token_uri,
+                "client_id": self.credentials.client_id,
+                "client_secret": self.credentials.client_secret,
+                "scopes": self.credentials.scopes,
+                "expiry": self.credentials.expiry.isoformat() if self.credentials.expiry else None,
+            }
+            
+            await store_oauth_token(
+                user_email=self.user_email,
+                provider="google",
+                token_data=token_data
+            )
+            
+            logger.info(f"Saved OAuth token for {self.user_email}")
+        
+        except Exception as e:
+            logger.error(f"Failed to save OAuth token: {e}")
+    
+    async def load_token(self, user_email: str) -> bool:
+        """Load OAuth token from database.
+        
+        Args:
+            user_email: Email address to load token for
+            
+        Returns:
+            bool: True if token loaded successfully
+        """
+        try:
+            from src.auth import retrieve_oauth_token
+            
+            token_data = await retrieve_oauth_token(user_email, provider="google")
+            
+            if not token_data:
+                logger.warning(f"No stored token found for {user_email}")
+                return False
+            
+            # Reconstruct credentials from stored data
+            self.credentials = Credentials(
+                token=token_data.get("token"),
+                refresh_token=token_data.get("refresh_token"),
+                token_uri=token_data.get("token_uri"),
+                client_id=token_data.get("client_id"),
+                client_secret=token_data.get("client_secret"),
+                scopes=token_data.get("scopes"),
+            )
+            
+            # Set expiry if present
+            if token_data.get("expiry"):
+                from datetime import datetime
+                self.credentials.expiry = datetime.fromisoformat(token_data["expiry"])
+            
+            self.user_email = user_email
+            logger.info(f"Loaded OAuth token for {user_email}")
+            return True
+        
+        except Exception as e:
+            logger.error(f"Failed to load OAuth token for {user_email}: {e}")
+            return False
+    
+    async def revoke_token(self) -> bool:
+        """Revoke OAuth token and remove from database.
+        
+        Returns:
+            bool: True if revocation successful
+        """
+        if not self.credentials:
+            return False
+        
+        try:
+            # Revoke with Google
+            import requests
+            requests.post(
+                'https://oauth2.googleapis.com/revoke',
+                params={'token': self.credentials.token},
+                headers={'content-type': 'application/x-www-form-urlencoded'}
+            )
+            
+            # Remove from database
+            if self.user_email:
+                from src.auth import revoke_oauth_token
+                await revoke_oauth_token(self.user_email, provider="google")
+            
+            logger.info(f"Revoked OAuth token for {self.user_email}")
+            self.credentials = None
+            self.service = None
+            return True
+        
+        except Exception as e:
+            logger.error(f"Failed to revoke OAuth token: {e}")
+            return False
 
     async def authenticate(self, client_id: str, client_secret: str, redirect_uri: str) -> None:
         """Authenticate with Google using OAuth2."""
@@ -92,6 +244,19 @@ class GmailConnector:
     def _build_service(self) -> None:
         """Build Gmail service from credentials."""
         if self.credentials:
+            # Refresh token if needed before building service
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If in async context, schedule refresh
+                    asyncio.create_task(self.refresh_token_if_needed())
+                else:
+                    # If not in async context, run synchronously
+                    loop.run_until_complete(self.refresh_token_if_needed())
+            except Exception as e:
+                logger.warning(f"Could not refresh token before building service: {e}")
+            
             self.service = build("gmail", "v1", credentials=self.credentials)
 
     async def search_threads(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
@@ -184,23 +349,140 @@ class GmailConnector:
             logger.error(f"Error creating draft to {to}: {e}")
             return None
 
-    async def send_message(self, to: str, subject: str, body: str) -> Optional[str]:
-        """Send an email message."""
+    async def send_email(
+        self,
+        from_email: str,
+        to_email: str,
+        subject: str,
+        body_text: str,
+        body_html: Optional[str] = None,
+        in_reply_to: Optional[str] = None,
+        references: Optional[str] = None,
+        max_retries: int = 3,
+    ) -> Optional[Dict[str, Any]]:
+        """Send email via Gmail API with proper MIME formatting and retry logic.
+        
+        Args:
+            from_email: Sender email address
+            to_email: Recipient email address
+            subject: Email subject
+            body_text: Plain text email body
+            body_html: HTML email body (optional)
+            in_reply_to: Message-ID to reply to (for threading)
+            references: Space-separated Message-IDs for thread context
+            max_retries: Maximum number of retry attempts on failure
+            
+        Returns:
+            dict with 'id' (message_id) and 'threadId', or None on failure
+            
+        Raises:
+            Exception: On unrecoverable errors (after retries exhausted)
+        """
         if not self.service:
             self._build_service()
-
+        
+        # Ensure token is valid before sending
+        if not await self.refresh_token_if_needed():
+            raise Exception("Failed to refresh OAuth token before sending email")
+        
+        # Build RFC 2822 compliant MIME message
+        from src.email.mime_builder import build_mime_message
+        
+        mime_message = build_mime_message(
+            from_email=from_email,
+            to_email=to_email,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
+        
+        # Encode for Gmail API
+        encoded_message = base64.urlsafe_b64encode(mime_message.encode()).decode()
+        
+        # Retry logic with exponential backoff
+        for attempt in range(max_retries):
+            try:
+                result = self.service.users().messages().send(
+                    userId="me",
+                    body={"raw": encoded_message}
+                ).execute()
+                
+                message_id = result.get("id")
+                thread_id = result.get("threadId")
+                
+                logger.info(
+                    f"Email sent successfully: from={from_email}, to={to_email}, "
+                    f"subject='{subject[:50]}...', message_id={message_id}, thread_id={thread_id}"
+                )
+                
+                return {
+                    "id": message_id,
+                    "threadId": thread_id,
+                    "labelIds": result.get("labelIds", []),
+                }
+            
+            except HttpError as e:
+                error_reason = self._parse_http_error(e)
+                
+                # Check if error is retryable
+                if self._is_retryable_error(e):
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Gmail API error (attempt {attempt + 1}/{max_retries}): {error_reason}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    
+                    if attempt < max_retries - 1:
+                        import asyncio
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error(f"Max retries ({max_retries}) exhausted for email send")
+                        raise
+                else:
+                    # Non-retryable error (e.g., invalid recipient, quota exceeded)
+                    logger.error(f"Non-retryable Gmail API error: {error_reason}")
+                    raise
+            
+            except Exception as e:
+                logger.error(f"Unexpected error sending email (attempt {attempt + 1}/{max_retries}): {e}")
+                
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    import asyncio
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    raise
+        
+        return None
+    
+    def _parse_http_error(self, error: HttpError) -> str:
+        """Parse HttpError to extract meaningful error message."""
         try:
-            message = {
-                "raw": self._create_message(to, subject, body)
-            }
-            result = self.service.users().messages().send(
-                userId="me", body=message
-            ).execute()
-            logger.info(f"Message sent to {to}", message_id=result["id"])
-            return result["id"]
-        except Exception as e:
-            logger.error(f"Error sending message to {to}: {e}")
-            return None
+            error_details = json.loads(error.content.decode())
+            return error_details.get("error", {}).get("message", str(error))
+        except Exception:
+            return str(error)
+    
+    def _is_retryable_error(self, error: HttpError) -> bool:
+        """Determine if an HttpError is retryable.
+        
+        Retryable errors:
+        - 429: Rate limit exceeded
+        - 500, 502, 503, 504: Server errors
+        - Network timeouts
+        
+        Non-retryable errors:
+        - 400: Bad request (malformed message)
+        - 401: Unauthorized (token invalid)
+        - 403: Forbidden (quota exceeded for day)
+        - 404: Not found
+        """
+        retryable_codes = {429, 500, 502, 503, 504}
+        return error.resp.status in retryable_codes
 
     def _create_message(self, to: str, subject: str, body: str, from_email: Optional[str] = None) -> str:
         """Create a message in base64 format."""
