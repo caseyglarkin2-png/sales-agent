@@ -259,7 +259,7 @@ async def list_hubspot_contacts(
     try:
         # Get HubSpot API key from environment
         from src.config import settings
-        api_key = settings.HUBSPOT_API_KEY
+        api_key = settings.hubspot_api_key
         
         if not api_key:
             raise HTTPException(status_code=401, detail="HubSpot not configured")
@@ -293,7 +293,7 @@ async def list_hubspot_deals(
     """
     try:
         from src.config import settings
-        api_key = settings.HUBSPOT_API_KEY
+        api_key = settings.hubspot_api_key
         
         if not api_key:
             raise HTTPException(status_code=401, detail="HubSpot not configured")
@@ -325,7 +325,7 @@ async def list_hubspot_companies(
     """
     try:
         from src.config import settings
-        api_key = settings.HUBSPOT_API_KEY
+        api_key = settings.hubspot_api_key
         
         if not api_key:
             raise HTTPException(status_code=401, detail="HubSpot not configured")
@@ -358,7 +358,7 @@ async def search_hubspot_contacts(
     """
     try:
         from src.config import settings
-        api_key = settings.HUBSPOT_API_KEY
+        api_key = settings.hubspot_api_key
         
         if not api_key:
             raise HTTPException(status_code=401, detail="HubSpot not configured")
@@ -386,7 +386,7 @@ async def test_hubspot_connection(user_id: str = Depends(get_current_user_id)):
     """
     try:
         from src.config import settings
-        api_key = settings.HUBSPOT_API_KEY
+        api_key = settings.hubspot_api_key
         
         if not api_key:
             return {"connected": False, "message": "HubSpot API key not configured"}

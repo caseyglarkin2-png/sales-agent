@@ -1,0 +1,75 @@
+name: Production Testing - Ship Ship Ship
+
+on:
+  # Run after every deployment
+  workflow_dispatch:
+  # Run on schedule (every 6 hours)
+  schedule:
+    - cron: '0 */6 * * *'
+  # Run after Railway deployment webhook
+  repository_dispatch:
+    types: [railway-deployed]
+
+jobs:
+  test-production:
+    name: Test Production Deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          pip install httpx pytest pytest-asyncio
+      
+      - name: Test Production APIs
+        env:
+          PRODUCTION_URL: https://web-production-a6ccf.up.railway.app
+        run: |
+          python -m pytest tests/production/ -v --tb=short
+      
+      - name: Test Integrations
+        env:
+          PRODUCTION_URL: https://web-production-a6ccf.up.railway.app
+        run: |
+          echo "Testing HubSpot integration..."
+          curl -f "$PRODUCTION_URL/api/integrations/hubspot/test" || exit 1
+          
+          echo "Testing Google Drive integration..."
+          curl -f "$PRODUCTION_URL/api/integrations/status" || exit 1
+          
+          echo "Testing integrations page..."
+          curl -f "$PRODUCTION_URL/integrations" || exit 1
+      
+      - name: Test Analytics
+        env:
+          PRODUCTION_URL: https://web-production-a6ccf.up.railway.app
+        run: |
+          echo "Testing analytics endpoint..."
+          curl -f "$PRODUCTION_URL/api/analytics/dashboard" || exit 1
+      
+      - name: Health Check
+        env:
+          PRODUCTION_URL: https://web-production-a6ccf.up.railway.app
+        run: |
+          echo "Health check..."
+          curl -f "$PRODUCTION_URL/health" || exit 1
+      
+      - name: Create Issue on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Test Failed',
+              body: `Production tests failed at ${new Date().toISOString()}\n\nWorkflow: ${context.workflow}\nRun: ${context.runNumber}`,
+              labels: ['production', 'bug', 'urgent']
+            })
