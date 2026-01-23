@@ -42,6 +42,15 @@ celery_app.conf.update(
 celery_app.conf.task_default_retry_delay = 60  # 1 minute
 celery_app.conf.task_max_retries = 3
 
+# Celery Beat schedule for periodic tasks
+celery_app.conf.beat_schedule = {
+    'refresh-expiring-oauth-tokens': {
+        'task': 'src.oauth_manager.refresh_expiring_tokens_task',
+        'schedule': 1800.0,  # Every 30 minutes
+        'options': {'expires': 300}  # Expire if not run within 5 minutes
+    },
+}
+
 
 @task_prerun.connect
 def task_prerun_handler(sender=None, task_id=None, task=None, args=None, kwargs=None, **extra):

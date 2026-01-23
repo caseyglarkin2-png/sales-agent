@@ -2,7 +2,7 @@
 
 This module handles the OAuth 2.0 flow for Google APIs, including:
 - Authorization code flow for local development & Codespaces
-- Token storage and refresh
+- Token storage and refresh (file-based for dev, database for production)
 - Scope management (Gmail, Drive, Calendar)
 - Multi-scope token aggregation
 """
@@ -11,6 +11,7 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import httpx
 from google.auth.oauthlib.flow import InstalledAppFlow
@@ -41,21 +42,90 @@ ALL_SCOPES = GMAIL_SCOPES + DRIVE_SCOPES + CALENDAR_SCOPES
 class GoogleOAuthManager:
     """Manage Google OAuth tokens for multiple services."""
 
-    def __init__(self, credentials_file: str = "client_secret.json", token_cache_dir: str = ".tokens"):
+    def __init__(self, credentials_file: str = "client_secret.json", token_cache_dir: str = ".tokens", use_database: bool = False):
         """Initialize OAuth manager.
 
         Args:
             credentials_file: Path to Google OAuth credentials (from Google Cloud Console)
             token_cache_dir: Directory to cache tokens (not in git)
+            use_database: If True, use database-backed token storage instead of files
         """
         self.credentials_file = credentials_file
         self.token_cache_dir = Path(token_cache_dir)
         self.token_cache_dir.mkdir(exist_ok=True, mode=0o700)  # Secure permissions
+        self.use_database = use_database
 
         # Ensure token cache is in .gitignore
         self._ensure_gitignore()
 
         self.credentials: GoogleCredentials | None = None
+    
+    async def get_user_credentials(self, user_id: UUID, auto_refresh: bool = True) -> GoogleCredentials | None:
+        """Get credentials for a specific user from database.
+        
+        Args:
+            user_id: User UUID
+            auto_refresh: Whether to automatically refresh expired tokens
+        
+        Returns:
+            Google credentials or None if not found
+        """
+        if not self.use_database:
+            logger.warning("Database token storage not enabled, falling back to file storage")
+            return None
+        
+        try:
+            from src.oauth_manager import TokenManager
+            
+            manager = TokenManager()
+            credentials = await manager.get_token(
+                user_id=user_id,
+                service='google',
+                auto_refresh=auto_refresh
+            )
+            
+            return credentials
+            
+        except ImportError:
+            logger.error("TokenManager not available - database storage disabled")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get user credentials from database: {e}")
+            return None
+    
+    async def store_user_credentials(self, user_id: UUID, credentials: GoogleCredentials) -> bool:
+        """Store user credentials in database.
+        
+        Args:
+            user_id: User UUID
+            credentials: Google OAuth credentials
+        
+        Returns:
+            True if stored successfully
+        """
+        if not self.use_database:
+            logger.warning("Database token storage not enabled")
+            return False
+        
+        try:
+            from src.oauth_manager import TokenManager
+            
+            manager = TokenManager()
+            await manager.store_token(
+                user_id=user_id,
+                service='google',
+                credentials=credentials
+            )
+            
+            logger.info(f"Stored credentials for user {user_id} in database")
+            return True
+            
+        except ImportError:
+            logger.error("TokenManager not available - database storage disabled")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to store user credentials: {e}")
+            return False
 
     def _ensure_gitignore(self) -> None:
         """Ensure token cache directory is in .gitignore."""
@@ -237,13 +307,22 @@ class GoogleOAuthManager:
 _oauth_manager: GoogleOAuthManager | None = None
 
 
-def get_oauth_manager() -> GoogleOAuthManager:
-    """Get or create singleton OAuth manager."""
+def get_oauth_manager(use_database: bool = None) -> GoogleOAuthManager:
+    """Get or create singleton OAuth manager.
+    
+    Args:
+        use_database: Override database usage (defaults to USE_DATABASE_TOKENS env var)
+    """
     global _oauth_manager
     if _oauth_manager is None:
         creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE", "client_secret.json")
         token_dir = os.environ.get("GOOGLE_TOKEN_CACHE_DIR", ".tokens")
-        _oauth_manager = GoogleOAuthManager(creds_file, token_dir)
+        
+        # Use database tokens in production by default
+        if use_database is None:
+            use_database = os.environ.get("USE_DATABASE_TOKENS", "true").lower() == "true"
+        
+        _oauth_manager = GoogleOAuthManager(creds_file, token_dir, use_database=use_database)
     return _oauth_manager
 
 
