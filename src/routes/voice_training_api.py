@@ -21,6 +21,7 @@ from sqlalchemy import select, func
 from src.db import get_db
 from src.models.training_sample import TrainingSample, TrainingSampleSource
 from src.voice_training.youtube_extractor import YouTubeExtractor
+from src.voice_training.drive_extractor import DriveExtractor
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -91,6 +92,29 @@ async def ingest_from_url(
                 )
             
             extraction = await YouTubeExtractor.extract(url_str)
+            
+        elif request.source_type == TrainingSampleSource.DRIVE:
+            # Extract Google Drive file
+            # Get user's Google credentials
+            try:
+                from src.auth.google_oauth import GoogleOAuthManager
+                oauth_manager = GoogleOAuthManager()
+                credentials = await oauth_manager.get_user_credentials(request.user_id)
+                
+                if not credentials:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Google Drive access not authorized. Please connect your Google account."
+                    )
+                
+                extractor = DriveExtractor(credentials)
+                extraction = await extractor.extract(file_id=None, file_url=url_str)
+                
+            except ImportError:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Google Drive integration not available"
+                )
             
         else:
             raise HTTPException(

@@ -331,9 +331,16 @@
             <div id="drive-tab" class="tab-content">
                 <div class="input-group">
                     <label>Google Drive File Link</label>
-                    <input type="url" id="drive-url" placeholder="https://drive.google.com/file/d/..." />
+                    <input type="url" id="drive-url" placeholder="https://drive.google.com/file/d/... or https://docs.google.com/document/d/..." />
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Supports: Google Docs, Sheets, PDFs, TXT files
+                    </small>
                 </div>
-                <button class="btn" disabled>Coming Soon</button>
+                <div class="input-group">
+                    <label>Title (optional)</label>
+                    <input type="text" id="drive-title" placeholder="Auto-detected from file name" />
+                </div>
+                <button class="btn" onclick="ingestDriveFile()">Extract from Drive</button>
             </div>
             
             <!-- HubSpot Tab -->
@@ -458,6 +465,46 @@
                 showMessage('✅ Transcript extracted successfully!', 'success');
                 document.getElementById('youtube-url').value = '';
                 document.getElementById('youtube-title').value = '';
+                loadSamples();
+                loadStats();
+                
+            } catch (error) {
+                showMessage(`❌ Extraction failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Ingest Drive file
+        async function ingestDriveFile() {
+            const url = document.getElementById('drive-url').value.trim();
+            const title = document.getElementById('drive-title').value.trim();
+            
+            if (!url) {
+                showMessage('⚠️ Please enter a Drive file URL', 'error');
+                return;
+            }
+            
+            try {
+                showMessage('🔄 Extracting Drive file...', 'info');
+                
+                const response = await fetch(`${API_BASE}/ingest/url`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        source_type: 'drive',
+                        source_url: url,
+                        user_id: USER_ID,
+                        title: title || null
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Extraction failed');
+                }
+                
+                showMessage('✅ Drive file extracted successfully!', 'success');
+                document.getElementById('drive-url').value = '';
+                document.getElementById('drive-title').value = '';
                 loadSamples();
                 loadStats();
                 
