@@ -88,7 +88,7 @@ class AnalyticsEngine:
             ).label('avg_duration')
         ).where(
             and_(
-                Workflow.status == WorkflowStatus.COMPLETED,
+                Workflow.status == WorkflowStatus.COMPLETED.value,
                 Workflow.created_at >= cutoff_time,
                 Workflow.completed_at.isnot(None)
             )
@@ -166,7 +166,7 @@ class AnalyticsEngine:
         failed_query = select(func.count(Workflow.id)).where(
             and_(
                 Workflow.created_at >= cutoff_time,
-                Workflow.status == WorkflowStatus.FAILED
+                Workflow.status == WorkflowStatus.FAILED.value
             )
         )
         failed = (await self.db.execute(failed_query)).scalar() or 0
@@ -262,7 +262,7 @@ class AnalyticsEngine:
                     and_(
                         Workflow.created_at >= start_time,
                         Workflow.created_at < end_time,
-                        Workflow.status == WorkflowStatus.COMPLETED
+                        Workflow.status == WorkflowStatus.COMPLETED.value
                     )
                 )
                 completed = (await self.db.execute(completed_query)).scalar() or 0
@@ -276,7 +276,7 @@ class AnalyticsEngine:
                     and_(
                         Workflow.created_at >= start_time,
                         Workflow.created_at < end_time,
-                        Workflow.status == WorkflowStatus.FAILED
+                        Workflow.status == WorkflowStatus.FAILED.value
                     )
                 )
                 failed = (await self.db.execute(failed_query)).scalar() or 0
