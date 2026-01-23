@@ -190,6 +190,9 @@ from src.routes import quota_api
 from src.routes import analytics_api
 from src.routes import debug_api
 from src.routes import integrations_api
+from src.routes import ops
+from src.routes import command_queue
+from src.routes import ui_command_queue
 
 # Configure logging
 settings = get_settings()
@@ -225,6 +228,9 @@ app.include_router(celery_tasks.router)  # Sprint 2: Async task management
 app.include_router(admin.router)  # Sprint 4: Admin controls + emergency kill switch
 app.include_router(gdpr.router)  # Sprint 6: GDPR data deletion + retention
 app.include_router(circuit_breakers.router)  # Sprint 6: Circuit breaker monitoring
+app.include_router(ops.router)  # Ops: Sentry test and admin operations
+app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
+app.include_router(ui_command_queue.router)  # CaseyOS: Command Queue UI v0
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)

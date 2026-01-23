@@ -9,6 +9,7 @@ from src.models.workflow import (
     WorkflowError,
 )
 from src.models.form_submission import FormSubmission
+from src.models.command_queue import CommandQueueItem, ActionRecommendation
 
 __all__ = [
     "Prospect",
@@ -20,4 +21,6 @@ __all__ = [
     "HubSpotTask",
     "WorkflowError",
     "FormSubmission",
+    "CommandQueueItem",
+    "ActionRecommendation",
 ]

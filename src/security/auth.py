@@ -26,11 +26,12 @@ async def require_admin_role(request: Request) -> None:
     """
     admin_password = getattr(settings, "admin_password", None)
 
-    if not admin_password:
-        logger.warning("Admin password not configured in environment")
+    # Reject weak or missing secrets outright
+    if not admin_password or admin_password.strip() in {"test123", "password", "admin", "changeme"}:
+        logger.error("Admin password is not securely configured")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Admin authentication not configured",
+            detail="Admin authentication not configured securely",
         )
 
     # Check admin token in header

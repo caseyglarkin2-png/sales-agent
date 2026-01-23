@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Response, status
 from typing import Dict, Any
 from datetime import datetime
-import asyncio
+from sqlalchemy import text
 
 from src.config import get_settings
 from src.logger import get_logger
@@ -45,11 +45,11 @@ async def readiness_check(response: Response) -> Dict[str, Any]:
     checks = {}
     all_ready = True
     
-    # Check database connection
+    # Check database connection (truthful readiness)
     try:
-        from src.db import SessionLocal
-        async with SessionLocal() as session:
-            await session.execute("SELECT 1")
+        from src.db import async_session
+        async with async_session() as session:
+            await session.execute(text("SELECT 1"))
         checks["database"] = "ready"
     except Exception as e:
         checks["database"] = f"not_ready: {str(e)}"
