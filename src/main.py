@@ -177,6 +177,8 @@ from src.routes import voice_training_api
 from src.routes import pii_safety_api
 from src.routes import quota_api
 from src.routes import analytics_api
+from src.routes import debug_api
+from src.routes import debug_api
 
 # Configure logging
 settings = get_settings()
@@ -285,6 +287,7 @@ app.include_router(voice_training_api.router)  # Voice training enhancement
 app.include_router(pii_safety_api.router)  # PII detection & safety validation
 app.include_router(quota_api.router)  # Rate limiting & quota management
 app.include_router(analytics_api.router)  # Analytics & insights engine
+app.include_router(debug_api.router)  # Debug database utilities
 app.include_router(auth_routes.router)
 app.include_router(commands_routes.router)
 app.include_router(partner_portal_routes.router)
