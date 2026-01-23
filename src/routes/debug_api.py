@@ -37,7 +37,7 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         await db.execute(text("DROP TABLE IF EXISTS hubspot_tasks CASCADE"))
         await db.execute(text("DROP TABLE IF EXISTS draft_emails CASCADE"))
         await db.execute(text("DROP TABLE IF EXISTS workflows CASCADE"))
-        await db.execute(text("DROP TABLE IF NOT EXISTS form_submissions CASCADE"))
+        await db.execute(text("DROP TABLE IF EXISTS form_submissions CASCADE"))
         
         # Drop and recreate enum types
         await db.execute(text("DROP TYPE IF EXISTS workflowstatus CASCADE"))
