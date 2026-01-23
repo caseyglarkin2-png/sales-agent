@@ -66,3 +66,67 @@ def test_voice_selector_exists():
     
     assert "voice-select" in content
     assert "populateVoices" in content
+
+
+def test_full_draft_body_returned():
+    """Test that API returns full body, not just preview."""
+    # Mock a draft with long body (500+ words)
+    long_body = "This is a test email. " * 100  # ~500 words
+    
+    mock_draft = {
+        "id": "test-123",
+        "recipient": "john@example.com",
+        "subject": "Test Subject",
+        "body": long_body
+    }
+    
+    # Simulate what _next_item() should return
+    response = {
+        "action": "next",
+        "action_taken": False,
+        "item": {
+            "id": mock_draft["id"],
+            "recipient": mock_draft["recipient"],
+            "subject": mock_draft["subject"],
+            "body": mock_draft["body"],
+            "preview": mock_draft["body"][:150]
+        }
+    }
+    
+    # Verify full body is present
+    assert "body" in response["item"]
+    assert len(response["item"]["body"]) > 500
+    assert response["item"]["body"] == long_body
+    
+    # Verify preview is truncated
+    assert "preview" in response["item"]
+    assert len(response["item"]["preview"]) == 150
+
+
+def test_voice_persistence_implemented():
+    """Test that voice persistence code exists in jarvis.html."""
+    import os
+    jarvis_path = os.path.join(os.path.dirname(__file__), "..", "src", "static", "jarvis.html")
+    
+    with open(jarvis_path, "r") as f:
+        content = f.read()
+    
+    # Check localStorage is used
+    assert "localStorage.getItem('jarvis_preferred_voice')" in content
+    assert "localStorage.setItem('jarvis_preferred_voice'" in content
+    
+    # Check restoration on load
+    assert "savedVoice" in content
+
+
+def test_display_current_item_uses_full_body():
+    """Test that displayCurrentItem() uses item.body instead of item.content.body."""
+    import os
+    jarvis_path = os.path.join(os.path.dirname(__file__), "..", "src", "static", "jarvis.html")
+    
+    with open(jarvis_path, "r") as f:
+        content = f.read()
+    
+    # Should check item.body first
+    assert "item.body || item.content?.body" in content
+

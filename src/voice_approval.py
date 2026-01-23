@@ -344,6 +344,7 @@ Common patterns:
                 "recipient": next_draft.get("recipient"),
                 "subject": next_draft.get("subject"),
                 "company": next_draft.get("company_name"),
+                "body": next_draft.get("body", ""),
                 "preview": next_draft.get("body", "")[:150]
             }
         }

@@ -286,9 +286,18 @@
                 `<option value="${voice.name}">${voice.name} (${voice.lang})</option>`
             ).join('');
             
+            // Restore saved voice preference
+            const savedVoice = localStorage.getItem('jarvis_preferred_voice');
+            if (savedVoice) {
+                select.value = savedVoice;
+                selectVoiceByName(savedVoice);
+            }
+            
             select.addEventListener('change', (e) => {
+                const voiceName = e.target.value;
+                localStorage.setItem('jarvis_preferred_voice', voiceName);
                 const voices = window.speechSynthesis.getVoices();
-                ttsConfig.voice = voices.find(v => v.name === e.target.value);
+                ttsConfig.voice = voices.find(v => v.name === voiceName);
             });
         }
 
@@ -484,25 +493,33 @@
             const container = document.getElementById('current-item');
             
             if (item.type === 'email_draft') {
+                // Use item.body (from API) first, fall back to content.body
+                const fullBody = item.body || item.content?.body || 'No content';
+                const toName = item.to_name || item.content?.to_name || 'Unknown';
+                const toEmail = item.to || item.content?.to || 'unknown';
+                const subject = item.subject || item.content?.subject || 'No subject';
+                const agent = item.agent || item.content?.agent || 'Unknown';
+                const priority = item.priority || item.content?.priority || 'Normal';
+                
                 container.innerHTML = `
                     <div class="space-y-4">
                         <div>
                             <label class="text-sm opacity-70">To:</label>
-                            <p class="text-lg">${escapeHtml(item.content?.to_name || 'Unknown')} &lt;${escapeHtml(item.content?.to || 'unknown')}&gt;</p>
+                            <p class="text-lg">${escapeHtml(toName)} &lt;${escapeHtml(toEmail)}&gt;</p>
                         </div>
                         <div>
                             <label class="text-sm opacity-70">Subject:</label>
-                            <p class="text-lg font-semibold">${escapeHtml(item.content?.subject || 'No subject')}</p>
+                            <p class="text-lg font-semibold">${escapeHtml(subject)}</p>
                         </div>
                         <div>
                             <label class="text-sm opacity-70">Body:</label>
                             <div class="bg-white/10 rounded-lg p-4 max-h-64 overflow-y-auto">
-                                <pre class="whitespace-pre-wrap font-sans">${escapeHtml(item.content?.body || 'No content')}</pre>
+                                <pre class="whitespace-pre-wrap font-sans">${escapeHtml(fullBody)}</pre>
                             </div>
                         </div>
                         <div class="text-xs opacity-60">
-                            <p>Agent: ${escapeHtml(item.agent || 'Unknown')}</p>
-                            <p>Priority: ${escapeHtml(item.priority || 'Normal')}</p>
+                            <p>Agent: ${escapeHtml(agent)}</p>
+                            <p>Priority: ${escapeHtml(priority)}</p>
                         </div>
                     </div>
                 `;
