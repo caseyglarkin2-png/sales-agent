@@ -179,7 +179,7 @@ class WorkflowStateMachine:
         """
         result = await self.db.execute(
             select(Workflow)
-            .where(Workflow.status == WorkflowStatus.FAILED)
+            .where(Workflow.status == WorkflowStatus.FAILED.value)
             .where(Workflow.error_count < max_retries)
             .order_by(Workflow.created_at.desc())
             .limit(limit)
@@ -247,7 +247,7 @@ class WorkflowRecovery:
         
         result = await self.db.execute(
             select(Workflow)
-            .where(Workflow.status == WorkflowStatus.PROCESSING)
+            .where(Workflow.status == WorkflowStatus.PROCESSING.value)
             .where(Workflow.started_at < cutoff_time)
         )
         
