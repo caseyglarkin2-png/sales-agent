@@ -22,6 +22,7 @@ from src.db import get_db
 from src.models.training_sample import TrainingSample, TrainingSampleSource
 from src.voice_training.youtube_extractor import YouTubeExtractor
 from src.voice_training.drive_extractor import DriveExtractor
+from src.voice_training.hubspot_extractor import HubSpotExtractor
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -114,6 +115,35 @@ async def ingest_from_url(
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Google Drive integration not available"
+                )
+        
+        elif request.source_type == TrainingSampleSource.HUBSPOT:
+            # Extract HubSpot engagement (email, call, note)
+            try:
+                from src.config import get_settings
+                settings = get_settings()
+                
+                if not settings.hubspot_api_key:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="HubSpot integration not configured"
+                    )
+                
+                extractor = HubSpotExtractor(settings.hubspot_api_key)
+                engagement_id = HubSpotExtractor.extract_engagement_id_from_url(url_str)
+                
+                if not engagement_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid HubSpot URL or engagement ID"
+                    )
+                
+                extraction = await extractor.extract(engagement_id)
+                
+            except ImportError:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="HubSpot integration not available"
                 )
             
         else:

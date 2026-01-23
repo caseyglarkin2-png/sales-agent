@@ -346,10 +346,17 @@
             <!-- HubSpot Tab -->
             <div id="hubspot-tab" class="tab-content">
                 <div class="input-group">
-                    <label>HubSpot Record ID</label>
-                    <input type="text" id="hubspot-id" placeholder="Contact ID or email thread ID" />
+                    <label>HubSpot Engagement URL or ID</label>
+                    <input type="text" id="hubspot-id" placeholder="Engagement ID or URL from HubSpot" />
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Supports: Email threads, call transcripts, notes
+                    </small>
                 </div>
-                <button class="btn" disabled>Coming Soon</button>
+                <div class="input-group">
+                    <label>Title (optional)</label>
+                    <input type="text" id="hubspot-title" placeholder="Auto-detected from engagement" />
+                </div>
+                <button class="btn" onclick="ingestHubSpotEngagement()">Extract from HubSpot</button>
             </div>
         </div>
         
@@ -505,6 +512,46 @@
                 showMessage('✅ Drive file extracted successfully!', 'success');
                 document.getElementById('drive-url').value = '';
                 document.getElementById('drive-title').value = '';
+                loadSamples();
+                loadStats();
+                
+            } catch (error) {
+                showMessage(`❌ Extraction failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Ingest HubSpot engagement
+        async function ingestHubSpotEngagement() {
+            const id = document.getElementById('hubspot-id').value.trim();
+            const title = document.getElementById('hubspot-title').value.trim();
+            
+            if (!id) {
+                showMessage('⚠️ Please enter a HubSpot engagement ID or URL', 'error');
+                return;
+            }
+            
+            try {
+                showMessage('🔄 Extracting HubSpot engagement...', 'info');
+                
+                const response = await fetch(`${API_BASE}/ingest/url`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        source_type: 'hubspot',
+                        source_url: id,
+                        user_id: USER_ID,
+                        title: title || null
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Extraction failed');
+                }
+                
+                showMessage('✅ HubSpot engagement extracted successfully!', 'success');
+                document.getElementById('hubspot-id').value = '';
+                document.getElementById('hubspot-title').value = '';
                 loadSamples();
                 loadStats();
                 
