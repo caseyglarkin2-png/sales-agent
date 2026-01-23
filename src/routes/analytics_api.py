@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics", "insights"])
 
 @router.get("/metrics")
 async def get_workflow_metrics(
-    time_window: str = Query(default="day", regex="^(hour|day|week|month|all_time)$"),
+    time_window: str = Query(default="day", pattern="^(hour|day|week|month|all_time)$"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -43,7 +43,7 @@ async def get_workflow_metrics(
 
 @router.get("/mode-distribution")
 async def get_mode_distribution(
-    time_window: str = Query(default="day", regex="^(hour|day|week|month|all_time)$"),
+    time_window: str = Query(default="day", pattern="^(hour|day|week|month|all_time)$"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -68,7 +68,7 @@ async def get_mode_distribution(
 
 @router.get("/errors")
 async def get_error_analysis(
-    time_window: str = Query(default="day", regex="^(hour|day|week|month|all_time)$"),
+    time_window: str = Query(default="day", pattern="^(hour|day|week|month|all_time)$"),
     limit: int = Query(default=10, ge=1, le=100),
     db: AsyncSession = Depends(get_db)
 ):
@@ -95,7 +95,7 @@ async def get_error_analysis(
 @router.get("/trends/{metric}")
 async def get_performance_trends(
     metric: str,
-    granularity: str = Query(default="hour", regex="^(hour|day|week)$"),
+    granularity: str = Query(default="hour", pattern="^(hour|day|week)$"),
     points: int = Query(default=24, ge=1, le=168),
     db: AsyncSession = Depends(get_db)
 ):
@@ -138,7 +138,7 @@ async def get_performance_trends(
 
 @router.get("/dashboard")
 async def get_comprehensive_dashboard(
-    time_window: str = Query(default="day", regex="^(hour|day|week|month|all_time)$"),
+    time_window: str = Query(default="day", pattern="^(hour|day|week|month|all_time)$"),
     db: AsyncSession = Depends(get_db)
 ):
     """

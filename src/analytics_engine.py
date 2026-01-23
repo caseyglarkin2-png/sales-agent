@@ -19,7 +19,6 @@ from sqlalchemy.sql import text
 
 from src.models.workflow import Workflow, WorkflowStatus, WorkflowMode
 from src.models.form_submission import FormSubmission
-from src.models.draft_email import DraftEmail
 from src.logger import get_logger
 
 logger = get_logger(__name__)
