@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrations - Connect Your Apps | Sales Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        
+        header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .integrations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .integration-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .integration-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .integration-card.connected {
+            border: 3px solid #10b981;
+        }
+        
+        .integration-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .integration-icon {
+            width: 60px;
+            height: 60px;
+            margin-right: 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+        
+        .integration-icon.google {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+        }
+        
+        .integration-icon.hubspot {
+            background: #ff7a59;
+        }
+        
+        .integration-icon.slack {
+            background: #4a154b;
+        }
+        
+        .integration-icon.yardflow {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .integration-icon.drive {
+            background: linear-gradient(135deg, #0f9d58 0%, #0b8043 100%);
+        }
+        
+        .integration-title h3 {
+            font-size: 1.5em;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+        
+        .integration-status {
+            font-size: 0.9em;
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .integration-status.disconnected {
+            color: #6b7280;
+        }
+        
+        .integration-description {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .integration-features {
+            margin-bottom: 20px;
+        }
+        
+        .integration-features h4 {
+            font-size: 0.9em;
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .integration-features ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .integration-features li {
+            padding: 5px 0;
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        
+        .integration-features li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .connect-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .connect-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .connect-btn.primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .connect-btn.success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .connect-btn.success:hover {
+            background: #059669;
+        }
+        
+        .connect-btn.disabled {
+            background: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .agent-section {
+            margin-top: 60px;
+            padding: 40px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .agent-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .agent-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            color: white;
+        }
+        
+        .agent-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .agent-card p {
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        
+        .modal-content p {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .modal-actions button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn-cancel {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+        
+        .btn-confirm {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚢 Connect Your Apps</h1>
+            <p>Integrate Pesti & Jarvis with your favorite tools</p>
+        </header>
+        
+        <div class="integrations-grid">
+            <!-- Google Drive -->
+            <div class="integration-card" data-app="google-drive">
+                <div class="integration-header">
+                    <div class="integration-icon drive">📁</div>
+                    <div class="integration-title">
+                        <h3>Google Drive</h3>
+                        <span class="integration-status disconnected">Not Connected</span>
+                    </div>
+                </div>
+                <p class="integration-description">
+                    Import documents and training materials directly from Google Drive. Perfect for voice training with existing sales content.
+                </p>
+                <div class="integration-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Import Google Docs</li>
+                        <li>Import Google Sheets</li>
+                        <li>Voice training integration</li>
+                        <li>Automatic sync</li>
+                    </ul>
+                </div>
+                <button class="connect-btn primary" onclick="connectApp('google-drive')">
+                    Connect Google Drive
+                </button>
+            </div>
+            
+            <!-- Google Workspace -->
+            <div class="integration-card" data-app="google-workspace">
+                <div class="integration-header">
+                    <div class="integration-icon google">📧</div>
+                    <div class="integration-title">
+                        <h3>Google Workspace</h3>
+                        <span class="integration-status disconnected">Not Connected</span>
+                    </div>
+                </div>
+                <p class="integration-description">
+                    Full Google Workspace integration including Gmail, Calendar, and Docs. Let Jarvis manage your entire workflow.
+                </p>
+                <div class="integration-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Gmail integration</li>
+                        <li>Calendar management</li>
+                        <li>Drive access</li>
+                        <li>Automated scheduling</li>
+                    </ul>
+                </div>
+                <button class="connect-btn primary" onclick="connectApp('google-workspace')">
+                    Connect Google Workspace
+                </button>
+            </div>
+            
+            <!-- HubSpot -->
+            <div class="integration-card" data-app="hubspot">
+                <div class="integration-header">
+                    <div class="integration-icon hubspot">🎯</div>
+                    <div class="integration-title">
+                        <h3>HubSpot CRM</h3>
+                        <span class="integration-status disconnected">Not Connected</span>
+                    </div>
+                </div>
+                <p class="integration-description">
+                    Sync contacts, deals, and activities with HubSpot. Pesti can pull context from your CRM and update records automatically.
+                </p>
+                <div class="integration-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Contact sync</li>
+                        <li>Deal tracking</li>
+                        <li>Activity logging</li>
+                        <li>Voice training from notes</li>
+                    </ul>
+                </div>
+                <button class="connect-btn primary" onclick="connectApp('hubspot')">
+                    Connect HubSpot
+                </button>
+            </div>
+            
+            <!-- Slack -->
+            <div class="integration-card" data-app="slack">
+                <div class="integration-header">
+                    <div class="integration-icon slack">💬</div>
+                    <div class="integration-title">
+                        <h3>Slack</h3>
+                        <span class="integration-status disconnected">Not Connected</span>
+                    </div>
+                </div>
+                <p class="integration-description">
+                    Get notifications, manage agents, and execute commands directly from Slack. Your team's mission control.
+                </p>
+                <div class="integration-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Agent notifications</li>
+                        <li>Command execution</li>
+                        <li>Team collaboration</li>
+                        <li>Status updates</li>
+                    </ul>
+                </div>
+                <button class="connect-btn disabled" disabled>
+                    Coming Soon
+                </button>
+            </div>
+            
+            <!-- YardFlow Hitlist -->
+            <div class="integration-card" data-app="yardflow-hitlist">
+                <div class="integration-header">
+                    <div class="integration-icon yardflow">🎯</div>
+                    <div class="integration-title">
+                        <h3>YardFlow Hitlist</h3>
+                        <span class="integration-status disconnected">Not Connected</span>
+                    </div>
+                </div>
+                <p class="integration-description">
+                    Connect to YardFlow Hitlist for prospect management. Import lists and sync outreach status between apps.
+                </p>
+                <div class="integration-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Import prospect lists</li>
+                        <li>Sync outreach status</li>
+                        <li>Bidirectional updates</li>
+                        <li>Workflow automation</li>
+                    </ul>
+                </div>
+                <button class="connect-btn disabled" disabled>
+                    Coming Soon
+                </button>
+            </div>
+            
+            <!-- YouTube -->
+            <div class="integration-card connected" data-app="youtube">
+                <div class="integration-header">
+                    <div class="integration-icon" style="background: #ff0000;">▶️</div>
+                    <div class="integration-title">
+                        <h3>YouTube</h3>
+                        <span class="integration-status">Connected</span>
+                    </div>
+                </div>
+                <p class="integration-description">
+                    Extract transcripts from YouTube videos for voice training. Build Pesti's personality from your own sales videos.
+                </p>
+                <div class="integration-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Transcript extraction</li>
+                        <li>Voice training</li>
+                        <li>Sales video analysis</li>
+                        <li>Automatic processing</li>
+                    </ul>
+                </div>
+                <button class="connect-btn success" onclick="manageApp('youtube')">
+                    ✓ Manage Integration
+                </button>
+            </div>
+        </div>
+        
+        <!-- Agent Showcase -->
+        <div class="agent-section">
+            <h2>🤖 Meet Your Agent Team</h2>
+            <div class="agent-grid">
+                <div class="agent-card">
+                    <h3>🎯 Pesti</h3>
+                    <p>Your AI sales agent. Handles outreach, follows up, and closes deals using your voice and style.</p>
+                </div>
+                
+                <div class="agent-card">
+                    <h3>🤵 Jarvis</h3>
+                    <p>Your multi-purpose assistant. Manages integrations, schedules meetings, and orchestrates your workflow.</p>
+                </div>
+                
+                <div class="agent-card">
+                    <h3>📧 Email Agent</h3>
+                    <p>Specialized in email composition and management. Writes follow-ups that sound like you.</p>
+                </div>
+                
+                <div class="agent-card">
+                    <h3>🔍 Research Agent</h3>
+                    <p>Finds insights about prospects, companies, and markets. Feeds intelligence to Pesti.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Connection Modal -->
+    <div id="connectionModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Connect App</h2>
+            <p id="modalDescription">Description</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-confirm" onclick="confirmConnection()">Connect Now</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedApp = null;
+        
+        const appDetails = {
+            'google-drive': {
+                name: 'Google Drive',
+                description: 'You will be redirected to Google to authorize access to your Drive files. We only request read access to import documents for voice training.',
+                authUrl: '/api/auth/google/authorize?scopes=drive.readonly'
+            },
+            'google-workspace': {
+                name: 'Google Workspace',
+                description: 'You will be redirected to Google to authorize access to Gmail, Calendar, and Drive. This enables full Jarvis integration.',
+                authUrl: '/api/auth/google/authorize'
+            },
+            'hubspot': {
+                name: 'HubSpot CRM',
+                description: 'You will be redirected to HubSpot to authorize access to your CRM data. We will sync contacts, deals, and activities.',
+                authUrl: '/api/auth/hubspot/authorize'
+            },
+            'yardflow-hitlist': {
+                name: 'YardFlow Hitlist',
+                description: 'Connect to YardFlow Hitlist to import prospect lists and sync outreach status between apps.',
+                authUrl: '/api/auth/yardflow/authorize'
+            }
+        };
+        
+        function connectApp(appName) {
+            selectedApp = appName;
+            const details = appDetails[appName];
+            
+            if (!details) {
+                alert('Integration coming soon!');
+                return;
+            }
+            
+            document.getElementById('modalTitle').textContent = `Connect ${details.name}`;
+            document.getElementById('modalDescription').textContent = details.description;
+            document.getElementById('connectionModal').classList.add('active');
+        }
+        
+        function manageApp(appName) {
+            window.location.href = '/voice-training.html';
+        }
+        
+        function closeModal() {
+            document.getElementById('connectionModal').classList.remove('active');
+            selectedApp = null;
+        }
+        
+        function confirmConnection() {
+            if (!selectedApp) return;
+            
+            const details = appDetails[selectedApp];
+            if (details && details.authUrl) {
+                window.location.href = details.authUrl;
+            }
+        }
+        
+        // Check connection status on load
+        async function checkConnections() {
+            try {
+                const response = await fetch('/api/integrations/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Update UI based on connected apps
+                    Object.keys(data.connected || {}).forEach(appName => {
+                        const card = document.querySelector(`[data-app="${appName}"]`);
+                        if (card) {
+                            card.classList.add('connected');
+                            const status = card.querySelector('.integration-status');
+                            if (status) {
+                                status.textContent = 'Connected';
+                                status.classList.remove('disconnected');
+                            }
+                            
+                            const btn = card.querySelector('.connect-btn');
+                            if (btn) {
+                                btn.textContent = '✓ Manage Integration';
+                                btn.className = 'connect-btn success';
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.log('Could not check connection status:', error);
+            }
+        }
+        
+        // Check connections on page load
+        checkConnections();
+    </script>
+</body>
+</html>
