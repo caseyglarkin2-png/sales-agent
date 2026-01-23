@@ -1,7 +1,7 @@
 """Add command queue and action recommendation tables
 
 Revision ID: 20260123_command_queue
-Revises: 
+Revises: 004
 Create Date: 2026-01-23
 """
 from alembic import op
@@ -10,7 +10,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "20260123_command_queue"
-down_revision = None
+down_revision = "004"
 branch_labels = None
 depends_on = None
 

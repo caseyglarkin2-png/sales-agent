@@ -1,5 +1,6 @@
 """Command Queue API v0."""
 from typing import Any, Dict, List
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc
@@ -51,3 +52,17 @@ async def dismiss_item(item_id: str, db: AsyncSession = Depends(get_db)) -> Dict
     await db.commit()
     await log_event("recommendation_dismissed", {"item_id": item_id, "action_type": item.action_type})
     return {"status": "ok", "item_id": item_id}
+
+
+@router.post("/seed", dependencies=[Depends(require_admin_role)])
+async def seed_demo_items(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+    now = datetime.utcnow()
+    items = [
+        CommandQueueItem(priority_score=0.92, action_type="email_follow_up", owner="casey", due_by=now + timedelta(hours=2)),
+        CommandQueueItem(priority_score=0.87, action_type="schedule_meeting", owner="casey", due_by=now + timedelta(hours=6)),
+        CommandQueueItem(priority_score=0.81, action_type="update_crm", owner="casey", due_by=now + timedelta(days=1)),
+    ]
+    db.add_all(items)
+    await db.commit()
+    await log_event("seed_command_queue", {"count": len(items)})
+    return {"status": "ok", "count": len(items)}
