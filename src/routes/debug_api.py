@@ -35,6 +35,10 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         # Enable UUID extension
         await db.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
         
+        # Create enum types
+        await db.execute(text("CREATE TYPE IF NOT EXISTS workflowstatus AS ENUM ('triggered', 'processing', 'completed', 'failed')"))
+        await db.execute(text("CREATE TYPE IF NOT EXISTS workflowmode AS ENUM ('DRAFT_ONLY', 'SEND')"))
+        
         # Create form_submissions table
         await db.execute(text("""
             CREATE TABLE IF NOT EXISTS form_submissions (
@@ -64,8 +68,8 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
             CREATE TABLE IF NOT EXISTS workflows (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 form_submission_id UUID NOT NULL REFERENCES form_submissions(id) ON DELETE CASCADE,
-                status VARCHAR(50) NOT NULL DEFAULT 'triggered',
-                mode VARCHAR(50) NOT NULL DEFAULT 'DRAFT_ONLY',
+                status workflowstatus NOT NULL DEFAULT 'triggered',
+                mode workflowmode NOT NULL DEFAULT 'DRAFT_ONLY',
                 started_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 completed_at TIMESTAMP,
                 error_message TEXT,
