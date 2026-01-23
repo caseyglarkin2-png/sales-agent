@@ -32,16 +32,27 @@ async def get_db_tables(db: AsyncSession = Depends(get_db_session)):
 async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
     """Create missing workflow tables."""
     try:
+        # Drop existing tables if they exist (CASCADE to handle foreign keys)
+        await db.execute(text("DROP TABLE IF EXISTS workflow_errors CASCADE"))
+        await db.execute(text("DROP TABLE IF EXISTS hubspot_tasks CASCADE"))
+        await db.execute(text("DROP TABLE IF EXISTS draft_emails CASCADE"))
+        await db.execute(text("DROP TABLE IF EXISTS workflows CASCADE"))
+        await db.execute(text("DROP TABLE IF NOT EXISTS form_submissions CASCADE"))
+        
+        # Drop and recreate enum types
+        await db.execute(text("DROP TYPE IF EXISTS workflowstatus CASCADE"))
+        await db.execute(text("DROP TYPE IF EXISTS workflowmode CASCADE"))
+        
         # Enable UUID extension
         await db.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
         
         # Create enum types
-        await db.execute(text("CREATE TYPE IF NOT EXISTS workflowstatus AS ENUM ('triggered', 'processing', 'completed', 'failed')"))
-        await db.execute(text("CREATE TYPE IF NOT EXISTS workflowmode AS ENUM ('DRAFT_ONLY', 'SEND')"))
+        await db.execute(text("CREATE TYPE workflowstatus AS ENUM ('triggered', 'processing', 'completed', 'failed')"))
+        await db.execute(text("CREATE TYPE workflowmode AS ENUM ('DRAFT_ONLY', 'SEND')"))
         
         # Create form_submissions table
         await db.execute(text("""
-            CREATE TABLE IF NOT EXISTS form_submissions (
+            CREATE TABLE form_submissions (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 portal_id INTEGER NOT NULL,
                 form_id VARCHAR(255) NOT NULL,
@@ -65,7 +76,7 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         
         # Create workflows table
         await db.execute(text("""
-            CREATE TABLE IF NOT EXISTS workflows (
+            CREATE TABLE workflows (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 form_submission_id UUID NOT NULL REFERENCES form_submissions(id) ON DELETE CASCADE,
                 status workflowstatus NOT NULL DEFAULT 'triggered',
@@ -84,7 +95,7 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         
         # Create draft_emails table
         await db.execute(text("""
-            CREATE TABLE IF NOT EXISTS draft_emails (
+            CREATE TABLE draft_emails (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
                 gmail_draft_id VARCHAR(255),
@@ -99,7 +110,7 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         
         # Create hubspot_tasks table
         await db.execute(text("""
-            CREATE TABLE IF NOT EXISTS hubspot_tasks (
+            CREATE TABLE hubspot_tasks (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
                 hubspot_task_id VARCHAR(255) UNIQUE,
@@ -114,7 +125,7 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         
         # Create workflow_errors table
         await db.execute(text("""
-            CREATE TABLE IF NOT EXISTS workflow_errors (
+            CREATE TABLE workflow_errors (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
                 error_type VARCHAR(100),
