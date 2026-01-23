@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Today's Moves • CaseyOS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+      h1 { margin-bottom: 0.5rem; }
+      .subtitle { color: #666; margin-bottom: 1.5rem; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+      th { background: #f9fafb; }
+      .score { font-weight: 600; }
+      .pill { padding: 2px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Today's Moves</h1>
+    <div class="subtitle">Ranked by APS (Action Priority Score)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>APS</th>
+          <th>Action</th>
+          <th>Owner</th>
+          <th>Status</th>
+          <th>Due</th>
+          <th>Reasoning</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <script>
+      async function load() {
+        const res = await fetch('/api/command-queue/today');
+        const data = await res.json();
+        const rows = document.getElementById('rows');
+        rows.innerHTML = '';
+        for (const i of data.today_moves) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="score">${i.aps}</td>
+            <td><span class="pill">${i.action_type}</span></td>
+            <td>${i.owner}</td>
+            <td>${i.status}</td>
+            <td>${i.due_by ?? ''}</td>
+            <td>${i.reasoning}</td>
+          `;
+          rows.appendChild(tr);
+        }
+      }
+      load();
+    </script>
+  </body>
+  </html>

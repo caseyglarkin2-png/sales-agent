@@ -10,6 +10,8 @@ from src.db import get_db
 from src.models.command_queue import CommandQueueItem
 from src.security.auth import require_admin_role
 from src.telemetry import log_event
+from src.services.aps_calculator import calculate_aps
+from src.telemetry.events import track_event
 
 router = APIRouter(prefix="/api/command-queue", tags=["Command Queue"])
 
@@ -66,3 +68,40 @@ async def seed_demo_items(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     await db.commit()
     await log_event("seed_command_queue", {"count": len(items)})
     return {"status": "ok", "count": len(items)}
+
+
+@router.get("/today")
+async def today_moves(limit: int = Query(default=10, ge=1, le=100), db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+    """Return top-N items ranked by APS with reasoning."""
+    stmt = (
+        select(CommandQueueItem)
+        .where(CommandQueueItem.status == "pending")
+        .order_by(desc(CommandQueueItem.priority_score))
+        .limit(limit * 3)  # fetch more than needed; rank by APS in app
+    )
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+
+    enriched: List[Dict[str, Any]] = []
+    for i in items:
+        ctx = i.action_context or {}
+        aps = calculate_aps(i.action_type, ctx)
+        enriched.append(
+            {
+                "id": i.id,
+                "action_type": i.action_type,
+                "owner": i.owner,
+                "due_by": i.due_by.isoformat() if i.due_by else None,
+                "status": i.status,
+                "priority_score": i.priority_score,
+                "aps": aps.score,
+                "reasoning": aps.reasoning,
+                "components": aps.components,
+            }
+        )
+
+    # Rank by computed APS
+    enriched.sort(key=lambda x: x["aps"], reverse=True)
+    today = enriched[:limit]
+
+    return {"today_moves": today, "generated_at": datetime.utcnow().isoformat()}
