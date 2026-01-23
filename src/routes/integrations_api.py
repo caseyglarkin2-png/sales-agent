@@ -554,6 +554,133 @@ async def get_drive_file_info(
     return file_info.dict()
 
 
+# HubSpot Contact Sync Endpoints
+# ==============================
+
+from src.hubspot_sync import get_sync_service, SyncStats
+
+
+class HubSpotSyncRequest(BaseModel):
+    """Request to trigger HubSpot sync"""
+    batch_size: int = 100
+    max_contacts: Optional[int] = None
+    sync_type: str = "all"  # 'all' or 'chainge'
+
+
+class HubSpotContactsResponse(BaseModel):
+    """Response for contact queries"""
+    contacts: List[Dict]
+    total: int
+    limit: int
+    offset: int
+    segment: Optional[str] = None
+
+
+@router.post("/hubspot/sync", response_model=SyncStats)
+async def sync_hubspot_contacts(
+    request: HubSpotSyncRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Trigger a full HubSpot contact sync.
+    
+    Syncs ALL contacts from HubSpot including:
+    - Contact properties (name, email, company, phone, etc.)
+    - List memberships
+    - Automatic segment tagging (CHAINge, High Value, Engaged, Cold)
+    
+    Pagination is handled automatically for 1000+ contacts.
+    """
+    try:
+        sync_service = get_sync_service()
+        
+        if request.sync_type == "chainge":
+            stats = await sync_service.sync_chainge_list()
+        else:
+            stats = await sync_service.sync_all_contacts(
+                batch_size=request.batch_size,
+                max_contacts=request.max_contacts
+            )
+        
+        return stats
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+
+@router.get("/hubspot/synced-contacts", response_model=HubSpotContactsResponse)
+async def get_synced_hubspot_contacts(
+    segment: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get synced HubSpot contacts from local database with optional filtering.
+    
+    Query parameters:
+    - segment: Filter by segment (chainge, high_value, engaged, cold)
+    - limit: Max number of contacts to return (default 100)
+    - offset: Pagination offset (default 0)
+    
+    Returns contacts from local database (previously synced from HubSpot).
+    Use POST /hubspot/sync to sync contacts first.
+    """
+    try:
+        sync_service = get_sync_service()
+        result = sync_service.get_contacts(
+            segment=segment,
+            limit=limit,
+            offset=offset
+        )
+        
+        return HubSpotContactsResponse(**result)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get contacts: {str(e)}")
+
+
+@router.get("/hubspot/sync/stats", response_model=SyncStats)
+async def get_hubspot_sync_stats(
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get statistics from the last HubSpot sync.
+    
+    Returns:
+    - Total contacts synced
+    - Number of pages processed
+    - Segment distribution
+    - Errors encountered
+    - Sync duration
+    """
+    try:
+        sync_service = get_sync_service()
+        return sync_service.get_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+
+@router.delete("/hubspot/synced-contacts")
+async def clear_synced_hubspot_contacts(
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Clear all synced HubSpot contacts from local storage.
+    
+    Useful for testing or re-syncing from scratch.
+    This only clears the local copy, not HubSpot data.
+    """
+    try:
+        sync_service = get_sync_service()
+        count = sync_service.clear_contacts()
+        return {"cleared": count, "message": f"Cleared {count} contacts"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear contacts: {str(e)}")
+
+
 # Ship Ship Ship: Add more endpoints as integrations are built
 # - /api/integrations/{app_name}/data - Get synced data
 # - /api/integrations/{app_name}/configure - Update integration settings

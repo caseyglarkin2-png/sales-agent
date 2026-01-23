@@ -1,14 +1,14 @@
 """
 Campaign Routes.
 
-API endpoints for campaign management.
+API endpoints for campaign management and generation.
 """
 
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
 
 from src.campaigns import (
     get_campaign_manager,
@@ -42,6 +42,22 @@ class AddContactsRequest(BaseModel):
 class RecordEventRequest(BaseModel):
     campaign_id: str
     count: int = 1
+
+
+class GenerateCampaignRequest(BaseModel):
+    """Request to generate campaign emails for a segment."""
+    segment: str = Field(..., description="Segment name: chainge, high_value, engaged, cold, all")
+    limit: int = Field(50, description="Maximum number of drafts to generate", ge=1, le=500)
+    auto_queue: bool = Field(True, description="Automatically queue drafts for approval")
+    batch_size: int = Field(10, description="Batch size for concurrent generation", ge=1, le=50)
+
+
+class GenerateCustomCampaignRequest(BaseModel):
+    """Request to generate campaign emails for custom contact list."""
+    contacts: List[Dict[str, Any]] = Field(..., description="List of contact dictionaries")
+    segment_name: Optional[str] = Field(None, description="Optional segment name for template selection")
+    auto_queue: bool = Field(True, description="Automatically queue drafts for approval")
+    batch_size: int = Field(10, description="Batch size for concurrent generation", ge=1, le=50)
 
 
 @router.get("/types")
@@ -261,3 +277,328 @@ async def record_meeting(request: RecordEventRequest) -> Dict[str, Any]:
     manager = get_campaign_manager()
     manager.record_meeting(request.campaign_id, request.count)
     return {"status": "success"}
+
+
+# ============================================================================
+# Campaign Generation Endpoints
+# ============================================================================
+
+
+@router.post("/generate")
+async def generate_campaign(
+    request: GenerateCampaignRequest,
+    background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
+    """
+    Generate personalized email drafts for a contact segment.
+    
+    This endpoint:
+    1. Fetches contacts from the specified segment (CHAINge, High Value, Engaged, Cold, All)
+    2. Generates personalized email drafts using AI
+    3. Queues drafts for operator approval
+    4. Returns campaign statistics
+    
+    Segments:
+    - chainge: CHAINge NA attendees (partnership/networking focused)
+    - high_value: Enterprise contacts (ROI/revenue focused)
+    - engaged: Active contacts (follow-up focused)
+    - cold: Inactive contacts (re-engagement focused)
+    - all: All contacts
+    
+    Example:
+        POST /api/campaigns/generate
+        {
+            "segment": "chainge",
+            "limit": 50,
+            "auto_queue": true,
+            "batch_size": 10
+        }
+        
+        Response:
+        {
+            "status": "success",
+            "drafts_created": 50,
+            "queued_for_approval": 50,
+            "errors": 0,
+            "contacts_processed": 50,
+            "segment": "chainge",
+            "duration_seconds": 45.2
+        }
+    """
+    try:
+        from src.campaigns.campaign_generator import create_campaign_generator
+        
+        logger.info(f"Campaign generation requested: segment={request.segment}, limit={request.limit}")
+        
+        # Validate segment
+        valid_segments = ["chainge", "high_value", "engaged", "cold", "all"]
+        if request.segment not in valid_segments:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid segment '{request.segment}'. Must be one of: {', '.join(valid_segments)}"
+            )
+        
+        # Create campaign generator
+        generator = create_campaign_generator()
+        
+        # Generate campaign
+        result = await generator.generate_for_segment(
+            segment_name=request.segment,
+            limit=request.limit,
+            auto_queue=request.auto_queue,
+            batch_size=request.batch_size
+        )
+        
+        logger.info(
+            f"Campaign generation completed: {result['drafts_created']} drafts, "
+            f"{result['errors']} errors, segment={request.segment}"
+        )
+        
+        return {
+            "status": "success",
+            **result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Campaign generation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Campaign generation failed: {str(e)}"
+        )
+
+
+@router.post("/generate/custom")
+async def generate_custom_campaign(
+    request: GenerateCustomCampaignRequest,
+    background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
+    """
+    Generate personalized email drafts for a custom contact list.
+    
+    This endpoint allows you to provide a custom list of contacts instead of
+    using pre-defined segments. Useful for targeted campaigns or custom lists.
+    
+    Example:
+        POST /api/campaigns/generate/custom
+        {
+            "contacts": [
+                {
+                    "email": "john@example.com",
+                    "firstname": "John",
+                    "lastname": "Doe",
+                    "company": "Example Corp",
+                    "jobtitle": "CEO",
+                    "hubspot_id": "12345"
+                },
+                ...
+            ],
+            "segment_name": "high_value",
+            "auto_queue": true,
+            "batch_size": 10
+        }
+        
+        Response:
+        {
+            "status": "success",
+            "drafts_created": 25,
+            "queued_for_approval": 25,
+            "errors": 0,
+            "contacts_processed": 25,
+            "segment": "custom_list",
+            "duration_seconds": 22.1
+        }
+    """
+    try:
+        from src.campaigns.campaign_generator import create_campaign_generator
+        
+        logger.info(f"Custom campaign generation requested: {len(request.contacts)} contacts")
+        
+        if not request.contacts:
+            raise HTTPException(
+                status_code=400,
+                detail="Contact list cannot be empty"
+            )
+        
+        if len(request.contacts) > 500:
+            raise HTTPException(
+                status_code=400,
+                detail="Contact list too large (max 500 contacts per request)"
+            )
+        
+        # Validate contacts have required fields
+        for i, contact in enumerate(request.contacts):
+            if not contact.get("email"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Contact at index {i} missing required 'email' field"
+                )
+        
+        # Create campaign generator
+        generator = create_campaign_generator()
+        
+        # Generate campaign
+        result = await generator.generate_for_contacts(
+            contact_list=request.contacts,
+            segment_name=request.segment_name,
+            auto_queue=request.auto_queue,
+            batch_size=request.batch_size
+        )
+        
+        logger.info(
+            f"Custom campaign generation completed: {result['drafts_created']} drafts, "
+            f"{result['errors']} errors"
+        )
+        
+        return {
+            "status": "success",
+            **result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Custom campaign generation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Custom campaign generation failed: {str(e)}"
+        )
+
+
+@router.get("/generate/segments")
+async def get_available_segments() -> Dict[str, Any]:
+    """
+    Get available contact segments for campaign generation.
+    
+    Returns information about each segment including:
+    - Segment name and description
+    - Number of contacts in each segment
+    - Template type used for the segment
+    
+    Example:
+        GET /api/campaigns/generate/segments
+        
+        Response:
+        {
+            "segments": [
+                {
+                    "name": "chainge",
+                    "description": "CHAINge NA attendees",
+                    "contact_count": 42,
+                    "template": "partnership_networking"
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        from src.hubspot_sync import get_sync_service
+        
+        sync_service = get_sync_service()
+        
+        segments = [
+            {
+                "name": "chainge",
+                "description": "CHAINge NA attendees - Partnership/networking focused emails",
+                "template": "partnership_networking",
+                "contact_count": len(sync_service.get_contacts(segment="chainge", limit=10000)["contacts"])
+            },
+            {
+                "name": "high_value",
+                "description": "High-value enterprise contacts - ROI/revenue focused emails",
+                "template": "enterprise_roi",
+                "contact_count": len(sync_service.get_contacts(segment="high_value", limit=10000)["contacts"])
+            },
+            {
+                "name": "engaged",
+                "description": "Recently active contacts - Follow-up and continuation emails",
+                "template": "engaged_followup",
+                "contact_count": len(sync_service.get_contacts(segment="engaged", limit=10000)["contacts"])
+            },
+            {
+                "name": "cold",
+                "description": "Inactive contacts - Re-engagement and reconnection emails",
+                "template": "reengagement",
+                "contact_count": len(sync_service.get_contacts(segment="cold", limit=10000)["contacts"])
+            },
+            {
+                "name": "all",
+                "description": "All contacts - Generic outreach emails",
+                "template": "generic_outreach",
+                "contact_count": len(sync_service.get_contacts(segment=None, limit=10000)["contacts"])
+            }
+        ]
+        
+        return {
+            "segments": segments,
+            "total_segments": len(segments)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get segment info: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get segment information: {str(e)}"
+        )
+
+
+@router.get("/generate/queue")
+async def get_campaign_queue() -> Dict[str, Any]:
+    """
+    Get status of the campaign draft approval queue.
+    
+    Returns all drafts pending operator approval from recent campaign generations.
+    
+    Example:
+        GET /api/campaigns/generate/queue
+        
+        Response:
+        {
+            "total_pending": 125,
+            "by_segment": {
+                "chainge": 50,
+                "high_value": 40,
+                "engaged": 20,
+                "cold": 15
+            },
+            "drafts": [
+                {
+                    "id": "draft-123",
+                    "recipient": "john@example.com",
+                    "subject": "Re: CHAINge NA — Partnership Opportunity",
+                    "status": "PENDING_APPROVAL",
+                    "created_at": "2026-01-23T10:30:00Z",
+                    "metadata": {
+                        "segment": "chainge",
+                        "campaign": "chainge_campaign_20260123"
+                    }
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        from src.operator_mode import get_draft_queue
+        
+        draft_queue = get_draft_queue()
+        pending = await draft_queue.get_pending_approvals()
+        
+        # Categorize by segment
+        by_segment: Dict[str, int] = {}
+        for draft in pending:
+            segment = draft.get("metadata", {}).get("segment", "unknown")
+            by_segment[segment] = by_segment.get(segment, 0) + 1
+        
+        return {
+            "total_pending": len(pending),
+            "by_segment": by_segment,
+            "drafts": pending[:100]  # Limit response size
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get campaign queue: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get campaign queue: {str(e)}"
+        )

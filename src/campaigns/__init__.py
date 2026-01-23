@@ -9,6 +9,15 @@ from .campaign_manager import (
     get_campaign_manager,
 )
 
+from .campaign_generator import (
+    CampaignGenerator,
+    CampaignSegment,
+    CampaignStats,
+    create_campaign_generator,
+    EMAIL_TEMPLATES,
+    INDUSTRY_PAIN_POINTS,
+)
+
 __all__ = [
     "CampaignManager",
     "Campaign",
@@ -16,4 +25,10 @@ __all__ = [
     "CampaignType",
     "CampaignMetrics",
     "get_campaign_manager",
+    "CampaignGenerator",
+    "CampaignSegment",
+    "CampaignStats",
+    "create_campaign_generator",
+    "EMAIL_TEMPLATES",
+    "INDUSTRY_PAIN_POINTS",
 ]
