@@ -157,20 +157,28 @@ class GmailConnector:
             logger.error(f"Error retrieving message {message_id}: {e}")
             return None
 
-    async def create_draft(self, to: str, subject: str, body: str) -> Optional[str]:
-        """Create a draft email (DRAFT_ONLY mode - NOT SENT)."""
+    async def create_draft(self, to: str, subject: str, body: str, from_email: Optional[str] = None) -> Optional[str]:
+        """Create a draft email (DRAFT_ONLY mode - NOT SENT).
+        
+        Args:
+            to: Recipient email
+            subject: Email subject
+            body: Email body
+            from_email: Sender email (defaults to GMAIL_DELEGATED_USER env var - casey.l@pesti.io)
+        """
         if not self.service:
             self._build_service()
 
         try:
             message = {
-                "raw": self._create_message(to, subject, body)
+                "raw": self._create_message(to, subject, body, from_email=from_email)
             }
             result = self.service.users().drafts().create(
                 userId="me", body={"message": message}
             ).execute()
             draft_id = result["id"]
-            logger.info(f"Created draft {draft_id} to {to} (DRAFT_ONLY - not sent)", subject=subject)
+            sender = from_email or os.environ.get("GMAIL_DELEGATED_USER", "me")
+            logger.info(f"Created draft {draft_id} from {sender} to {to} (DRAFT_ONLY - not sent)", subject=subject)
             return draft_id
         except Exception as e:
             logger.error(f"Error creating draft to {to}: {e}")
@@ -194,7 +202,7 @@ class GmailConnector:
             logger.error(f"Error sending message to {to}: {e}")
             return None
 
-    def _create_message(self, to: str, subject: str, body: str) -> str:
+    def _create_message(self, to: str, subject: str, body: str, from_email: Optional[str] = None) -> str:
         """Create a message in base64 format."""
         import base64
         from email.mime.text import MIMEText
@@ -202,5 +210,12 @@ class GmailConnector:
         message = MIMEText(body)
         message["to"] = to
         message["subject"] = subject
+        
+        # Set From header - defaults to delegated user (casey.l@pesti.io)
+        if from_email:
+            message["from"] = from_email
+        elif os.environ.get("GMAIL_DELEGATED_USER"):
+            message["from"] = os.environ.get("GMAIL_DELEGATED_USER")
+        
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
         return raw

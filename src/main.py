@@ -78,6 +78,7 @@ from src.routes import calls_routes
 from src.routes import email_tracking_routes
 from src.routes import roles_routes
 from src.routes import teams_routes
+from src.routes import queue as queue_routes
 from src.routes import custom_fields_routes
 from src.routes import tags_routes
 from src.routes import automation_routes
@@ -199,6 +200,7 @@ app = FastAPI(
 app.add_middleware(TraceIDMiddleware)
 
 # Include routers
+app.include_router(queue_routes.router)  # Morning email queue
 app.include_router(agents_routes.router)
 app.include_router(operator_routes.router)
 app.include_router(webhooks_routes.router)
