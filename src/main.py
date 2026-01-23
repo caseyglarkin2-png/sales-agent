@@ -367,6 +367,24 @@ if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
+@app.get("/integrations", include_in_schema=False)
+async def integrations_page():
+    """Serve integrations marketplace UI"""
+    integrations_html = os.path.join(static_dir, "integrations.html")
+    if os.path.exists(integrations_html):
+        return FileResponse(integrations_html)
+    return JSONResponse({"error": "Integrations page not found"}, status_code=404)
+
+
+@app.get("/integrations.html", include_in_schema=False)
+async def integrations_page_html():
+    """Serve integrations marketplace UI (with .html extension)"""
+    integrations_html = os.path.join(static_dir, "integrations.html")
+    if os.path.exists(integrations_html):
+        return FileResponse(integrations_html)
+    return JSONResponse({"error": "Integrations page not found"}, status_code=404)
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Run on application startup."""
