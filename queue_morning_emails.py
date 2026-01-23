@@ -139,15 +139,16 @@ async def generate_and_queue_drafts():
             subject = draft_result["subject"]
             body = draft_result["body"]
             
-            # Create Gmail draft (from casey.l@pesti.io)
-            gmail_draft_id = await gmail_connector.create_draft(
-                to=prospect["email"],
-                subject=subject,
-                body=body
-            )
+            # Skip Gmail draft creation - queue directly for operator approval
+            # (Gmail API not enabled in this project)
+            gmail_draft_id = None  # Will be created when approved
             
-            # Queue for operator approval
-            draft_id = await queue.create_draft(
+            # Queue for operator approval with unique draft_id
+            import uuid
+            draft_id = str(uuid.uuid4())
+            
+            await queue.create_draft(
+                draft_id=draft_id,
                 recipient=prospect["email"],
                 subject=subject,
                 body=body,
