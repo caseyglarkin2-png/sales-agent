@@ -174,6 +174,7 @@ from src.routes import sales_compensation_routes
 from src.routes import onboarding_workflows_routes
 from src.routes import voice_approval_routes
 from src.routes import voice_training_api
+from src.routes import pii_safety_api
 
 # Configure logging
 settings = get_settings()
@@ -279,6 +280,7 @@ app.include_router(outreach_routes.router)
 app.include_router(queue_routes.router)
 app.include_router(reporting_routes.router)
 app.include_router(voice_training_api.router)  # Voice training enhancement
+app.include_router(pii_safety_api.router)  # PII detection & safety validation
 app.include_router(auth_routes.router)
 app.include_router(commands_routes.router)
 app.include_router(partner_portal_routes.router)

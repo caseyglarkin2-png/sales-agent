@@ -10,6 +10,7 @@ from openai import AsyncOpenAI
 
 from src.logger import get_logger
 from src.voice_profile import VoiceProfile, get_voice_profile
+from src.pii_detector import PIISafetyValidator
 
 logger = get_logger(__name__)
 
@@ -17,11 +18,18 @@ logger = get_logger(__name__)
 class DraftGenerator:
     """Generates email drafts using OpenAI."""
     
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize draft generator."""
+    def __init__(self, api_key: Optional[str] = None, enable_pii_check: bool = True):
+        """Initialize draft generator.
+        
+        Args:
+            api_key: OpenAI API key
+            enable_pii_check: Enable PII safety validation
+        """
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
         self.model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+        self.enable_pii_check = enable_pii_check
+        self.pii_validator = PIISafetyValidator(strict_mode=False) if enable_pii_check else None
     
     async def generate_draft(
         self,
@@ -82,6 +90,23 @@ class DraftGenerator:
             content = response.choices[0].message.content
             subject, body = self._parse_response(content)
             
+            # PII safety check
+            if self.enable_pii_check and self.pii_validator:
+                full_email = f"{subject}\n\n{body}"
+                safety_result = self.pii_validator.validate(full_email, context="email_draft")
+                
+                if not safety_result["safe"]:
+                    logger.warning(f"PII detected in draft for {prospect_email}: {safety_result['warnings']}")
+                    return {
+                        "subject": subject,
+                        "body": body,
+                        "model": self.model,
+                        "tokens_used": response.usage.total_tokens if response.usage else 0,
+                        "voice_profile": profile.name,
+                        "pii_safety": safety_result,
+                        "blocked": not safety_result["safe"],
+                    }
+            
             logger.info(f"Generated draft for {prospect_email}")
             return {
                 "subject": subject,
@@ -89,6 +114,8 @@ class DraftGenerator:
                 "model": self.model,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
                 "voice_profile": profile.name,
+                "pii_safety": safety_result if self.enable_pii_check else None,
+                "blocked": False,
             }
         
         except Exception as e:
