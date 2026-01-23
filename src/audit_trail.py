@@ -308,3 +308,32 @@ class AuditTrail:
             metadata=metadata,
         )
         event.log()
+
+
+# Convenience function for GDPR/admin use
+async def log_audit_event(
+    action: str,
+    resource_type: str,
+    resource_id: str,
+    details: Optional[Dict[str, Any]] = None,
+    admin_id: Optional[str] = None,
+) -> None:
+    """
+    Log an audit event for GDPR/admin actions.
+    
+    Args:
+        action: Action performed (e.g., "gdpr_delete", "admin_override")
+        resource_type: Type of resource (e.g., "user", "draft")
+        resource_id: Resource identifier (e.g., email address)
+        details: Additional details
+        admin_id: Admin user who performed action
+    """
+    event = AuditEvent(
+        event_type=action,
+        actor=admin_id or "system",
+        resource=f"{resource_type}:{resource_id}",
+        action=action,
+        details=details or {},
+    )
+    event.log()
+

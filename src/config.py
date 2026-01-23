@@ -115,6 +115,14 @@ class Settings(BaseSettings):
     # Auto-Approval (Sprint 4)
     auto_approve_enabled: bool = Field(default=True, alias="AUTO_APPROVE_ENABLED", description="Enable auto-approval rules engine")
     
+    # Security (Sprint 6)
+    admin_password: str = Field(default="", alias="ADMIN_PASSWORD", description="Admin password for sensitive operations")
+    
+    # Sentry (Sprint 6 - Task 6.4)
+    sentry_dsn: str = Field(default="", alias="SENTRY_DSN", description="Sentry DSN for error tracking")
+    sentry_environment: str = Field(default="development", alias="SENTRY_ENVIRONMENT", description="Sentry environment")
+    sentry_traces_sample_rate: float = Field(default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE", description="Sentry tracing rate")
+    
     # Expose uppercase versions for feature flag manager
     @property
     def API_ENV(self) -> str:

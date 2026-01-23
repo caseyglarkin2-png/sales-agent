@@ -40,6 +40,9 @@ youtube-transcript-api>=0.6.1
 # Logging
 structlog>=23.1.0
 
+# Error Tracking (Sprint 6 - Task 6.4)
+sentry-sdk[fastapi]>=1.40.0
+
 # Testing (needed for smoke tests in production)
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

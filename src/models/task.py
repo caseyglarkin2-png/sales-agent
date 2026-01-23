@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from sqlalchemy import String
+from sqlalchemy import String, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db import Base
@@ -24,9 +24,9 @@ class FailedTask(Base):
         String(50), nullable=False
     )  # e.g., 'formlead', 'email_send'
 
-    # Task data
+    # Task data - use JSON type for Dict column
     payload: Mapped[Dict[str, Any]] = mapped_column(
-        "payload",
+        JSON,
         comment="Original task payload that failed",
     )
     error: Mapped[str] = mapped_column(String(2000), nullable=False)

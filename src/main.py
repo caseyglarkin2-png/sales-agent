@@ -11,6 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from src.config import get_settings
 from src.logger import configure_logging, get_logger
 from src.middleware import TraceIDMiddleware
+from src.security.middleware import CSRFMiddleware, SecurityHeaderMiddleware
+from src.sentry_integration import init_sentry
+from src.shutdown import register_shutdown_handlers
 from src.routes import agents as agents_routes
 from src.routes import operator as operator_routes
 from src.routes import webhooks as webhooks_routes
@@ -98,6 +101,9 @@ from src.routes import queue_routes
 from src.routes import reporting_routes
 from src.routes import auth_routes
 from src.routes import commands_routes
+from src.routes import gdpr
+from src.routes import circuit_breakers
+from src.routes import health
 from src.routes import partner_portal_routes
 from src.routes import meeting_intelligence_routes
 from src.routes import revenue_intelligence_routes
@@ -191,6 +197,9 @@ configure_logging(log_level=settings.log_level, log_format=settings.log_format)
 
 logger = get_logger(__name__)
 
+# Initialize Sentry for error tracking (Sprint 6 - Task 6.4)
+init_sentry()
+
 # Create FastAPI app
 app = FastAPI(
     title="Sales Agent",
@@ -198,16 +207,24 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Register graceful shutdown handlers (Sprint 6 - Task 6.7)
+register_shutdown_handlers(app)
+
 # Add middleware
+app.add_middleware(SecurityHeaderMiddleware)  # Security headers (X-* headers)
+app.add_middleware(CSRFMiddleware)  # CSRF protection on POST/PUT/DELETE
 app.add_middleware(TraceIDMiddleware)
 
 # Include routers
+app.include_router(health.router)  # Sprint 6: Health check endpoints
 app.include_router(queue_routes.router)  # Morning email queue
 app.include_router(agents_routes.router)
 app.include_router(operator_routes.router)
 app.include_router(webhooks_routes.router)
 app.include_router(celery_tasks.router)  # Sprint 2: Async task management
 app.include_router(admin.router)  # Sprint 4: Admin controls + emergency kill switch
+app.include_router(gdpr.router)  # Sprint 6: GDPR data deletion + retention
+app.include_router(circuit_breakers.router)  # Sprint 6: Circuit breaker monitoring
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)

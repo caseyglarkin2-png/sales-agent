@@ -46,4 +46,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_db", "Base"]
+# Alias for backward compatibility with GDPR module
+SessionLocal = async_sessionmaker
+
+
+__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_db", "Base", "SessionLocal"]

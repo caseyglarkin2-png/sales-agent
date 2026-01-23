@@ -2,7 +2,7 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from src.config import get_settings
 from src.db import get_db
 from src.logger import get_logger
 from src.models.auto_approval import ApprovedRecipient, AutoApprovalRule
+from src.security.auth import require_admin_role
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -25,8 +26,7 @@ _KILL_SWITCH_ACTIVE = False
 class EmergencyStopRequest(BaseModel):
     """Request to activate emergency kill switch."""
 
-    admin_password: str
-    reason: str
+    reason: str = "Emergency intervention required"
 
 
 class EmergencyStopResponse(BaseModel):
@@ -38,12 +38,17 @@ class EmergencyStopResponse(BaseModel):
 
 
 @router.post("/emergency-stop", response_model=EmergencyStopResponse)
-async def emergency_stop(request: EmergencyStopRequest) -> EmergencyStopResponse:
+async def emergency_stop(
+    request: Request,
+    stop_request: EmergencyStopRequest,
+) -> EmergencyStopResponse:
     """
     Emergency kill switch - disable all auto-approval immediately.
 
-    Requires admin password for security. Sets AUTO_APPROVE_ENABLED=false globally,
-    forcing all drafts to go through manual operator review.
+    Requires X-Admin-Token header with admin password (moved to header for security).
+    Also validates CSRF token (X-CSRF-Token header).
+
+    Sets AUTO_APPROVE_ENABLED=false globally, forcing all drafts to go through manual review.
 
     Use when:
     - Bad rule is auto-approving incorrectly
@@ -51,29 +56,24 @@ async def emergency_stop(request: EmergencyStopRequest) -> EmergencyStopResponse
     - Need immediate control
 
     Args:
-        request: Emergency stop request with admin password and reason
+        request: FastAPI request (for auth validation)
+        stop_request: Emergency stop request with reason
 
     Returns:
         Response indicating kill switch status
 
     Raises:
-        HTTPException: If admin password is incorrect
+        HTTPException: If admin token is invalid
 
     Example:
         POST /api/admin/emergency-stop
+        Headers: X-Admin-Token: your_admin_password
         {
-            "admin_password": "secret123",
             "reason": "Bad rule approving spam emails"
         }
     """
-    # Verify admin password
-    expected_password = os.getenv("ADMIN_PASSWORD", "change_me_in_production")
-    if request.admin_password != expected_password:
-        logger.warning("Failed emergency stop attempt - invalid password")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid admin password",
-        )
+    # Verify admin authentication
+    await require_admin_role(request)
 
     global _KILL_SWITCH_ACTIVE
     _KILL_SWITCH_ACTIVE = True
@@ -83,19 +83,20 @@ async def emergency_stop(request: EmergencyStopRequest) -> EmergencyStopResponse
 
     logger.critical(
         "EMERGENCY STOP ACTIVATED - Auto-approval disabled",
-        reason=request.reason,
+        reason=stop_request.reason,
+        admin_ip=request.client.host if request.client else "unknown",
     )
 
     # TODO: Send email/Slack alert to operations team
     # await send_alert(
     #     subject="EMERGENCY: Auto-Approval Disabled",
-    #     message=f"Emergency stop activated. Reason: {request.reason}",
+    #     message=f"Emergency stop activated. Reason: {stop_request.reason}",
     #     severity="critical"
     # )
 
     return EmergencyStopResponse(
         status="emergency_stop_active",
-        message=f"Auto-approval disabled. Reason: {request.reason}. All drafts will require manual review.",
+        message=f"Auto-approval disabled. Reason: {stop_request.reason}. All drafts will require manual review.",
         auto_approve_disabled=True,
     )
 

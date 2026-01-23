@@ -12,7 +12,9 @@ from src.db import get_db
 from src.formlead_orchestrator import create_formlead_orchestrator
 from src.logger import get_logger
 from src.models.workflow import Workflow, WorkflowStatus, WorkflowMode
-from src.tasks import app
+
+# Import Celery app from celery_app.py (the actual Celery configuration file)
+from src.celery_app import celery_app as app
 
 logger = get_logger(__name__)
 settings = get_settings()

@@ -386,7 +386,7 @@ class GmailConnector:
             raise Exception("Failed to refresh OAuth token before sending email")
         
         # Build RFC 2822 compliant MIME message
-        from src.email.mime_builder import build_mime_message
+        from src.email_utils.mime_builder import build_mime_message
         
         mime_message = build_mime_message(
             from_email=from_email,

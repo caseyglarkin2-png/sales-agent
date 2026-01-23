@@ -3,12 +3,13 @@ Auth Routes - Authentication and authorization management
 """
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query, Header, Depends
+from fastapi import APIRouter, HTTPException, Query, Header, Depends, Request
 from pydantic import BaseModel, Field, EmailStr
 from enum import Enum
 import structlog
 import secrets
 import hashlib
+from src.rate_limiter import rate_limit
 
 logger = structlog.get_logger()
 
@@ -133,9 +134,11 @@ def generate_token(length: int = 32) -> str:
 
 
 @router.post("/register")
+@rate_limit(max_requests=5, window_seconds=60)
 async def register(
     request: RegisterRequest,
-    tenant_id: str = Query(default="default")
+    tenant_id: str = Query(default="default"),
+    http_request: Request = None
 ):
     """Register a new user"""
     import uuid
@@ -187,10 +190,12 @@ async def register(
 
 
 @router.post("/login")
+@rate_limit(max_requests=10, window_seconds=60)
 async def login(
     request: LoginRequest,
     user_agent: Optional[str] = Header(None),
-    tenant_id: str = Query(default="default")
+    tenant_id: str = Query(default="default"),
+    http_request: Request = None
 ):
     """Authenticate user and create session"""
     import uuid
@@ -365,9 +370,11 @@ async def refresh_token(request: TokenRefresh):
 
 
 @router.post("/password/reset-request")
+@rate_limit(max_requests=5, window_seconds=300)
 async def request_password_reset(
     request: PasswordResetRequest,
-    tenant_id: str = Query(default="default")
+    tenant_id: str = Query(default="default"),
+    http_request: Request = None
 ):
     """Request password reset"""
     # Find user

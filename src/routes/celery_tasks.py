@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db import get_db
 from src.logger import get_logger
 from src.models.task import FailedTask
-from src.tasks import app as celery_app
+from src.celery_app import celery_app
 from celery.result import AsyncResult
 
 logger = get_logger(__name__)

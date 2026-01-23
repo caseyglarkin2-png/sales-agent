@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from enum import Enum
 
 from src.logger import get_logger
-from src.email.email_safety import check_email_safety
+from src.email_utils.email_safety import check_email_safety
 from src.rate_limiter import get_rate_limiter
 
 logger = get_logger(__name__)

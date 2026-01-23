@@ -168,7 +168,8 @@ class AutoApprovalLog(Base):
     reasoning: Mapped[Optional[str]] = mapped_column(
         Text, comment="Human-readable explanation of decision"
     )
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    # Note: 'metadata' is reserved by SQLAlchemy, use 'decision_metadata' instead
+    decision_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSONB, comment="Additional context (e.g., ICP score, reply history)"
     )
 

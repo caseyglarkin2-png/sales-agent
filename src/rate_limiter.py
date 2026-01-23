@@ -1,6 +1,8 @@
 """Rate limiting and quota management for operator mode."""
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, Optional
+from functools import wraps
+from fastapi import HTTPException
 
 from src.logger import get_logger
 
@@ -117,3 +119,133 @@ def get_rate_limiter() -> RateLimiter:
             max_emails_per_week=settings.max_emails_per_week,
         )
     return _rate_limiter
+
+
+class EndpointRateLimiter:
+    """Rate limit specific endpoints based on client IP or user ID."""
+
+    def __init__(self):
+        """Initialize endpoint rate limiter."""
+        self.limits: Dict[str, list] = {}  # {key: [timestamps]}
+
+    def check_rate_limit(
+        self, 
+        key: str, 
+        max_requests: int, 
+        window_seconds: int
+    ) -> tuple[bool, Optional[float]]:
+        """
+        Check if request is within rate limit.
+        
+        Args:
+            key: Unique identifier (e.g., IP address, user ID)
+            max_requests: Max requests allowed in window
+            window_seconds: Time window in seconds
+            
+        Returns:
+            (is_allowed, retry_after_seconds)
+        """
+        now = datetime.utcnow()
+        cutoff = now - timedelta(seconds=window_seconds)
+        
+        # Clean old requests
+        if key not in self.limits:
+            self.limits[key] = []
+        
+        self.limits[key] = [t for t in self.limits[key] if t > cutoff]
+        
+        # Check limit
+        if len(self.limits[key]) >= max_requests:
+            # Calculate retry-after
+            oldest = min(self.limits[key])
+            retry_after = (oldest + timedelta(seconds=window_seconds) - now).total_seconds()
+            return False, max(1, retry_after)
+        
+        # Add current request
+        self.limits[key].append(now)
+        return True, None
+
+    def cleanup_old_keys(self, max_age_minutes: int = 60) -> None:
+        """Remove old keys from memory."""
+        cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
+        keys_to_remove = []
+        
+        for key, timestamps in self.limits.items():
+            active_timestamps = [t for t in timestamps if t > cutoff]
+            if not active_timestamps:
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del self.limits[key]
+
+
+# Global endpoint rate limiter
+_endpoint_limiter: Optional[EndpointRateLimiter] = None
+
+
+def get_endpoint_rate_limiter() -> EndpointRateLimiter:
+    """Get or create global endpoint rate limiter."""
+    global _endpoint_limiter
+    if _endpoint_limiter is None:
+        _endpoint_limiter = EndpointRateLimiter()
+    return _endpoint_limiter
+
+
+def rate_limit(max_requests: int, window_seconds: int):
+    """
+    Decorator for rate limiting endpoints.
+    
+    Args:
+        max_requests: Maximum requests allowed per client
+        window_seconds: Time window in seconds
+        
+    Example:
+        @rate_limit(max_requests=10, window_seconds=60)
+        async def my_endpoint(request: Request):
+            pass
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Try to find Request object in kwargs or args
+            request = kwargs.get('http_request')
+            
+            if request is None:
+                # Try to find it in args
+                from fastapi import Request as FastAPIRequest
+                for arg in args:
+                    if isinstance(arg, FastAPIRequest):
+                        request = arg
+                        break
+            
+            # Apply rate limiting if we have a request
+            if request:
+                try:
+                    client_ip = request.client.host if request.client else "unknown"
+                    limiter = get_endpoint_rate_limiter()
+                    allowed, retry_after = limiter.check_rate_limit(
+                        key=f"{client_ip}:{func.__name__}",
+                        max_requests=max_requests,
+                        window_seconds=window_seconds,
+                    )
+                    
+                    if not allowed:
+                        logger.warning(
+                            f"Rate limit exceeded for {client_ip} on {func.__name__}",
+                            retry_after=retry_after,
+                        )
+                        raise HTTPException(
+                            status_code=429,
+                            detail="Too many requests",
+                            headers={"Retry-After": str(int(retry_after))},
+                        )
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    logger.error(f"Rate limiting error: {e}")
+                    # Don't block requests on rate limiter errors
+            
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
