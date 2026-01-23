@@ -187,6 +187,11 @@ IMPORTANT:
         if asset_link:
             parts.append(f"\nInclude this relevant resource: {asset_link}")
         
+        # Add calendar link instruction if available
+        if profile.calendar_link:
+            parts.append(f"\nINCLUDE THIS CALENDAR LINK in the signature or as a clear CTA: {profile.calendar_link}")
+            parts.append("(Make it easy for them to book time directly)")
+        
         return "\n".join(parts)
     
     def _parse_response(self, content: str) -> tuple[str, str]:

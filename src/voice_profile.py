@@ -26,6 +26,7 @@ class VoiceProfile:
     max_paragraphs: int = 3
     include_ps: bool = True
     signature_style: str = "Best regards"
+    calendar_link: Optional[str] = None  # HubSpot/Calendly link for booking
     
     # Prohibited patterns
     prohibited_words: List[str] = field(default_factory=lambda: [
@@ -48,6 +49,7 @@ class VoiceProfile:
     
     def to_prompt_context(self) -> str:
         """Generate prompt context for LLM."""
+        calendar_context = f"\nCalendar Link: {self.calendar_link} (include in signature or CTA)" if self.calendar_link else ""
         return f"""
 Voice Profile: {self.name}
 Tone: {self.tone}
@@ -59,7 +61,7 @@ Writing Rules:
 - Include P.S.: {'Yes' if self.include_ps else 'No'}
 - Sign off with: "{self.signature_style}"
 - Single CTA only: {'Yes' if self.single_cta else 'No'}
-- CTA style: {self.cta_style}
+- CTA style: {self.cta_style}{calendar_context}
 
 PROHIBITED (never use):
 - Words: {', '.join(self.prohibited_words)}
@@ -86,11 +88,14 @@ DEFAULT_PROFILES: Dict[str, VoiceProfile] = {
             "Pesti helps companies with field marketing, lead generation, nurturing, and ABM",
             "Connect marketing and sales to enable real GTM functions",
             "Tailor messaging to persona: events=field marketing, demand gen=leads/velocity, sales=target accounts",
+            "Keep it concise and actionable",
+            "End with clear next step (usually calendar link)",
         ],
         use_contractions=True,
         max_paragraphs=3,
         include_ps=True,
-        signature_style="Best,\nCasey",
+        signature_style="Best,\n\nCasey Larkin\nCEO, Pesti\n\nBook time: https://meetings.hubspot.com/casey-larkin",
+        calendar_link="https://meetings.hubspot.com/casey-larkin",
         single_cta=True,
         cta_style="question",
         slot_count=3,
