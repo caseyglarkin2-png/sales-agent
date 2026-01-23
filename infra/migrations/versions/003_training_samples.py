@@ -12,7 +12,7 @@ from datetime import datetime
 
 # revision identifiers, used by Alembic.
 revision = '003'
-down_revision = None  # No dependency on 002 since it may not exist
+down_revision = '002_workflow_persistence'  # Chain after workflow persistence migration
 branch_labels = None
 depends_on = None
 
