@@ -25,7 +25,7 @@ def upgrade():
         sa.Column("urgency_score", sa.Float(), nullable=False, server_default="0.0"),
         sa.Column("effort_score", sa.Float(), nullable=False, server_default="0.0"),
         sa.Column("strategic_score", sa.Float(), nullable=False, server_default="0.0"),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("recommendation_metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("generated_at", sa.DateTime(), nullable=False),
     )
 

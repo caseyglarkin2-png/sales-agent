@@ -24,7 +24,7 @@ class ActionRecommendation(Base):
     effort_score: Mapped[float] = mapped_column(Float, default=0.0)
     strategic_score: Mapped[float] = mapped_column(Float, default=0.0)
 
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    recommendation_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
     generated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
 
