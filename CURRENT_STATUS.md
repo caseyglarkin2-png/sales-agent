@@ -159,10 +159,11 @@ alembic downgrade -1
 **Files:**
 - Modify: `src/config.py` (+30 lines - add mode flags + validation)
 - Modify: `src/connectors/gmail.py` (+10 lines - check mode before send)
-- Modify: `src/audit_trail.py` (+20 lines - log mode changes)
-- Create: `src/feature_flags.py` (100 lines - flag manager class)
-- Create: `tests/unit/test_feature_flags.py` (100 lines)
+- Create: `src/feature_flags.py` (150 lines - flag manager + runtime toggle)
+- Create: `src/routes/admin_flags.py` (80 lines - admin endpoints for kill switch)
+- Create: `tests/unit/test_feature_flags.py` (120 lines)
 - Modify: `.env.example` (+5 lines - document new flags)
+- Create: `docs/FEATURE_FLAGS.md` (100 lines - kill switch procedure)
 
 **Contracts:**
 - **Config fields:**
@@ -205,12 +206,16 @@ pytest tests/unit/test_feature_flags.py -v
 1. SEND mode blocked in non-production environments
 2. SEND mode requires all 3 flags set correctly
 3. Gmail/HubSpot connectors check mode before sending
-4. Mode changes logged to audit trail
-5. Tests verify all validation scenarios
-6. Backwards compatible (existing DRAFT_ONLY code works)
+4. Runtime kill switch endpoint (`POST /api/admin/flags/send-mode/disable`) works without restart
+5. Mode changes logged with operator attribution (who/when/why)
+6. Tests verify all validation scenarios including emergency shutoff
+7. Backwards compatible (existing DRAFT_ONLY code works)
+8. Circuit breaker prevents SEND mode if error rate > 10% in last hour
 
 **Rollback:**
-Set `MODE_DRAFT_ONLY=true` in env vars and restart
+1. **Emergency:** `POST /api/admin/flags/send-mode/disable` (no restart needed)
+2. **Permanent:** Set `MODE_DRAFT_ONLY=true` in env vars and restart
+3. **Verification:** `curl http://localhost:8000/api/admin/flags/send-mode` shows disabled
 
 ---
 
@@ -289,10 +294,11 @@ pytest tests/integration/test_webhook_receiver.py -v
 1. Endpoint accepts valid HubSpot webhooks
 2. Signature validation works (pass/fail scenarios tested)
 3. Form submission stored in database
-4. Duplicate submissions detected and handled
-5. Returns 202 immediately (doesn't block)
+4. **Duplicate submissions return 409 Conflict with idempotency key** (definitive behavior)
+5. Returns 202 Accepted immediately (doesn't block)
 6. Integration tests cover happy path + error cases
 7. Documentation explains HubSpot setup
+8. Metrics tracked: webhook_received_total, webhook_rejected_total, webhook_duplicates_total
 
 **Rollback:**
 Remove route registration from `src/main.py` or set feature flag to disable webhook processing
@@ -363,13 +369,18 @@ pytest tests/integration/test_celery_tasks.py -v
 1. Celery worker starts and connects to Redis
 2. `process_workflow_task` executes formlead orchestrator
 3. Workflow status updates in database
-4. Retries on transient failures (3 attempts)
-5. Failed tasks stored to errors table
+4. Retries on transient failures (3 attempts with exponential backoff)
+5. Failed tasks stored to errors table AND dead-letter queue
 6. Integration tests verify async processing
 7. Works in docker-compose stack
+8. Metrics tracked: task_duration_seconds, task_retry_count, task_failure_total
+9. Queue flush procedure documented for rollback (`celery -A src.celery_app purge`)
 
 **Rollback:**
-Stop celery worker, disable webhook queuing (comment out `queue_workflow_processing()` call)
+1. Stop celery worker: `docker compose stop celery`
+2. Flush queue: `celery -A src.celery_app purge -f` (removes in-flight tasks)
+3. Disable webhook queuing: comment out `queue_workflow_processing()` call
+4. Restart API without Celery dependency
 
 ---
 
