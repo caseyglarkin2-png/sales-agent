@@ -109,7 +109,11 @@ class Settings(BaseSettings):
     MODE_DRAFT_ONLY: bool = Field(default=True, alias="MODE_DRAFT_ONLY", description="Enable DRAFT_ONLY mode (emails saved as drafts, not sent)")
     ALLOW_AUTO_SEND: bool = Field(default=False, alias="ALLOW_AUTO_SEND", description="Allow auto-send (overrides DRAFT_ONLY if True)")
     REQUIRE_APPROVAL: bool = Field(default=True, alias="REQUIRE_APPROVAL", description="Require operator approval for any send")
+    ALLOW_REAL_SENDS: bool = Field(default=False, alias="ALLOW_REAL_SENDS", description="Feature flag to allow real email sends (overrides draft-only)")
     approval_timeout_hours: int = Field(default=24, alias="APPROVAL_TIMEOUT_HOURS", description="Hours to keep draft for approval")
+    
+    # Auto-Approval (Sprint 4)
+    auto_approve_enabled: bool = Field(default=True, alias="AUTO_APPROVE_ENABLED", description="Enable auto-approval rules engine")
     
     # Expose uppercase versions for feature flag manager
     @property

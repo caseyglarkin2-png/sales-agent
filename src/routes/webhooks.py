@@ -4,12 +4,14 @@ Receives form submissions from HubSpot and initiates the prospecting workflow.
 """
 import asyncio
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from src.logger import get_logger
 from src.formlead_orchestrator import create_formlead_orchestrator
+from src.tasks.formlead_task import process_formlead_async
 
 logger = get_logger(__name__)
 
@@ -171,33 +173,48 @@ async def hubspot_form_submission(payload: FormSubmissionPayload) -> dict[str, A
         "fieldValues": [{"name": f.name, "value": f.value} for f in payload.fieldValues],
     }
 
-    # Process the form lead through the orchestrator
+    # Generate workflow ID for tracking
+    workflow_id = f"form-lead-{uuid4()}"
+
+    # Queue the form lead processing as async task
     try:
-        orchestrator = create_formlead_orchestrator()
-        result = await orchestrator.process_formlead(form_data)
-        
-        logger.info(
-            "Form lead processed",
-            workflow_id=result.get("workflow_id"),
-            status=result.get("final_status"),
+        # Use .apply_async to get task ID immediately
+        task = process_formlead_async.apply_async(
+            args=(form_data,),
+            kwargs={"workflow_id": workflow_id},
+            task_id=workflow_id,  # Use workflow ID as task ID for correlation
         )
-        
+
+        logger.info(
+            "Form lead task queued",
+            task_id=task.id,
+            workflow_id=workflow_id,
+            email=email,
+        )
+
         return {
             "status": "accepted",
             "submission_id": payload.formSubmissionId,
             "email": email,
-            "workflow_id": result.get("workflow_id"),
-            "workflow_status": result.get("final_status"),
-            "message": "Form submission processed in DRAFT_ONLY mode",
+            "workflow_id": workflow_id,
+            "task_id": task.id,
+            "message": "Form submission queued for processing",
+            "status_url": f"/api/tasks/{workflow_id}/status",
         }
     except Exception as e:
-        logger.error(f"Error processing form lead: {e}")
+        logger.error(
+            "Error queueing form lead task",
+            workflow_id=workflow_id,
+            email=email,
+            exc_info=True,
+        )
         # Still return 202 to avoid HubSpot retry storms
         return {
             "status": "accepted",
             "submission_id": payload.formSubmissionId,
             "email": email,
-            "message": "Form submission queued for retry",
+            "workflow_id": workflow_id,
+            "message": "Form submission queued but may have failed",
             "error": str(e),
         }
 

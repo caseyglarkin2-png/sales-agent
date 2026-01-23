@@ -230,6 +230,19 @@ class FormleadOrchestrator:
             self.context["steps"]["create_draft"] = {"status": "success", "draft_id": draft_id, "mode": "DRAFT_ONLY"}
             self.context["steps"]["create_task"] = {"status": "success", "task_id": hubspot_task.get("task_id")}
 
+            # Step 10.5: Evaluate for auto-approval (Sprint 4)
+            logger.info("Step 10.5: Evaluating draft for auto-approval")
+            auto_approval_result = await self._evaluate_auto_approval(
+                draft_id=draft_id,
+                recipient_email=prospect_data.get("email", ""),
+                draft_metadata={
+                    "icp_score": prospect_data.get("icp_score", 0.0),
+                    "domain": prospect_data.get("company_domain"),
+                    "company": prospect_data.get("company"),
+                },
+            )
+            self.context["steps"]["auto_approval"] = auto_approval_result
+
             # Step 11: Label thread (or create label) and audit log
             logger.info("Step 11: Labeling thread and creating audit event")
             if threads:
@@ -434,6 +447,113 @@ class FormleadOrchestrator:
         except Exception as e:
             logger.error(f"Error creating Gmail draft: {e}")
             return f"draft-error-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+
+    async def _evaluate_auto_approval(
+        self,
+        draft_id: str,
+        recipient_email: str,
+        draft_metadata: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Evaluate draft for auto-approval (Sprint 4).
+
+        Checks auto-approval rules and auto-sends if approved.
+        Never auto-rejects - borderline cases go to manual review.
+
+        Args:
+            draft_id: Draft identifier
+            recipient_email: Recipient email address
+            draft_metadata: Draft context (ICP score, domain, etc.)
+
+        Returns:
+            Dict with evaluation results
+        """
+        from src.auto_approval import AutoApprovalEngine
+        from src.config import get_settings
+        from src.db import get_db
+
+        settings = get_settings()
+
+        try:
+            async with get_db() as session:
+                engine = AutoApprovalEngine(session)
+                
+                decision, rule_id, confidence, reasoning = await engine.evaluate_draft(
+                    draft_id=draft_id,
+                    recipient_email=recipient_email,
+                    draft_metadata=draft_metadata,
+                )
+
+                logger.info(
+                    f"Auto-approval decision: {decision}",
+                    draft_id=draft_id,
+                    decision=decision.value,
+                    rule_id=rule_id,
+                    confidence=confidence,
+                )
+
+                # If auto-approved AND real sends enabled, send immediately
+                if decision.value == "auto_approved" and settings.allow_real_sends:
+                    try:
+                        from src.operator_mode import get_draft_queue
+                        queue = get_draft_queue()
+                        
+                        # Auto-approve the draft
+                        approve_result = await queue.approve_draft(
+                            draft_id=draft_id,
+                            approved_by="auto_approval_engine",
+                        )
+
+                        if approve_result.get("success"):
+                            # Send the draft
+                            send_result = await queue.send_draft(
+                                draft_id=draft_id,
+                                approved_by="auto_approval_engine",
+                            )
+
+                            if send_result.get("success"):
+                                logger.info(
+                                    f"Draft auto-sent successfully",
+                                    draft_id=draft_id,
+                                    message_id=send_result.get("message_id"),
+                                )
+                                return {
+                                    "status": "auto_sent",
+                                    "decision": decision.value,
+                                    "rule_id": rule_id,
+                                    "confidence": confidence,
+                                    "reasoning": reasoning,
+                                    "message_id": send_result.get("message_id"),
+                                }
+                            else:
+                                logger.warning(
+                                    f"Auto-approval succeeded but send failed",
+                                    draft_id=draft_id,
+                                    error=send_result.get("error"),
+                                )
+                    except Exception as send_error:
+                        logger.error(
+                            f"Error auto-sending draft",
+                            draft_id=draft_id,
+                            exc_info=True,
+                        )
+
+                # Draft approved but not sent (ALLOW_REAL_SENDS=false or needs review)
+                return {
+                    "status": "evaluated",
+                    "decision": decision.value,
+                    "rule_id": rule_id,
+                    "confidence": confidence,
+                    "reasoning": reasoning,
+                }
+
+        except Exception as e:
+            logger.error(f"Error evaluating auto-approval", draft_id=draft_id, exc_info=True)
+            return {
+                "status": "error",
+                "decision": "needs_review",
+                "error": str(e),
+            }
 
     async def _create_hubspot_task(
         self,

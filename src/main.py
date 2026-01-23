@@ -178,6 +178,8 @@ from src.routes import onboarding_workflows_routes
 from src.routes import voice_approval_routes
 from src.routes import voice_training_api
 from src.routes import pii_safety_api
+from src.routes import celery_tasks
+from src.routes import admin
 from src.routes import quota_api
 from src.routes import analytics_api
 from src.routes import debug_api
@@ -204,6 +206,8 @@ app.include_router(queue_routes.router)  # Morning email queue
 app.include_router(agents_routes.router)
 app.include_router(operator_routes.router)
 app.include_router(webhooks_routes.router)
+app.include_router(celery_tasks.router)  # Sprint 2: Async task management
+app.include_router(admin.router)  # Sprint 4: Admin controls + emergency kill switch
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)

@@ -448,7 +448,38 @@ class WorkflowDB:
             except Exception as e:
                 logger.error(f"Error updating draft status: {e}")
                 return False
-    
+
+    async def record_draft_send(
+        self,
+        draft_id: str,
+        metadata: Dict[str, Any],
+        approved_by: Optional[str] = None,
+    ) -> bool:
+        """Persist send metadata and mark draft as sent."""
+        async with self.get_connection() as conn:
+            if not conn:
+                return False
+
+            try:
+                result = await conn.execute(
+                    """
+                    UPDATE pending_drafts
+                    SET status = 'sent',
+                        sent_at = NOW(),
+                        approved_by = COALESCE($3, approved_by),
+                        metadata = $2,
+                        updated_at = NOW()
+                    WHERE draft_id = $1
+                    """,
+                    draft_id,
+                    metadata,
+                    approved_by,
+                )
+                return "UPDATE 1" in result
+            except Exception as e:
+                logger.error(f"Error recording draft send: {e}")
+                return False
+
     async def get_draft_by_id(self, draft_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific pending draft by ID."""
         async with self.get_connection() as conn:
