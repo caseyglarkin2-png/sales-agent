@@ -152,6 +152,9 @@ from src.routes import proposal_templates_routes
 from src.routes import sales_objections_routes
 from src.routes import sales_contests_routes
 from src.routes import commission_calculator_routes
+from src.routes import customer_health_routes
+from src.routes import pricing_engine_routes
+from src.routes import proposal_generator_routes
 from src.routes import territory_mapping_routes
 from src.routes import lead_enrichment_v2_routes
 from src.routes import sales_forecasting_ai_routes
@@ -338,6 +341,13 @@ app.include_router(revops_v2_routes.router)
 app.include_router(win_loss_routes.router)
 app.include_router(sales_coaching_ai_routes.router)
 app.include_router(quote_management_routes.router)
+app.include_router(contract_lifecycle_routes.router)
+app.include_router(churn_prediction_routes.router)
+app.include_router(sales_compensation_routes.router)
+app.include_router(onboarding_workflows_routes.router)
+app.include_router(customer_health_routes.router)
+app.include_router(pricing_engine_routes.router)
+app.include_router(proposal_generator_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
