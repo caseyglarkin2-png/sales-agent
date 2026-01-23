@@ -1,5 +1,6 @@
 """API routes for operator mode and draft management."""
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
@@ -179,6 +180,48 @@ async def approve_draft(draft_id: str, request: ApproveDraftRequest) -> Dict[str
         
         draft = await queue.get_draft(draft_id)
         logger.info(f"Draft approved: {draft_id} by {request.approved_by}")
+        
+        # AUTO-SEND: Send email after approval (if send mode enabled)
+        try:
+            from src.feature_flags import get_feature_flag_service
+            from src.connectors.gmail import create_gmail_connector
+            from src.rate_limiter import get_rate_limiter
+            
+            feature_flags = get_feature_flag_service()
+            
+            # Check if auto-send is allowed (MODE_DRAFT_ONLY must be False)
+            if feature_flags.is_send_mode_enabled():
+                # Rate limit check
+                rate_limiter = get_rate_limiter()
+                recipient = draft.get("recipient")
+                
+                if await rate_limiter.check_rate_limit(f"email_send:{recipient}"):
+                    # Send email via Gmail
+                    gmail = create_gmail_connector()
+                    message_id = await gmail.send_message(
+                        to=recipient,
+                        subject=draft.get("subject"),
+                        body=draft.get("body")
+                    )
+                    
+                    if message_id:
+                        # Mark as sent
+                        await queue.mark_sent(draft_id)
+                        draft["gmail_message_id"] = message_id
+                        draft["sent_at"] = datetime.utcnow().isoformat()
+                        
+                        logger.info(f"✅ Auto-sent email: {draft_id} → {recipient} (message_id: {message_id})")
+                    else:
+                        logger.error(f"Failed to send email for draft {draft_id}")
+                else:
+                    logger.warning(f"Rate limit hit for {recipient}, draft {draft_id} approved but not sent")
+            else:
+                logger.info(f"DRAFT_ONLY mode enabled - draft {draft_id} approved but not sent")
+                
+        except Exception as send_error:
+            logger.error(f"Auto-send failed for draft {draft_id}: {send_error}")
+            # Don't fail the approval - draft is still approved, just not sent yet
+        
         return draft
     except HTTPException:
         raise
