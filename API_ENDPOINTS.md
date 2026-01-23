@@ -216,6 +216,92 @@ GET /api/dashboard/workflows?limit={int}&status={status}
 
 ---
 
+## Analytics & Insights
+
+### Get Workflow Metrics
+```bash
+GET /api/analytics/metrics?time_window={hour|day|week|month|all_time}
+
+# Response:
+{
+    "total_workflows": int,
+    "completed": int,
+    "failed": int,
+    "processing": int,
+    "completion_rate": float,
+    "avg_duration_seconds": float,
+    "throughput_per_hour": float
+}
+```
+
+### Get Mode Distribution
+```bash
+GET /api/analytics/mode-distribution?time_window={day}
+
+# Response:
+{
+    "draft_only": int,
+    "send": int,
+    "draft_only_pct": float,
+    "send_pct": float
+}
+```
+
+### Get Error Analysis
+```bash
+GET /api/analytics/errors?time_window={day}&limit={10}
+
+# Response:
+{
+    "error_rate": float,
+    "top_errors": [{"message": str, "count": int}],
+    "retry_stats": {"avg_retries": float, "max_retries": int}
+}
+```
+
+### Get Performance Trends
+```bash
+GET /api/analytics/trends/{metric}?granularity={hour}&points={24}
+
+# Metrics: completion_rate, throughput, error_rate
+# Response: Time-series data points
+```
+
+### Get Comprehensive Dashboard
+```bash
+GET /api/analytics/dashboard?time_window={day}
+
+# Response: All metrics + trends + error analysis
+```
+
+### Get Recovery Stats
+```bash
+GET /api/analytics/recovery/stats
+
+# Response:
+{
+    "by_status": {"completed": int, "failed": int},
+    "stuck_workflows": int,
+    "eligible_for_retry": int
+}
+```
+
+### Auto-Recover Stuck Workflows
+```bash
+POST /api/analytics/recovery/auto-recover?timeout_minutes={10}&max_to_recover={50}
+
+# Response: {"recovered": int}
+```
+
+### Retry Failed Workflows
+```bash
+POST /api/analytics/recovery/retry-failed?max_retries={3}&max_to_retry={50}
+
+# Response: {"retried": int}
+```
+
+---
+
 ## Admin (Feature Flags)
 
 ### List Feature Flags
