@@ -242,6 +242,173 @@ async def trigger_sync(
 
 
 # ============================================================================
+# HubSpot CRM Integration Endpoints
+# ============================================================================
+
+@router.get("/hubspot/contacts")
+async def list_hubspot_contacts(
+    limit: int = 100,
+    after: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get contacts from HubSpot CRM.
+    
+    Uses HUBSPOT_API_KEY from Railway env vars.
+    """
+    try:
+        # Get HubSpot API key from environment
+        from src.config import settings
+        api_key = settings.HUBSPOT_API_KEY
+        
+        if not api_key:
+            raise HTTPException(status_code=401, detail="HubSpot not configured")
+        
+        # Import connector
+        from src.integrations.connectors.hubspot import HubSpotConnector
+        
+        # Create connector and get contacts
+        connector = HubSpotConnector(api_key)
+        result = await connector.get_contacts(limit=limit, after=after)
+        
+        await connector.close()
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get HubSpot contacts: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get contacts: {str(e)}")
+
+
+@router.get("/hubspot/deals")
+async def list_hubspot_deals(
+    limit: int = 100,
+    after: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get deals from HubSpot CRM.
+    """
+    try:
+        from src.config import settings
+        api_key = settings.HUBSPOT_API_KEY
+        
+        if not api_key:
+            raise HTTPException(status_code=401, detail="HubSpot not configured")
+        
+        from src.integrations.connectors.hubspot import HubSpotConnector
+        
+        connector = HubSpotConnector(api_key)
+        result = await connector.get_deals(limit=limit, after=after)
+        
+        await connector.close()
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get HubSpot deals: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get deals: {str(e)}")
+
+
+@router.get("/hubspot/companies")
+async def list_hubspot_companies(
+    limit: int = 100,
+    after: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get companies from HubSpot CRM.
+    """
+    try:
+        from src.config import settings
+        api_key = settings.HUBSPOT_API_KEY
+        
+        if not api_key:
+            raise HTTPException(status_code=401, detail="HubSpot not configured")
+        
+        from src.integrations.connectors.hubspot import HubSpotConnector
+        
+        connector = HubSpotConnector(api_key)
+        result = await connector.get_companies(limit=limit, after=after)
+        
+        await connector.close()
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get HubSpot companies: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get companies: {str(e)}")
+
+
+@router.post("/hubspot/search")
+async def search_hubspot_contacts(
+    email: Optional[str] = None,
+    name: Optional[str] = None,
+    company: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Search for contacts in HubSpot.
+    """
+    try:
+        from src.config import settings
+        api_key = settings.HUBSPOT_API_KEY
+        
+        if not api_key:
+            raise HTTPException(status_code=401, detail="HubSpot not configured")
+        
+        from src.integrations.connectors.hubspot import HubSpotConnector
+        
+        connector = HubSpotConnector(api_key)
+        contacts = await connector.search_contacts(email=email, name=name, company=company)
+        
+        await connector.close()
+        
+        return {"contacts": [c.dict() for c in contacts]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to search HubSpot contacts: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@router.get("/hubspot/test")
+async def test_hubspot_connection(user_id: str = Depends(get_current_user_id)):
+    """
+    Test HubSpot API connection.
+    """
+    try:
+        from src.config import settings
+        api_key = settings.HUBSPOT_API_KEY
+        
+        if not api_key:
+            return {"connected": False, "message": "HubSpot API key not configured"}
+        
+        from src.integrations.connectors.hubspot import HubSpotConnector
+        
+        connector = HubSpotConnector(api_key)
+        connected = await connector.test_connection()
+        
+        await connector.close()
+        
+        return {
+            "connected": connected,
+            "message": "HubSpot connection successful" if connected else "HubSpot connection failed"
+        }
+        
+    except Exception as e:
+        logger.error(f"HubSpot test failed: {e}")
+        return {"connected": False, "message": f"Error: {str(e)}"}
+
+
+# ============================================================================
 # Google Drive Integration Endpoints
 # ============================================================================
 
