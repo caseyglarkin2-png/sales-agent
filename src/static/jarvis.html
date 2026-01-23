@@ -97,6 +97,26 @@
                             "Approve all"
                         </button>
                     </div>
+
+                    <!-- TTS Controls -->
+                    <div class="mt-6 pt-6 border-t border-white/20">
+                        <h3 class="text-sm font-bold mb-3 opacity-80">🔊 Voice Settings</h3>
+                        
+                        <div class="mb-3">
+                            <label class="block text-xs mb-1 opacity-70">Voice:</label>
+                            <select id="voice-select" class="w-full px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
+                                <option>Loading voices...</option>
+                            </select>
+                        </div>
+                        
+                        <button id="read-draft-btn" class="w-full px-4 py-3 bg-blue-500 rounded-lg hover:bg-blue-600 transition font-semibold shadow-lg">
+                            🔊 Read Draft Aloud
+                        </button>
+                        
+                        <button id="stop-speaking-btn" class="w-full mt-2 px-4 py-2 bg-red-500/50 rounded-lg hover:bg-red-500 transition text-sm hidden">
+                            ⏹️ Stop Speaking
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Queue Status -->
@@ -173,13 +193,152 @@
         let isListening = false;
         let mediaRecorder = null;
         let audioChunks = [];
+        let isSpeaking = false;
+        let ttsConfig = {
+            enabled: true,
+            rate: 1.0,
+            pitch: 1.0,
+            volume: 1.0,
+            voice: null
+        };
+
+        // Text-to-Speech function
+        function speakResponse(text) {
+            if (!window.speechSynthesis) {
+                console.warn('TTS not supported in this browser');
+                return;
+            }
+            
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = ttsConfig.rate;
+            utterance.pitch = ttsConfig.pitch;
+            utterance.volume = ttsConfig.volume;
+            utterance.lang = 'en-US';
+            
+            if (ttsConfig.voice) {
+                utterance.voice = ttsConfig.voice;
+            }
+            
+            utterance.onstart = () => { 
+                isSpeaking = true;
+                document.getElementById('jarvis-avatar')?.classList.add('speaking');
+            };
+            utterance.onend = () => { 
+                isSpeaking = false;
+                document.getElementById('jarvis-avatar')?.classList.remove('speaking');
+            };
+            utterance.onerror = (e) => {
+                console.error('TTS error:', e);
+                isSpeaking = false;
+                document.getElementById('jarvis-avatar')?.classList.remove('speaking');
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Stop speaking
+        function stopSpeaking() {
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            document.getElementById('jarvis-avatar')?.classList.remove('speaking');
+        }
+
+        // Load TTS config from backend
+        async function loadTTSConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/api/voice-approval/tts-config`);
+                if (response.ok) {
+                    const config = await response.json();
+                    ttsConfig.enabled = config.enabled !== false;
+                    ttsConfig.rate = config.rate || 1.0;
+                    ttsConfig.pitch = config.pitch || 1.0;
+                    ttsConfig.volume = config.volume || 1.0;
+                    
+                    // Update UI if voice selector exists
+                    if (config.voice_name) {
+                        selectVoiceByName(config.voice_name);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading TTS config:', error);
+            }
+        }
+
+        // Select voice by name
+        function selectVoiceByName(voiceName) {
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.name === voiceName);
+            if (voice) {
+                ttsConfig.voice = voice;
+            }
+        }
+
+        // Populate voice selector
+        function populateVoices() {
+            const select = document.getElementById('voice-select');
+            if (!select) return;
+            
+            const voices = window.speechSynthesis.getVoices();
+            select.innerHTML = voices.map(voice => 
+                `<option value="${voice.name}">${voice.name} (${voice.lang})</option>`
+            ).join('');
+            
+            select.addEventListener('change', (e) => {
+                const voices = window.speechSynthesis.getVoices();
+                ttsConfig.voice = voices.find(v => v.name === e.target.value);
+            });
+        }
 
         // Initialize
         loadStatus();
+        loadTTSConfig();
         setInterval(loadStatus, 5000); // Refresh every 5 seconds
+        
+        // Load voices when available
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = populateVoices;
+        }
+        setTimeout(populateVoices, 100);
 
         // Voice button
         document.getElementById('voice-btn').addEventListener('click', toggleVoice);
+        
+        // Read Draft button
+        document.getElementById('read-draft-btn').addEventListener('click', readCurrentDraft);
+        document.getElementById('stop-speaking-btn').addEventListener('click', stopSpeaking);
+
+        async function readCurrentDraft() {
+            const container = document.getElementById('current-item');
+            const bodyElement = container.querySelector('pre');
+            
+            if (!bodyElement) {
+                speakResponse("No draft is currently loaded.");
+                return;
+            }
+            
+            const draftText = bodyElement.textContent || bodyElement.innerText;
+            const subjectElement = container.querySelector('.text-lg.font-semibold');
+            const subject = subjectElement ? subjectElement.textContent : '';
+            
+            const fullText = subject 
+                ? `Subject: ${subject}. ${draftText}`
+                : draftText;
+            
+            speakResponse(fullText);
+            
+            // Show stop button
+            document.getElementById('stop-speaking-btn').classList.remove('hidden');
+            
+            // Hide stop button when done
+            setTimeout(() => {
+                if (!isSpeaking) {
+                    document.getElementById('stop-speaking-btn').classList.add('hidden');
+                }
+            }, fullText.length * 50); // Estimate speaking time
+        }
 
         async function toggleVoice() {
             if (!isListening) {
@@ -368,6 +527,11 @@
             responseDiv.classList.remove('hidden');
             textDiv.textContent = result.spoken_response || 'Command processed';
             timeDiv.textContent = new Date().toLocaleTimeString();
+
+            // Speak the response if TTS enabled
+            if (ttsConfig.enabled && result.spoken_response) {
+                speakResponse(result.spoken_response);
+            }
 
             // Update status
             if (result.status) {

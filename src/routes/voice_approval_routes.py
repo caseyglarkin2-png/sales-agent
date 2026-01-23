@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
 from src.logger import get_logger
+from src.config import get_settings
 from src.voice_approval import (
     get_voice_approval,
     ApprovalItem,
@@ -155,6 +156,23 @@ async def get_conversation_history(limit: int = 50) -> List[Dict[str, Any]]:
         return jarvis.conversation_history[-limit:]
     except Exception as e:
         logger.error(f"Error getting conversation history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/tts-config", response_model=Dict[str, Any])
+async def get_tts_config() -> Dict[str, Any]:
+    """Get Text-to-Speech configuration for frontend."""
+    try:
+        settings = get_settings()
+        return {
+            "enabled": settings.tts_enabled,
+            "rate": settings.tts_rate,
+            "pitch": settings.tts_pitch,
+            "volume": settings.tts_volume,
+            "voice_name": settings.tts_voice_name
+        }
+    except Exception as e:
+        logger.error(f"Error getting TTS config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
