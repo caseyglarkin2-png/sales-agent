@@ -1,4 +1,4 @@
-# Github Build Philosophy (Agent Command Style)
+# Build Philosophy (Agent Command Style)
 
 **Owner:** Casey Larkin — Founder, Dude, What's The Bid??! LLC  
 **Last Updated:** January 23, 2026
@@ -7,8 +7,25 @@
 
 ## The Law
 
-**Atomic tasks. Clear validation. Demoable sprints. No drama.**  
+**Atomic tasks. Clear validation. Demoable sprints. Ship early, ship often. No drama.**  
 If your plan violates this, it's not "close." It's wrong.
+
+---
+
+## Core Tenants
+
+### 0) Ship Ship Ship 🚢
+
+**Deploy features the moment they're ready. Test in production.**
+
+- ✅ Push live as soon as feature passes validation
+- ✅ Use subagents to test UI/UX in production environment
+- ✅ Discover bugs and optimizations through real usage
+- ✅ Iterate based on production feedback, not speculation
+- ❌ Don't wait for "perfect" - ship working code, improve iteratively
+
+**Why:** Bugs found in production with real data > bugs imagined in development. 
+Fast feedback loops beat overthinking. Ship it, test it, fix it, repeat.
 
 ---
 
