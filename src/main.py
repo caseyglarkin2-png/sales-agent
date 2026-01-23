@@ -98,6 +98,8 @@ from src.routes import commands_routes
 from src.routes import partner_portal_routes
 from src.routes import meeting_intelligence_routes
 from src.routes import revenue_intelligence_routes
+from src.routes import admin_flags
+from src.routes import dashboard_api
 from src.routes import customer_success_routes
 from src.routes import email_templates_v2_routes
 from src.routes import cpq_routes
@@ -502,6 +504,18 @@ async def get_workflows() -> JSONResponse:
 
 if __name__ == "__main__":
     import uvicorn
+
+    # Mount static files for dashboard
+    app.mount("/static", StaticFiles(directory="src/static"), name="static")
+    
+    # Dashboard routes
+    app.include_router(admin_flags.router)
+    app.include_router(dashboard_api.router)
+    
+    @app.get("/dashboard")
+    async def dashboard():
+        """Serve operator dashboard."""
+        return FileResponse("src/static/operator-dashboard.html")
 
     uvicorn.run(
         app,

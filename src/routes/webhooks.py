@@ -364,3 +364,100 @@ async def get_example_payload() -> dict[str, Any]:
             },  # Custom field
         ],
     }
+
+
+@router.post("/hubspot/forms", status_code=status.HTTP_202_ACCEPTED)
+async def hubspot_forms_webhook_validated(
+    request: Request,
+    background_tasks: BackgroundTasks
+) -> dict[str, Any]:
+    """
+    Receive HubSpot form submission webhook with signature validation.
+    
+    This is the production webhook endpoint with:
+    - HMAC-SHA256 signature validation
+    - Idempotency (duplicate detection)
+    - Database persistence
+    - Async workflow queuing
+    
+    Args:
+        request: FastAPI Request object (for raw body + headers)
+        background_tasks: FastAPI background tasks
+        
+    Returns:
+        202 Accepted with submission_id
+        
+    Raises:
+        401: Invalid signature
+        409: Duplicate submission
+        400: Invalid payload
+    """
+    # Get raw body and signature header
+    body = await request.body()
+    signature = request.headers.get("X-HubSpot-Signature", "")
+    
+    if not signature:
+        logger.warning("Webhook received without signature")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing X-HubSpot-Signature header"
+        )
+    
+    # Process webhook
+    processor = WebhookProcessor()
+    
+    try:
+        submission_data = await processor.process_webhook(body, signature)
+    except WebhookValidationError as e:
+        logger.error(f"Webhook validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED if "signature" in str(e).lower() else status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    
+    # Check for duplicate
+    is_duplicate = await processor.check_duplicate(submission_data.submission_id)
+    if is_duplicate:
+        logger.info(
+            "Duplicate submission detected (idempotent)",
+            extra={"submission_id": submission_data.submission_id}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Submission {submission_data.submission_id} already processed"
+        )
+    
+    # Store to database
+    try:
+        db_id = await processor.store_submission(submission_data)
+    except WebhookValidationError as e:
+        logger.error(f"Failed to store submission: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Storage failed: {e}"
+        )
+    
+    # Queue async workflow processing (Task 4.4)
+    from src.tasks import queue_workflow_processing
+    
+    task_id = queue_workflow_processing(str(db_id))
+    
+    logger.info(
+        "Webhook accepted, queued for processing",
+        extra={
+            "submission_id": submission_data.submission_id,
+            "db_id": str(db_id),
+            "email": submission_data.prospect_email,
+            "task_id": task_id
+        }
+    )
+    
+    return {
+        "status": "accepted",
+        "submission_id": submission_data.submission_id,
+        "db_id": str(db_id),
+        "email": submission_data.prospect_email,
+        "task_id": task_id,
+        "message": "Form submission queued for workflow processing"
+    }
+

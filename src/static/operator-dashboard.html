@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operator Dashboard - Sales Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card .label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .stat-card.success .value { color: #27ae60; }
+        .stat-card.pending .value { color: #f39c12; }
+        .stat-card.failed .value { color: #e74c3c; }
+        
+        .workflows-section {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .filters select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .workflows-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .workflows-table thead {
+            background: #f8f9fa;
+        }
+        
+        .workflows-table th {
+            text-align: left;
+            padding: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .workflows-table td {
+            padding: 12px;
+            border-top: 1px solid #ecf0f1;
+            font-size: 14px;
+        }
+        
+        .workflows-table tbody tr:hover {
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-badge.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-badge.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-badge.triggered {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .refresh-indicator {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+        
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Operator Dashboard</h1>
+        <p id="lastUpdated">Loading...</p>
+    </div>
+    
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="label">Total Workflows</div>
+            <div class="value" id="totalWorkflows">-</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="label">Pending</div>
+            <div class="value" id="pendingWorkflows">-</div>
+        </div>
+        <div class="stat-card success">
+            <div class="label">Completed</div>
+            <div class="value" id="completedWorkflows">-</div>
+        </div>
+        <div class="stat-card failed">
+            <div class="label">Failed</div>
+            <div class="value" id="failedWorkflows">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Success Rate</div>
+            <div class="value" id="successRate">-</div>
+        </div>
+    </div>
+    
+    <div class="workflows-section">
+        <div class="section-header">
+            <h2>Recent Workflows</h2>
+            <div class="filters">
+                <select id="statusFilter" onchange="loadWorkflows()">
+                    <option value="">All Statuses</option>
+                    <option value="triggered">Triggered</option>
+                    <option value="processing">Processing</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                </select>
+                <span class="refresh-indicator" id="refreshIndicator">Auto-refreshing...</span>
+            </div>
+        </div>
+        
+        <table class="workflows-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th>Completed</th>
+                </tr>
+            </thead>
+            <tbody id="workflowsTableBody">
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        Loading workflows...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+        let autoRefreshInterval;
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/dashboard/stats');
+                const data = await response.json();
+                
+                document.getElementById('totalWorkflows').textContent = data.total_workflows;
+                document.getElementById('pendingWorkflows').textContent = data.pending_workflows;
+                document.getElementById('completedWorkflows').textContent = data.completed_workflows;
+                document.getElementById('failedWorkflows').textContent = data.failed_workflows;
+                document.getElementById('successRate').textContent = data.success_rate.toFixed(1) + '%';
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        async function loadWorkflows() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const url = statusFilter 
+                ? `/api/dashboard/workflows?status=${statusFilter}`
+                : '/api/dashboard/workflows';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('workflowsTableBody');
+                
+                if (data.workflows.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <div>No workflows found</div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                tbody.innerHTML = data.workflows.map(workflow => `
+                    <tr onclick="viewWorkflow('${workflow.id}')">
+                        <td>${workflow.prospect_email}</td>
+                        <td>${workflow.prospect_name || '-'}</td>
+                        <td>${workflow.prospect_company || '-'}</td>
+                        <td><span class="status-badge ${workflow.status}">${workflow.status}</span></td>
+                        <td>${workflow.started_at ? formatDateTime(workflow.started_at) : '-'}</td>
+                        <td>${workflow.completed_at ? formatDateTime(workflow.completed_at) : '-'}</td>
+                    </tr>
+                `).join('');
+                
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error loading workflows:', error);
+                const tbody = document.getElementById('workflowsTableBody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div>Error loading workflows</div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        function formatDateTime(datetime) {
+            const date = new Date(datetime);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            
+            return date.toLocaleString();
+        }
+        
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+        
+        function viewWorkflow(workflowId) {
+            console.log('View workflow:', workflowId);
+            // TODO: Open modal with workflow details
+            alert(`Workflow details: ${workflowId}\n\nFull detail view coming soon!`);
+        }
+        
+        function startAutoRefresh() {
+            // Refresh every 10 seconds
+            autoRefreshInterval = setInterval(() => {
+                loadStats();
+                loadWorkflows();
+            }, 10000);
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+        
+        // Initial load
+        loadStats();
+        loadWorkflows();
+        startAutoRefresh();
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+</body>
+</html>
