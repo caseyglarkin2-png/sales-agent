@@ -241,6 +241,152 @@ async def trigger_sync(
     }
 
 
+# ============================================================================
+# Google Drive Integration Endpoints
+# ============================================================================
+
+@router.get("/google-drive/files")
+async def list_drive_files(
+    folder_id: Optional[str] = None,
+    page_size: int = 50,
+    page_token: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    List files from user's Google Drive.
+    
+    Args:
+        folder_id: Folder ID (None for root)
+        page_size: Files per page
+        page_token: Pagination token
+        
+    Returns:
+        Files list with pagination
+    """
+    from src.integrations.connectors.google_drive import GoogleDriveConnector
+    from src.auth.google_oauth import GoogleOAuthManager
+    
+    # Get user's Google credentials
+    oauth_manager = GoogleOAuthManager()
+    credentials = await oauth_manager.get_user_credentials(user_id)
+    
+    if not credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Not connected to Google Drive. Please authorize first."
+        )
+    
+    # Create Drive connector
+    connector = GoogleDriveConnector(credentials)
+    
+    # List files
+    result = await connector.list_files(
+        folder_id=folder_id,
+        page_size=page_size,
+        page_token=page_token
+    )
+    
+    return result
+
+
+@router.get("/google-drive/folders")
+async def list_drive_folders(
+    parent_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    List folders from user's Google Drive.
+    
+    Args:
+        parent_id: Parent folder ID (None for root)
+        
+    Returns:
+        List of folders
+    """
+    from src.integrations.connectors.google_drive import GoogleDriveConnector
+    from src.auth.google_oauth import GoogleOAuthManager
+    
+    oauth_manager = GoogleOAuthManager()
+    credentials = await oauth_manager.get_user_credentials(user_id)
+    
+    if not credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Not connected to Google Drive. Please authorize first."
+        )
+    
+    connector = GoogleDriveConnector(credentials)
+    folders = await connector.get_folders(parent_id=parent_id)
+    
+    return {"folders": [f.dict() for f in folders]}
+
+
+@router.get("/google-drive/search")
+async def search_drive_files(
+    q: str,
+    page_size: int = 25,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Search for files in Google Drive.
+    
+    Args:
+        q: Search query
+        page_size: Max results
+        
+    Returns:
+        List of matching files
+    """
+    from src.integrations.connectors.google_drive import GoogleDriveConnector
+    from src.auth.google_oauth import GoogleOAuthManager
+    
+    oauth_manager = GoogleOAuthManager()
+    credentials = await oauth_manager.get_user_credentials(user_id)
+    
+    if not credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Not connected to Google Drive. Please authorize first."
+        )
+    
+    connector = GoogleDriveConnector(credentials)
+    files = await connector.search_files(query=q, page_size=page_size)
+    
+    return {"files": [f.dict() for f in files]}
+
+
+@router.get("/google-drive/file/{file_id}")
+async def get_drive_file_info(
+    file_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get detailed info about a Drive file.
+    
+    Args:
+        file_id: Google Drive file ID
+        
+    Returns:
+        File information
+    """
+    from src.integrations.connectors.google_drive import GoogleDriveConnector
+    from src.auth.google_oauth import GoogleOAuthManager
+    
+    oauth_manager = GoogleOAuthManager()
+    credentials = await oauth_manager.get_user_credentials(user_id)
+    
+    if not credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Not connected to Google Drive. Please authorize first."
+        )
+    
+    connector = GoogleDriveConnector(credentials)
+    file_info = await connector.get_file_info(file_id)
+    
+    return file_info.dict()
+
+
 # Ship Ship Ship: Add more endpoints as integrations are built
 # - /api/integrations/{app_name}/data - Get synced data
 # - /api/integrations/{app_name}/configure - Update integration settings
