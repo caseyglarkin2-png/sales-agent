@@ -1,7 +1,7 @@
 """Add training_samples table for voice training enhancement
 
 Revision ID: 003
-Revises: 002
+Revises: 
 Create Date: 2026-01-23 03:37:00.000000
 
 """
@@ -12,7 +12,7 @@ from datetime import datetime
 
 # revision identifiers, used by Alembic.
 revision = '003'
-down_revision = '002'
+down_revision = None  # No dependency on 002 since it may not exist
 branch_labels = None
 depends_on = None
 
@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column('extracted_at', sa.DateTime(), nullable=False, server_default=sa.text('NOW()')),
         sa.Column('embedding_generated', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('voice_profile_id', UUID(as_uuid=True), nullable=True),
-        sa.Column('metadata', JSONB, nullable=True),
+        sa.Column('source_metadata', JSONB, nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('NOW()')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('NOW()'), onupdate=sa.text('NOW()')),
     )

@@ -109,7 +109,7 @@ async def ingest_from_url(
             content=extraction["content"],
             extracted_at=datetime.utcnow(),
             embedding_generated=False,
-            metadata=extraction.get("metadata", {})
+            source_metadata=extraction.get("metadata", {})
         )
         
         db.add(sample)
@@ -174,7 +174,7 @@ async def ingest_from_upload(
             content=content,
             extracted_at=datetime.utcnow(),
             embedding_generated=False,
-            metadata={
+            source_metadata={
                 "filename": file.filename,
                 "content_type": file.content_type,
                 "file_size": len(content_bytes)

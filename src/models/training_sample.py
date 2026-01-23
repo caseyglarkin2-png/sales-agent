@@ -51,7 +51,8 @@ class TrainingSample(Base):
     voice_profile_id = Column(PG_UUID(as_uuid=True), nullable=True, index=True)
     
     # Additional metadata (source-specific fields)
-    metadata = Column(JSONB, nullable=True, comment="Source-specific metadata (file type, video duration, etc.)")
+    # Note: 'metadata' is reserved by SQLAlchemy, so we use 'source_metadata'
+    source_metadata = Column(JSONB, nullable=True, comment="Source-specific metadata (file type, video duration, etc.)")
     
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now(), index=True)
@@ -74,7 +75,7 @@ class TrainingSample(Base):
             "extracted_at": self.extracted_at.isoformat() if self.extracted_at else None,
             "embedding_generated": self.embedding_generated,
             "voice_profile_id": str(self.voice_profile_id) if self.voice_profile_id else None,
-            "metadata": self.metadata,
+            "source_metadata": self.source_metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
