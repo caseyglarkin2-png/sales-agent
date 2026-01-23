@@ -40,4 +40,10 @@ async def async_session() -> AsyncGenerator[AsyncSession, None]:
         yield None  # type: ignore
 
 
-__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "Base"]
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for database sessions."""
+    async with async_session() as session:
+        yield session
+
+
+__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_db", "Base"]
