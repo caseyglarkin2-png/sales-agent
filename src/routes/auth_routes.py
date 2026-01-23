@@ -655,6 +655,7 @@ async def initiate_oauth(
 ):
     """Initiate OAuth flow"""
     import uuid
+    import os
     
     state = request.state or str(uuid.uuid4())
     
@@ -674,7 +675,12 @@ async def initiate_oauth(
         "expires_at": (datetime.utcnow() + timedelta(minutes=10)).isoformat()
     }
     
-    oauth_url = f"{base_url}?client_id=YOUR_CLIENT_ID&redirect_uri={request.redirect_uri}&state={state}&response_type=code&scope=email profile"
+    # Use real credentials from environment
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "YOUR_CLIENT_ID")
+    redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", request.redirect_uri)
+    scopes = "email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive.readonly"
+    
+    oauth_url = f"{base_url}?client_id={client_id}&redirect_uri={redirect_uri}&state={state}&response_type=code&scope={scopes}&access_type=offline&prompt=consent"
     
     return {
         "oauth_url": oauth_url,
@@ -718,4 +724,137 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         "email_verified": user.get("email_verified", False),
         "created_at": user.get("created_at"),
         "last_login": user.get("last_login")
+    }
+
+
+# Token storage for OAuth
+google_tokens = {}
+
+
+@router.get("/google/callback")
+async def google_oauth_callback(
+    code: str = Query(...),
+    state: Optional[str] = Query(None),
+    error: Optional[str] = Query(None)
+):
+    """Handle Google OAuth callback - exchange code for tokens"""
+    import os
+    import httpx
+    from fastapi.responses import HTMLResponse
+    
+    if error:
+        return HTMLResponse(f"""
+        <html><body>
+        <h1>Authentication Failed</h1>
+        <p>Error: {error}</p>
+        <p><a href="/">Return to Dashboard</a></p>
+        </body></html>
+        """, status_code=400)
+    
+    # Exchange code for tokens
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+    redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI")
+    
+    if not all([client_id, client_secret, redirect_uri]):
+        return HTMLResponse("""
+        <html><body>
+        <h1>Configuration Error</h1>
+        <p>Google OAuth credentials not configured.</p>
+        </body></html>
+        """, status_code=500)
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                }
+            )
+            
+            if token_response.status_code != 200:
+                logger.error(f"Token exchange failed: {token_response.text}")
+                return HTMLResponse(f"""
+                <html><body>
+                <h1>Authentication Failed</h1>
+                <p>Could not exchange code for tokens.</p>
+                <p><a href="/">Return to Dashboard</a></p>
+                </body></html>
+                """, status_code=400)
+            
+            tokens_data = token_response.json()
+            
+            # Get user info
+            user_response = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {tokens_data['access_token']}"}
+            )
+            user_info = user_response.json()
+            
+            # Store tokens (in production, use proper secure storage)
+            email = user_info.get("email", "unknown")
+            google_tokens[email] = {
+                "access_token": tokens_data.get("access_token"),
+                "refresh_token": tokens_data.get("refresh_token"),
+                "expires_in": tokens_data.get("expires_in"),
+                "token_type": tokens_data.get("token_type"),
+                "scope": tokens_data.get("scope"),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_info": user_info,
+            }
+            
+            logger.info(f"Google OAuth successful for {email}")
+            
+            return HTMLResponse(f"""
+            <html>
+            <head>
+                <title>Connected!</title>
+                <style>
+                    body {{ font-family: system-ui; max-width: 600px; margin: 100px auto; text-align: center; }}
+                    .success {{ color: #22c55e; font-size: 48px; }}
+                    h1 {{ color: #1f2937; }}
+                    p {{ color: #6b7280; }}
+                    a {{ color: #8b5cf6; text-decoration: none; }}
+                </style>
+            </head>
+            <body>
+                <div class="success">✓</div>
+                <h1>Google Connected!</h1>
+                <p>Successfully connected as <strong>{email}</strong></p>
+                <p>Gmail and Drive access is now enabled.</p>
+                <br>
+                <a href="/">Return to Dashboard</a>
+            </body>
+            </html>
+            """)
+            
+    except Exception as e:
+        logger.error(f"OAuth callback error: {e}")
+        return HTMLResponse(f"""
+        <html><body>
+        <h1>Error</h1>
+        <p>{str(e)}</p>
+        <p><a href="/">Return to Dashboard</a></p>
+        </body></html>
+        """, status_code=500)
+
+
+@router.get("/google/status")
+async def google_oauth_status():
+    """Check if Google OAuth is connected"""
+    import os
+    
+    has_credentials = bool(os.environ.get("GOOGLE_CLIENT_ID"))
+    connected_accounts = list(google_tokens.keys())
+    
+    return {
+        "configured": has_credentials,
+        "connected_accounts": connected_accounts,
+        "gmail_enabled": len(connected_accounts) > 0,
+        "drive_enabled": len(connected_accounts) > 0,
     }

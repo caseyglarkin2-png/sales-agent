@@ -148,13 +148,12 @@ from src.routes import task_automation_routes
 from src.routes import partner_management_routes
 from src.routes import meeting_scheduler_v2_routes
 from src.routes import roi_calculator_routes
+from src.routes import contact_queue
+from src.routes import forms as forms_routes
 from src.routes import proposal_templates_routes
 from src.routes import sales_objections_routes
 from src.routes import sales_contests_routes
 from src.routes import commission_calculator_routes
-from src.routes import customer_health_routes
-from src.routes import pricing_engine_routes
-from src.routes import proposal_generator_routes
 from src.routes import territory_mapping_routes
 from src.routes import lead_enrichment_v2_routes
 from src.routes import sales_forecasting_ai_routes
@@ -171,6 +170,7 @@ from src.routes import contract_lifecycle_routes
 from src.routes import churn_prediction_routes
 from src.routes import sales_compensation_routes
 from src.routes import onboarding_workflows_routes
+from src.routes import voice_approval_routes
 
 # Configure logging
 settings = get_settings()
@@ -193,6 +193,8 @@ app.include_router(agents_routes.router)
 app.include_router(operator_routes.router)
 app.include_router(webhooks_routes.router)
 app.include_router(voice_routes.router)
+app.include_router(contact_queue.router)
+app.include_router(forms_routes.router)
 app.include_router(metrics_routes.router)
 app.include_router(bulk_routes.router)
 app.include_router(enrichment_routes.router)
@@ -341,13 +343,7 @@ app.include_router(revops_v2_routes.router)
 app.include_router(win_loss_routes.router)
 app.include_router(sales_coaching_ai_routes.router)
 app.include_router(quote_management_routes.router)
-app.include_router(contract_lifecycle_routes.router)
-app.include_router(churn_prediction_routes.router)
-app.include_router(sales_compensation_routes.router)
-app.include_router(onboarding_workflows_routes.router)
-app.include_router(customer_health_routes.router)
-app.include_router(pricing_engine_routes.router)
-app.include_router(proposal_generator_routes.router)
+app.include_router(voice_approval_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -413,6 +409,15 @@ async def voice_profiles_page():
 async def agents_page():
     """Agents visibility page."""
     page_path = os.path.join(os.path.dirname(__file__), "static", "agents.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return JSONResponse({"error": "Page not found"}, status_code=404)
+
+
+@app.get("/jarvis", tags=["Dashboard"])
+async def jarvis_page():
+    """JARVIS voice approval interface."""
+    page_path = os.path.join(os.path.dirname(__file__), "static", "jarvis.html")
     if os.path.exists(page_path):
         return FileResponse(page_path)
     return JSONResponse({"error": "Page not found"}, status_code=404)

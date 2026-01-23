@@ -1,0 +1,5 @@
+nohup: ignoring input
+Traceback (most recent call last):
+  File "/workspaces/sales-agent/scripts/draft_all_emails.py", line 15, in <module>
+    from src.analysis import analyze_prospect
+ImportError: cannot import name 'analyze_prospect' from 'src.analysis' (/workspaces/sales-agent/src/analysis.py)

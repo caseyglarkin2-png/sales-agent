@@ -35,6 +35,7 @@ google-api-python-client>=2.95.0
 # AI/LLM
 langchain>=0.0.300
 openai>=1.0.0
+youtube-transcript-api>=0.6.1
 
 # Logging
 structlog>=23.1.0

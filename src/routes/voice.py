@@ -102,6 +102,109 @@ async def list_profiles() -> List[Dict[str, Any]]:
         logger.error(f"Error listing profiles: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class TrainFromYouTubeRequest(BaseModel):
+    """Request to train from YouTube videos."""
+    video_urls: List[str]
+    profile_name: str = "dude_whats_the_bid"
+
+
+@router.post("/training/youtube-videos", response_model=Dict[str, Any])
+async def train_from_youtube_videos(request: TrainFromYouTubeRequest) -> Dict[str, Any]:
+    """Train voice profile from YouTube video transcripts.
+    
+    Transcribes YouTube videos (like "Dude, What's The Bid?!" episodes)
+    and adds them to training samples.
+    """
+    video_urls = request.video_urls
+    profile_name = request.profile_name
+    try:
+        from src.transcription import create_youtube_transcriber
+        
+        trainer = get_trainer()
+        transcriber = create_youtube_transcriber()
+        
+        # Transcribe videos
+        transcripts = await transcriber.transcribe_multiple(video_urls)
+        
+        if not transcripts:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not transcribe any videos. Ensure they have captions enabled."
+            )
+        
+        # Add to training samples
+        count = trainer.add_video_transcripts(transcripts)
+        
+        return {
+            "status": "success",
+            "videos_processed": len(video_urls),
+            "transcripts_added": count,
+            "total_samples": len(trainer.training_samples),
+            "profile_name": profile_name,
+            "note": "Call /api/voice/training/create-profile to generate profile from samples"
+        }
+    except ImportError as e:
+        logger.error(f"Import error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="youtube-transcript-api not installed. Run: pip install youtube-transcript-api"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error training from YouTube videos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/training/hubspot-newsletters", response_model=Dict[str, Any])
+async def train_from_hubspot_newsletters(
+    search_query: str = "freight marketer",
+    limit: int = 20,
+    profile_name: str = "freight_marketer_voice",
+) -> Dict[str, Any]:
+    """Train voice profile from HubSpot newsletters.
+    
+    Fetches marketing emails/newsletters from HubSpot (like "Freight Marketer" newsletter)
+    and adds them to training samples.
+    """
+    try:
+        trainer = get_trainer()
+        
+        if not trainer.hubspot_connector:
+            raise HTTPException(
+                status_code=400,
+                detail="HubSpot connector not configured. Set HUBSPOT_API_KEY environment variable."
+            )
+        
+        # Fetch newsletters
+        samples = await trainer.fetch_hubspot_newsletters(
+            search_query=search_query,
+            limit=limit
+        )
+        
+        if not samples:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No newsletters found matching '{search_query}'. Check search query."
+            )
+        
+        # Add to training samples
+        for sample in samples:
+            trainer.add_sample(sample)
+        
+        return {
+            "status": "success",
+            "newsletters_fetched": len(samples),
+            "total_samples": len(trainer.training_samples),
+            "search_query": search_query,
+            "profile_name": profile_name,
+            "note": "Call /api/voice/training/create-profile to generate profile from samples"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error training from HubSpot newsletters: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/profiles/{profile_id}", response_model=Dict[str, Any])
 async def get_profile(profile_id: str) -> Dict[str, Any]:

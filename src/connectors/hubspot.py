@@ -643,6 +643,57 @@ class HubSpotConnector:
                 return []
 
 
+    async def get_marketing_emails(
+        self,
+        search: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Fetch marketing emails from HubSpot.
+        
+        This fetches published marketing emails (newsletters, campaigns).
+        
+        Args:
+            search: Search term to filter emails
+            limit: Maximum emails to return
+            
+        Returns:
+            List of marketing email objects
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                # HubSpot Marketing Email API v3
+                url = f"{self.BASE_URL}/marketing/v3/emails"
+                params = {"limit": limit}
+                
+                response = await client.get(
+                    url,
+                    headers=self.headers,
+                    params=params,
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                emails = data.get("results", [])
+                
+                # Filter by search term if provided
+                if search:
+                    emails = [
+                        e for e in emails
+                        if search.lower() in e.get("name", "").lower()
+                        or search.lower() in e.get("subject", "").lower()
+                    ]
+                
+                logger.info(f"Retrieved {len(emails)} marketing emails from HubSpot")
+                return emails[:limit]
+                
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error fetching marketing emails: {e.response.status_code} - {e.response.text}")
+                return []
+            except Exception as e:
+                logger.error(f"Error fetching marketing emails: {e}")
+                return []
+
+
 _hubspot_connector: Optional["HubSpotConnector"] = None
 
 
@@ -657,4 +708,5 @@ def get_hubspot_connector() -> Optional["HubSpotConnector"]:
             logger.warning("HUBSPOT_API_KEY not configured")
             return None
     return _hubspot_connector
+
 

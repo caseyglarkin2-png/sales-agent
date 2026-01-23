@@ -1,7 +1,8 @@
 """API routes for operator mode and draft management."""
+import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from src.logger import get_logger
 from src.operator_mode import get_draft_queue, DraftStatus
@@ -29,6 +30,22 @@ class RejectDraftRequest(BaseModel):
     """Request to reject a draft."""
     reason: str
     rejected_by: str
+
+
+class BulkDraftItem(BaseModel):
+    """Single draft for bulk loading."""
+    recipient: str
+    recipient_name: Optional[str] = None
+    company_name: Optional[str] = None
+    subject: str
+    body: str
+    request: Optional[str] = None  # Original request/context
+
+
+class BulkLoadDraftsRequest(BaseModel):
+    """Request to bulk load drafts."""
+    drafts: List[BulkDraftItem]
+    source: str = "bulk_import"
 
 
 @router.post("/drafts", response_model=Dict[str, Any])
@@ -68,6 +85,67 @@ async def get_pending_drafts() -> List[Dict[str, Any]]:
         return pending
     except Exception as e:
         logger.error(f"Error retrieving pending drafts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/drafts/scored", response_model=List[Dict[str, Any]])
+async def get_scored_drafts(check_hubspot: bool = True) -> List[Dict[str, Any]]:
+    """Get pending drafts scored and sorted by priority.
+    
+    Scores leads based on:
+    - Recency: Have we emailed them recently? (DEPRIORITIZE if yes)
+    - ICP fit: Does their title/function match target buyers?
+    - TAM fit: Is the company in our target market?
+    
+    Args:
+        check_hubspot: Check HubSpot for email history (slower but accurate)
+        
+    Returns:
+        List of scored drafts sorted by priority (best leads first)
+    """
+    try:
+        from src.scoring.queue_scorer import score_pending_queue
+        
+        scores = await score_pending_queue(check_hubspot=check_hubspot)
+        logger.info(f"Returned {len(scores)} scored drafts")
+        return scores
+        
+    except Exception as e:
+        logger.error(f"Error scoring drafts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/drafts/scored/summary", response_model=Dict[str, Any])
+async def get_scoring_summary(check_hubspot: bool = False) -> Dict[str, Any]:
+    """Get summary of queue scoring without HubSpot check (fast).
+    
+    Returns tier breakdown and top leads without checking HubSpot.
+    """
+    try:
+        from src.scoring.queue_scorer import score_pending_queue
+        
+        # Fast scoring without HubSpot
+        scores = await score_pending_queue(check_hubspot=check_hubspot)
+        
+        # Calculate tier breakdown
+        tiers = {"A": 0, "B": 0, "C": 0, "D": 0}
+        recently_contacted = 0
+        
+        for s in scores:
+            tiers[s.get("tier", "C")] += 1
+            if s.get("recently_contacted"):
+                recently_contacted += 1
+        
+        return {
+            "total": len(scores),
+            "tiers": tiers,
+            "recently_contacted": recently_contacted,
+            "top_10": scores[:10],
+            "skip_recommended": [s for s in scores if s.get("recently_contacted")][:5],
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting scoring summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -246,4 +324,62 @@ async def get_workflow_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting workflow stats: {e}")
         return {"today": {"total": 0, "success": 0, "failed": 0, "running": 0}}
+
+
+@router.post("/bulk-load-drafts", response_model=Dict[str, Any])
+async def bulk_load_drafts(request: BulkLoadDraftsRequest) -> Dict[str, Any]:
+    """Bulk load drafts from external source (e.g., JSON file).
+    
+    This endpoint allows loading pre-generated email drafts into the 
+    pending approval queue. Used for migrating drafts from local development
+    or batch processing results.
+    """
+    try:
+        queue = get_draft_queue()
+        loaded = 0
+        skipped = 0
+        errors = []
+        
+        for item in request.drafts:
+            try:
+                # Generate unique draft ID
+                draft_id = str(uuid.uuid4())
+                
+                # Create draft
+                await queue.create_draft(
+                    draft_id=draft_id,
+                    recipient=item.recipient,
+                    subject=item.subject,
+                    body=item.body,
+                    company_name=item.company_name,
+                    metadata={
+                        "source": request.source,
+                        "recipient_name": item.recipient_name,
+                        "original_request": item.request,
+                    }
+                )
+                loaded += 1
+                
+                # Log progress every 50
+                if loaded % 50 == 0:
+                    logger.info(f"Bulk load progress: {loaded} drafts loaded")
+                    
+            except Exception as e:
+                skipped += 1
+                errors.append({"recipient": item.recipient, "error": str(e)})
+                logger.warning(f"Skipped draft for {item.recipient}: {e}")
+        
+        logger.info(f"Bulk load complete: {loaded} loaded, {skipped} skipped")
+        
+        return {
+            "status": "success",
+            "loaded": loaded,
+            "skipped": skipped,
+            "total": len(request.drafts),
+            "errors": errors[:10] if errors else [],  # First 10 errors only
+        }
+        
+    except Exception as e:
+        logger.error(f"Bulk load failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
