@@ -47,6 +47,15 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/2", alias="CELERY_RESULT_BACKEND", description="Celery result backend URL"
     )
 
+    # Text-to-Speech (TTS) Configuration
+    tts_enabled: bool = Field(default=True, alias="TTS_ENABLED", description="Enable text-to-speech features")
+    tts_voice_name: str = Field(
+        default="Google UK English Female", alias="TTS_VOICE_NAME", description="Preferred TTS voice name"
+    )
+    tts_rate: float = Field(default=1.0, alias="TTS_RATE", description="TTS speech rate (0.5-2.0)")
+    tts_pitch: float = Field(default=1.0, alias="TTS_PITCH", description="TTS speech pitch (0.0-2.0)")
+    tts_volume: float = Field(default=1.0, alias="TTS_VOLUME", description="TTS speech volume (0.0-1.0)")
+
     # Google OAuth
     google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID", description="Google OAuth Client ID")
     google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET", description="Google OAuth Client Secret")
