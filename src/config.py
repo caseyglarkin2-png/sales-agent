@@ -52,9 +52,27 @@ class Settings(BaseSettings):
     tts_voice_name: str = Field(
         default="Google UK English Female", alias="TTS_VOICE_NAME", description="Preferred TTS voice name"
     )
-    tts_rate: float = Field(default=1.0, alias="TTS_RATE", description="TTS speech rate (0.5-2.0)")
-    tts_pitch: float = Field(default=1.0, alias="TTS_PITCH", description="TTS speech pitch (0.0-2.0)")
-    tts_volume: float = Field(default=1.0, alias="TTS_VOLUME", description="TTS speech volume (0.0-1.0)")
+    tts_rate: float = Field(
+        default=1.0, 
+        ge=0.5, 
+        le=2.0, 
+        alias="TTS_RATE", 
+        description="TTS speech rate (0.5-2.0, 1.0 = normal)"
+    )
+    tts_pitch: float = Field(
+        default=1.0, 
+        ge=0.0, 
+        le=2.0, 
+        alias="TTS_PITCH", 
+        description="TTS speech pitch (0.0-2.0, 1.0 = normal)"
+    )
+    tts_volume: float = Field(
+        default=1.0, 
+        ge=0.0, 
+        le=1.0, 
+        alias="TTS_VOLUME", 
+        description="TTS speech volume (0.0-1.0, 1.0 = max)"
+    )
 
     # Google OAuth
     google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID", description="Google OAuth Client ID")
