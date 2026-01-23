@@ -490,7 +490,7 @@ async def system_status() -> JSONResponse:
             "status": "operational",
             "operator_mode": settings.operator_mode_enabled,
             "approval_required": settings.operator_approval_required,
-            "mode": "DRAFT_ONLY" if settings.mode_draft_only else "SEND_ALLOWED",
+            "mode": "DRAFT_ONLY" if settings.MODE_DRAFT_ONLY else "SEND_ALLOWED",
             "rate_limits": {
                 "max_emails_per_day": settings.max_emails_per_day,
                 "max_emails_per_week": settings.max_emails_per_week,
