@@ -15,5 +15,15 @@ def mock_draft():
     }
 
 
-# Tests will be added in Sprint 2
-# Placeholder structure for now
+# Smoke test to validate fixture structure
+def test_mock_draft_fixture_structure(mock_draft):
+    """Validate mock_draft fixture has required fields."""
+    assert "id" in mock_draft
+    assert "recipient" in mock_draft
+    assert "subject" in mock_draft
+    assert "body" in mock_draft
+    assert mock_draft["recipient"] == "sarah@example.com"
+
+
+# Additional tests will be added in Sprint 2
+

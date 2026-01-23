@@ -42,5 +42,21 @@ def mock_gpt4_client(monkeypatch):
     return mock_create
 
 
-# Tests will be added in Sprint 1B
-# Placeholder structure for now
+# Smoke tests to validate fixture structure
+def test_mock_draft_fixture_structure(mock_draft):
+    """Validate mock_draft fixture has required fields."""
+    assert "id" in mock_draft
+    assert "recipient" in mock_draft
+    assert "subject" in mock_draft
+    assert "body" in mock_draft
+    assert mock_draft["id"] == "test-draft-123"
+    assert "john@techcorp.com" in mock_draft["recipient"]
+
+
+def test_mock_draft_has_calendar_link(mock_draft):
+    """Validate mock_draft includes calendar link for testing."""
+    assert "meetings.hubspot.com" in mock_draft["body"]
+
+
+# Additional tests will be added in Sprint 1B
+
