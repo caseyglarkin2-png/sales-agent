@@ -46,9 +46,11 @@ async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
         # Enable UUID extension
         await db.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
         
-        # Create enum types
+        # Create enum types (use Python enum values - lowercase)
         await db.execute(text("CREATE TYPE workflowstatus AS ENUM ('triggered', 'processing', 'completed', 'failed')"))
         await db.execute(text("CREATE TYPE workflowmode AS ENUM ('DRAFT_ONLY', 'SEND')"))
+        
+        logger.info("Created enum types with values: workflowstatus={'triggered','processing','completed','failed'}, workflowmode={'DRAFT_ONLY','SEND'}")
         
         # Create form_submissions table
         await db.execute(text("""
