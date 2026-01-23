@@ -50,8 +50,6 @@
 
 **Goal:** Move from DRAFT_ONLY to production-ready system with real sends and webhook processing
 
-**Timeline:** 2 weeks (8-10 working days)
-
 **Success Criteria:**
 1. ✅ Webhook receiver accepts real HubSpot form submissions
 2. ✅ Database persists all workflow state (queryable, auditable)
@@ -67,8 +65,7 @@
 ### Task 4.1: Database Schema for Workflow Persistence
 
 **Priority:** CRITICAL  
-**Dependencies:** None  
-**Effort:** 1 day
+**Dependencies:** None
 
 **One-liner:** Create SQLAlchemy models and Alembic migration for workflow state persistence
 
@@ -145,8 +142,7 @@ alembic downgrade -1
 ### Task 4.2: Feature Flag System for SEND Mode
 
 **Priority:** CRITICAL  
-**Dependencies:** Task 4.1 (database for audit trail)  
-**Effort:** 1 day
+**Dependencies:** Task 4.1 (database for audit trail)
 
 **One-liner:** Add feature flag system to toggle DRAFT_ONLY → SEND mode with safety gates
 
@@ -222,8 +218,7 @@ pytest tests/unit/test_feature_flags.py -v
 ### Task 4.3: HubSpot Webhook Receiver
 
 **Priority:** CRITICAL  
-**Dependencies:** Task 4.1 (database for storage)  
-**Effort:** 1.5 days
+**Dependencies:** Task 4.1 (database for storage)
 
 **One-liner:** Implement POST endpoint to receive HubSpot form webhooks and store submissions
 
@@ -308,8 +303,7 @@ Remove route registration from `src/main.py` or set feature flag to disable webh
 ### Task 4.4: Async Workflow Processing (Celery)
 
 **Priority:** HIGH  
-**Dependencies:** Task 4.3 (webhook creates work to process)  
-**Effort:** 2 days
+**Dependencies:** Task 4.3 (webhook creates work to process)
 
 **One-liner:** Implement Celery task queue to process workflows asynchronously with retries
 
@@ -387,8 +381,7 @@ pytest tests/integration/test_celery_tasks.py -v
 ### Task 4.5: Basic Operator Dashboard
 
 **Priority:** MEDIUM  
-**Dependencies:** Task 4.1 (database), Task 4.4 (async workflows)  
-**Effort:** 2 days
+**Dependencies:** Task 4.1 (database), Task 4.4 (async workflows)
 
 **One-liner:** Create simple HTML dashboard to view workflow status and approve drafts
 
