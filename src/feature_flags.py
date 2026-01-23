@@ -330,3 +330,15 @@ class FeatureFlagManager:
                         "Set CONFIRM_SEND_MODE='I_UNDERSTAND_EMAILS_WILL_BE_SENT' to proceed."
                     )
 
+
+# Global instance for dependency injection
+_flag_manager: Optional[FeatureFlagManager] = None
+
+
+def get_flag_manager() -> FeatureFlagManager:
+    """Get or create the global FeatureFlagManager instance."""
+    global _flag_manager
+    if _flag_manager is None:
+        _flag_manager = FeatureFlagManager()
+    return _flag_manager
+
