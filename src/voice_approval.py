@@ -572,11 +572,35 @@ Examples:
         """Get current status of approval queue from real draft queue."""
         try:
             pending = await self._get_pending_drafts()
-            current = pending[0] if pending else None
+            
+            # Format current item for frontend display
+            current_item = None
+            if pending:
+                draft = pending[0]
+                current_item = {
+                    "type": "email_draft",
+                    "id": draft.get("id"),
+                    "title": f"Email to {draft.get('recipient_name', draft.get('recipient', 'Unknown'))}",
+                    "subject": draft.get("subject", "No subject"),
+                    "body": draft.get("body", ""),
+                    "to": draft.get("recipient"),
+                    "to_name": draft.get("recipient_name", draft.get("recipient", "Unknown")),
+                    "company": draft.get("company_name", ""),
+                    "agent": draft.get("agent", "email_drafter"),
+                    "priority": "normal",
+                    "preview": draft.get("body", "")[:150],
+                    "content": {
+                        "to": draft.get("recipient"),
+                        "to_name": draft.get("recipient_name", draft.get("recipient", "Unknown")),
+                        "subject": draft.get("subject", "No subject"),
+                        "body": draft.get("body", ""),
+                        "agent": draft.get("agent", "email_drafter")
+                    }
+                }
             
             return {
                 "pending_count": len(pending),
-                "current_item": current,
+                "current_item": current_item,
                 "queue": pending[:10]
             }
         except Exception as e:
