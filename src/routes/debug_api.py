@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from src.deps import get_db_session
+from src.logger import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
 
@@ -24,3 +26,121 @@ async def get_db_tables(db: AsyncSession = Depends(get_db_session)):
         "table_count": len(tables),
         "tables": tables
     }
+
+
+@router.post("/create-workflow-tables")
+async def create_workflow_tables(db: AsyncSession = Depends(get_db_session)):
+    """Create missing workflow tables."""
+    try:
+        # Enable UUID extension
+        await db.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
+        
+        # Create form_submissions table
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS form_submissions (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                portal_id INTEGER NOT NULL,
+                form_id VARCHAR(255) NOT NULL,
+                form_submission_id VARCHAR(255) NOT NULL UNIQUE,
+                prospect_email VARCHAR(255) NOT NULL,
+                prospect_first_name VARCHAR(255),
+                prospect_last_name VARCHAR(255),
+                prospect_company VARCHAR(255),
+                prospect_phone VARCHAR(100),
+                prospect_title VARCHAR(255),
+                raw_payload JSONB,
+                hubspot_contact_id VARCHAR(255),
+                hubspot_company_id VARCHAR(255),
+                processed INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_form_submissions_form_submission_id ON form_submissions (form_submission_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_form_submissions_prospect_email ON form_submissions (prospect_email)"))
+        
+        # Create workflows table
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS workflows (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                form_submission_id UUID NOT NULL REFERENCES form_submissions(id) ON DELETE CASCADE,
+                status VARCHAR(50) NOT NULL DEFAULT 'triggered',
+                mode VARCHAR(50) NOT NULL DEFAULT 'DRAFT_ONLY',
+                started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                completed_at TIMESTAMP,
+                error_message TEXT,
+                error_count INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_workflows_form_submission_id ON workflows (form_submission_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_workflows_status ON workflows (status)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_workflows_created_at ON workflows (created_at)"))
+        
+        # Create draft_emails table
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS draft_emails (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+                gmail_draft_id VARCHAR(255),
+                subject TEXT,
+                body TEXT,
+                to_email VARCHAR(255) NOT NULL,
+                from_email VARCHAR(255),
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_draft_emails_workflow_id ON draft_emails (workflow_id)"))
+        
+        # Create hubspot_tasks table
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS hubspot_tasks (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+                hubspot_task_id VARCHAR(255) UNIQUE,
+                task_type VARCHAR(50),
+                subject TEXT,
+                notes TEXT,
+                status VARCHAR(50),
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_hubspot_tasks_workflow_id ON hubspot_tasks (workflow_id)"))
+        
+        # Create workflow_errors table
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS workflow_errors (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+                error_type VARCHAR(100),
+                error_message TEXT,
+                stack_trace TEXT,
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_workflow_errors_workflow_id ON workflow_errors (workflow_id)"))
+        
+        await db.commit()
+        
+        logger.info("Successfully created all workflow tables")
+        return {
+            "success": True,
+            "message": "All workflow tables created successfully",
+            "tables_created": [
+                "form_submissions",
+                "workflows",
+                "draft_emails",
+                "hubspot_tasks",
+                "workflow_errors"
+            ]
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to create workflow tables: {e}")
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e)
+        }
