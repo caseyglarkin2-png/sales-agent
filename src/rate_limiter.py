@@ -53,11 +53,11 @@ class RateLimiter:
         # Check per-contact weekly limit
         contact_key = f"contact:{contact_email}:week:{week_start}"
         self.contact_weekly_sends.setdefault(contact_key, [])
-        if len(self.contact_weekly_sends[contact_key]) >= self.max_emails_per_contact_per_week:
+        if len(self.contact_weekly_sends[contact_key]) >= self.max_per_contact_per_week:
             logger.warning(f"Contact limit reached for {contact_email}")
             return (
                 False,
-                f"Contact weekly limit ({self.max_emails_per_contact_per_week}) reached",
+                f"Contact weekly limit ({self.max_per_contact_per_week}) reached",
             )
 
         return True, "OK"
@@ -96,7 +96,7 @@ class RateLimiter:
             "remaining_this_week": max(0, self.max_per_week - len(self.weekly_sends.get(weekly_key, []))),
             "remaining_for_contact": max(
                 0,
-                self.max_emails_per_contact_per_week
+                self.max_per_contact_per_week
                 - len(self.contact_weekly_sends.get(contact_key, [])),
             ),
         }

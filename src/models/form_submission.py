@@ -3,11 +3,22 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Index, Integer, JSON, String, Text, TypeDecorator, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from src.db import Base
+
+
+class JSONType(TypeDecorator):
+    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
 
 
 class FormSubmission(Base):
@@ -36,7 +47,7 @@ class FormSubmission(Base):
     prospect_title = Column(String(255), nullable=True)
     
     # Raw webhook payload (for debugging and audit)
-    raw_payload = Column(JSONB, nullable=True)
+    raw_payload = Column(JSONType, nullable=True)
     
     # HubSpot entity references (resolved after submission)
     hubspot_contact_id = Column(String(255), nullable=True, index=True)

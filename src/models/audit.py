@@ -2,10 +2,21 @@
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import Column, DateTime, Index, String, Text
+from sqlalchemy import Column, DateTime, Index, String, Text, JSON, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from src.db import Base
+
+
+class JSONType(TypeDecorator):
+    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
 
 
 class DraftAuditLog(Base):
@@ -22,7 +33,7 @@ class DraftAuditLog(Base):
     mode = Column(String(50), nullable=False)  # DRAFT_ONLY | SEND_ALLOWED
     status = Column(String(50), nullable=False)  # CREATED | SENT | BLOCKED | REJECTED
     reason = Column(Text, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    metadata = Column(JSONType, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
     __table_args__ = (

@@ -8,11 +8,22 @@ from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, String, Text, DateTime, Boolean, JSON
+from sqlalchemy import Column, String, Text, DateTime, Boolean, JSON, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.sql import func
 
 from src.db import Base
+
+
+class JSONType(TypeDecorator):
+    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
 
 
 class TrainingSampleSource(str, Enum):
@@ -52,7 +63,7 @@ class TrainingSample(Base):
     
     # Additional metadata (source-specific fields)
     # Note: 'metadata' is reserved by SQLAlchemy, so we use 'source_metadata'
-    source_metadata = Column(JSONB, nullable=True, comment="Source-specific metadata (file type, video duration, etc.)")
+    source_metadata = Column(JSONType, nullable=True, comment="Source-specific metadata (file type, video duration, etc.)")
     
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now(), index=True)

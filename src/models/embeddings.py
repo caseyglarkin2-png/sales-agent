@@ -1,11 +1,33 @@
 """SQLAlchemy models for embeddings."""
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, JSON, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.types import ARRAY
 
 from src.db import Base
+
+
+class JSONType(TypeDecorator):
+    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
+
+
+class ArrayType(TypeDecorator):
+    """ARRAY type that works with both PostgreSQL (ARRAY) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(float))
+        return dialect.type_descriptor(JSON())
 
 
 class MessageEmbedding(Base):
@@ -15,7 +37,7 @@ class MessageEmbedding(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     message_id = Column(UUID(as_uuid=True), ForeignKey("messages.id"), unique=True, nullable=False)
-    embedding = Column(ARRAY(float), nullable=False)  # VECTOR(1536)
+    embedding = Column(ArrayType, nullable=False)  # VECTOR(1536)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
@@ -33,8 +55,8 @@ class DocumentEmbedding(Base):
     drive_file_id = Column(String(255), nullable=False, index=True)
     chunk_index = Column(String(50), nullable=False)
     chunk_text = Column(Text, nullable=False)
-    embedding = Column(ARRAY(float), nullable=False)  # VECTOR(1536)
-    metadata = Column(JSONB, nullable=True)
+    embedding = Column(ArrayType, nullable=False)  # VECTOR(1536)
+    metadata = Column(JSONType, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (

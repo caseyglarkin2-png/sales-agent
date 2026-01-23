@@ -1,11 +1,33 @@
 """SQLAlchemy models for messages and threads."""
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Index, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Index, String, Text, UniqueConstraint, JSON, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.types import ARRAY
 
 from src.db import Base
+
+
+class JSONType(TypeDecorator):
+    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
+
+
+class ArrayType(TypeDecorator):
+    """ARRAY type that works with both PostgreSQL (ARRAY) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(float))
+        return dialect.type_descriptor(JSON())
 
 
 class Message(Base):
@@ -20,8 +42,8 @@ class Message(Base):
     recipient = Column(String(255), nullable=False)
     subject = Column(String(512), nullable=False)
     body = Column(Text, nullable=False)
-    embedding = Column(ARRAY(float), nullable=True)  # Vector(1536)
-    gmail_metadata = Column(JSONB, nullable=True)
+    embedding = Column(ArrayType, nullable=True)  # Vector(1536)
+    gmail_metadata = Column(JSONType, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
