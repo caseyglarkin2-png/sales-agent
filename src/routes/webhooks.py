@@ -186,6 +186,7 @@ async def hubspot_form_submission(
     # Create signal for CaseyOS command queue
     signal_id: Optional[str] = None
     recommendation_id: Optional[str] = None
+    signal_error: Optional[str] = None
     try:
         signal_service = SignalService(db)
         signal, recommendation = await signal_service.create_and_process(
@@ -210,7 +211,8 @@ async def hubspot_form_submission(
             recommendation_id=recommendation_id,
         )
     except Exception as e:
-        logger.warning(f"Failed to create signal (non-fatal): {e}")
+        signal_error = str(e)
+        logger.warning(f"Failed to create signal (non-fatal): {e}", exc_info=True)
         await db.rollback()
 
     # Generate workflow ID for tracking
@@ -240,6 +242,7 @@ async def hubspot_form_submission(
             "task_id": task.id,
             "signal_id": signal_id,
             "recommendation_id": recommendation_id,
+            "signal_error": signal_error,
             "message": "Form submission queued for processing",
             "status_url": f"/api/tasks/{workflow_id}/status",
         }
@@ -256,6 +259,7 @@ async def hubspot_form_submission(
             "submission_id": payload.formSubmissionId,
             "email": email,
             "workflow_id": workflow_id,
+            "signal_error": signal_error,
             "message": "Form submission queued but may have failed",
             "error": str(e),
         }
