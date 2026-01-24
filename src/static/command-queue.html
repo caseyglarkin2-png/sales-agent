@@ -5,53 +5,762 @@
     <title>Today's Moves • CaseyOS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
-      h1 { margin-bottom: 0.5rem; }
-      .subtitle { color: #666; margin-bottom: 1.5rem; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
-      th { background: #f9fafb; }
-      .score { font-weight: 600; }
-      .pill { padding: 2px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; }
+      :root {
+        --primary: #4f46e5;
+        --primary-dark: #4338ca;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+      }
+      
+      * { box-sizing: border-box; }
+      
+      body {
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        margin: 0;
+        background: var(--gray-50);
+        color: var(--gray-900);
+        line-height: 1.5;
+      }
+      
+      /* Navigation */
+      .nav {
+        background: white;
+        border-bottom: 1px solid var(--gray-200);
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .nav-brand {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary);
+        text-decoration: none;
+      }
+      
+      .nav-links {
+        display: flex;
+        gap: 1.5rem;
+      }
+      
+      .nav-links a {
+        color: var(--gray-600);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.5rem 0;
+        border-bottom: 2px solid transparent;
+      }
+      
+      .nav-links a:hover,
+      .nav-links a.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+      
+      /* Main container */
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      
+      /* Header */
+      .page-header {
+        margin-bottom: 2rem;
+      }
+      
+      .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        color: var(--gray-900);
+      }
+      
+      .page-header p {
+        margin: 0;
+        color: var(--gray-500);
+      }
+      
+      /* Stats bar */
+      .stats-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .stat-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem 1.5rem;
+        border: 1px solid var(--gray-200);
+        flex: 1;
+      }
+      
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-900);
+      }
+      
+      .stat-label {
+        font-size: 0.875rem;
+        color: var(--gray-500);
+      }
+      
+      /* Queue list */
+      .queue-list {
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+      }
+      
+      .queue-item {
+        display: flex;
+        align-items: stretch;
+        border-bottom: 1px solid var(--gray-100);
+        transition: background 0.15s;
+      }
+      
+      .queue-item:last-child {
+        border-bottom: none;
+      }
+      
+      .queue-item:hover {
+        background: var(--gray-50);
+      }
+      
+      /* Priority indicator */
+      .priority-bar {
+        width: 4px;
+        flex-shrink: 0;
+      }
+      
+      .priority-bar.high { background: var(--danger); }
+      .priority-bar.medium { background: var(--warning); }
+      .priority-bar.low { background: var(--success); }
+      
+      /* Queue item content */
+      .queue-content {
+        flex: 1;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      
+      .queue-main {
+        flex: 1;
+        min-width: 0;
+      }
+      
+      .queue-title {
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .queue-meta {
+        font-size: 0.875rem;
+        color: var(--gray-500);
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      
+      .queue-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      
+      /* Action type pill */
+      .action-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      
+      .action-pill.send_email { background: #dbeafe; color: #1e40af; }
+      .action-pill.book_meeting { background: #dcfce7; color: #166534; }
+      .action-pill.review_deal { background: #fef3c7; color: #92400e; }
+      .action-pill.follow_up { background: #f3e8ff; color: #6b21a8; }
+      .action-pill.send_proposal { background: #ffe4e6; color: #be123c; }
+      .action-pill.check_in { background: #e0e7ff; color: #3730a3; }
+      .action-pill.prep_meeting { background: #ccfbf1; color: #0f766e; }
+      .action-pill.other { background: var(--gray-100); color: var(--gray-600); }
+      
+      /* Priority badge */
+      .priority-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        min-width: 2.5rem;
+        text-align: center;
+      }
+      
+      .priority-badge.high { background: #fee2e2; color: #b91c1c; }
+      .priority-badge.medium { background: #fef3c7; color: #b45309; }
+      .priority-badge.low { background: #dcfce7; color: #15803d; }
+      
+      /* Reasoning tooltip */
+      .reasoning {
+        position: relative;
+        cursor: help;
+      }
+      
+      .reasoning-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.25rem;
+        height: 1.25rem;
+        background: var(--gray-100);
+        color: var(--gray-500);
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      
+      .reasoning-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--gray-800);
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.15s;
+        z-index: 10;
+        margin-bottom: 0.5rem;
+        max-width: 300px;
+        white-space: normal;
+      }
+      
+      .reasoning:hover .reasoning-tooltip {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      /* Action buttons */
+      .queue-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding-right: 1rem;
+        align-items: center;
+      }
+      
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: 0.375rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      
+      .btn-complete {
+        background: var(--success);
+        color: white;
+      }
+      
+      .btn-complete:hover {
+        background: #059669;
+      }
+      
+      .btn-skip {
+        background: white;
+        border-color: var(--gray-300);
+        color: var(--gray-600);
+      }
+      
+      .btn-skip:hover {
+        background: var(--gray-50);
+        border-color: var(--gray-400);
+      }
+      
+      .btn-snooze {
+        position: relative;
+        background: white;
+        border-color: var(--gray-300);
+        color: var(--gray-600);
+      }
+      
+      .btn-snooze:hover {
+        background: var(--gray-50);
+      }
+      
+      /* Snooze dropdown */
+      .snooze-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid var(--gray-200);
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.15s;
+        z-index: 20;
+        min-width: 150px;
+        margin-top: 0.25rem;
+      }
+      
+      .snooze-dropdown.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .snooze-option {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        text-align: left;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+        color: var(--gray-700);
+      }
+      
+      .snooze-option:hover {
+        background: var(--gray-50);
+      }
+      
+      .snooze-option:first-child {
+        border-radius: 0.5rem 0.5rem 0 0;
+      }
+      
+      .snooze-option:last-child {
+        border-radius: 0 0 0.5rem 0.5rem;
+      }
+      
+      /* Empty state */
+      .empty-state {
+        padding: 4rem 2rem;
+        text-align: center;
+      }
+      
+      .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+      
+      .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+      }
+      
+      .empty-message {
+        color: var(--gray-500);
+      }
+      
+      /* Loading state */
+      .loading {
+        padding: 3rem;
+        text-align: center;
+        color: var(--gray-500);
+      }
+      
+      /* Filters */
+      .filters {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+      
+      .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .filter-label {
+        font-size: 0.875rem;
+        color: var(--gray-500);
+      }
+      
+      select {
+        padding: 0.375rem 2rem 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        border: 1px solid var(--gray-300);
+        border-radius: 0.375rem;
+        background: white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 0.5rem center;
+        background-size: 1.5em 1.5em;
+        appearance: none;
+        cursor: pointer;
+      }
+      
+      /* Toast notifications */
+      .toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: var(--gray-800);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s;
+        z-index: 100;
+      }
+      
+      .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      
+      .toast.success { background: var(--success); }
+      .toast.error { background: var(--danger); }
+      
+      /* Responsive */
+      @media (max-width: 768px) {
+        .container { padding: 1rem; }
+        .queue-content { flex-direction: column; align-items: flex-start; }
+        .queue-actions { width: 100%; justify-content: flex-end; padding: 0.5rem 1rem 1rem; }
+        .stats-bar { flex-direction: column; }
+      }
     </style>
   </head>
   <body>
-    <h1>Today's Moves</h1>
-    <div class="subtitle">Ranked by APS (Action Priority Score)</div>
-    <table>
-      <thead>
-        <tr>
-          <th>APS</th>
-          <th>Action</th>
-          <th>Owner</th>
-          <th>Status</th>
-          <th>Due</th>
-          <th>Reasoning</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+    <nav class="nav">
+      <a href="/dashboard" class="nav-brand">CaseyOS</a>
+      <div class="nav-links">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/todays-moves" class="active">Today's Moves</a>
+        <a href="/calendar">Calendar</a>
+        <a href="/settings">Settings</a>
+      </div>
+    </nav>
+    
+    <div class="container">
+      <div class="page-header">
+        <h1>Today's Moves</h1>
+        <p>Your prioritized actions, ranked by impact. Let's crush it.</p>
+      </div>
+      
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-pending">-</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-completed">-</div>
+          <div class="stat-label">Completed Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-high-priority">-</div>
+          <div class="stat-label">High Priority</div>
+        </div>
+      </div>
+      
+      <div class="filters">
+        <div class="filter-group">
+          <span class="filter-label">Status:</span>
+          <select id="filter-status">
+            <option value="">Pending</option>
+            <option value="pending">Pending Only</option>
+            <option value="completed">Completed</option>
+            <option value="skipped">Skipped</option>
+            <option value="snoozed">Snoozed</option>
+            <option value="pending,completed,skipped,snoozed">All</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Type:</span>
+          <select id="filter-type">
+            <option value="">All Types</option>
+            <option value="send_email">Send Email</option>
+            <option value="book_meeting">Book Meeting</option>
+            <option value="review_deal">Review Deal</option>
+            <option value="follow_up">Follow Up</option>
+            <option value="send_proposal">Send Proposal</option>
+            <option value="check_in">Check In</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Sort:</span>
+          <select id="filter-sort">
+            <option value="-priority_score">Priority (High → Low)</option>
+            <option value="priority_score">Priority (Low → High)</option>
+            <option value="due_by">Due Date (Soonest)</option>
+            <option value="-created_at">Newest First</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="queue-list" id="queue-list">
+        <div class="loading">Loading your moves...</div>
+      </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
 
     <script>
-      async function load() {
-        const res = await fetch('/api/command-queue/today');
-        const data = await res.json();
-        const rows = document.getElementById('rows');
-        rows.innerHTML = '';
-        for (const i of data.today_moves) {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="score">${i.aps}</td>
-            <td><span class="pill">${i.action_type}</span></td>
-            <td>${i.owner}</td>
-            <td>${i.status}</td>
-            <td>${i.due_by ?? ''}</td>
-            <td>${i.reasoning}</td>
+      const API_BASE = '/api/command-queue';
+      let items = [];
+      
+      // Utility functions
+      function getPriorityClass(score) {
+        if (score >= 75) return 'high';
+        if (score >= 50) return 'medium';
+        return 'low';
+      }
+      
+      function formatDate(isoString) {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        const now = new Date();
+        const diff = date - now;
+        
+        if (diff < 0) return 'Overdue';
+        if (diff < 3600000) return 'Within the hour';
+        if (diff < 86400000) return 'Today';
+        if (diff < 172800000) return 'Tomorrow';
+        
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      }
+      
+      function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast ' + type + ' show';
+        setTimeout(() => { toast.className = 'toast'; }, 3000);
+      }
+      
+      // Render queue list
+      function renderQueue() {
+        const container = document.getElementById('queue-list');
+        
+        if (items.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">✨</div>
+              <div class="empty-title">All caught up!</div>
+              <div class="empty-message">No pending items. Check back later or change your filters.</div>
+            </div>
           `;
-          rows.appendChild(tr);
+          return;
+        }
+        
+        container.innerHTML = items.map(item => {
+          const priorityClass = getPriorityClass(item.priority_score);
+          const actionType = (item.action_type || 'other').replace(/_/g, ' ');
+          
+          return `
+            <div class="queue-item" data-id="${item.id}">
+              <div class="priority-bar ${priorityClass}"></div>
+              <div class="queue-content" onclick="viewItem('${item.id}')" style="cursor: pointer;">
+                <div class="queue-main">
+                  <div class="queue-title">
+                    <span>${escapeHtml(item.title)}</span>
+                    <span class="action-pill ${item.action_type}">${actionType}</span>
+                    ${item.reasoning ? `
+                      <span class="reasoning">
+                        <span class="reasoning-icon">?</span>
+                        <span class="reasoning-tooltip">${escapeHtml(item.reasoning)}</span>
+                      </span>
+                    ` : ''}
+                  </div>
+                  <div class="queue-meta">
+                    <span class="priority-badge ${priorityClass}">${Math.round(item.priority_score)}</span>
+                    ${item.due_by ? `<span>📅 ${formatDate(item.due_by)}</span>` : ''}
+                    ${item.contact_id ? `<span>👤 Contact</span>` : ''}
+                    ${item.deal_id ? `<span>💰 Deal</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="queue-actions">
+                <button class="btn btn-complete" onclick="event.stopPropagation(); completeItem('${item.id}')">
+                  ✓ Done
+                </button>
+                <button class="btn btn-skip" onclick="event.stopPropagation(); skipItem('${item.id}')">
+                  Skip
+                </button>
+                <div style="position: relative;">
+                  <button class="btn btn-snooze" onclick="toggleSnooze(this)">
+                    ⏰ Snooze
+                  </button>
+                  <div class="snooze-dropdown">
+                    <button class="snooze-option" onclick="snoozeItem('${item.id}', '1h')">1 hour</button>
+                    <button class="snooze-option" onclick="snoozeItem('${item.id}', '4h')">4 hours</button>
+                    <button class="snooze-option" onclick="snoozeItem('${item.id}', 'tomorrow')">Tomorrow</button>
+                    <button class="snooze-option" onclick="snoozeItem('${item.id}', 'next_week')">Next week</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+      
+      // Toggle snooze dropdown
+      function toggleSnooze(btn) {
+        const dropdown = btn.nextElementSibling;
+        const isOpen = dropdown.classList.contains('show');
+        
+        // Close all dropdowns
+        document.querySelectorAll('.snooze-dropdown').forEach(d => d.classList.remove('show'));
+        
+        if (!isOpen) {
+          dropdown.classList.add('show');
         }
       }
-      load();
+      
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.btn-snooze')) {
+          document.querySelectorAll('.snooze-dropdown').forEach(d => d.classList.remove('show'));
+        }
+      });
+      
+      // API calls
+      async function loadQueue() {
+        const status = document.getElementById('filter-status').value;
+        const type = document.getElementById('filter-type').value;
+        const sort = document.getElementById('filter-sort').value;
+        
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (type) params.append('action_type', type);
+        if (sort) params.append('sort', sort);
+        params.append('limit', '20');
+        
+        try {
+          const res = await fetch(`${API_BASE}?${params}`);
+          const data = await res.json();
+          items = data.items;
+          
+          // Update stats
+          document.getElementById('stat-pending').textContent = data.total;
+          document.getElementById('stat-high-priority').textContent = 
+            items.filter(i => i.priority_score >= 75).length;
+          
+          renderQueue();
+        } catch (err) {
+          console.error('Failed to load queue:', err);
+          showToast('Failed to load queue', 'error');
+        }
+      }
+      
+      async function loadCompletedCount() {
+        try {
+          const res = await fetch(`${API_BASE}?status=completed&limit=100`);
+          const data = await res.json();
+          document.getElementById('stat-completed').textContent = data.total;
+        } catch (err) {
+          console.error('Failed to load completed count:', err);
+        }
+      }
+      
+      function viewItem(id) {
+        window.location.href = `/queue/${id}`;
+      }
+      
+      async function completeItem(id) {
+        try {
+          const res = await fetch(`${API_BASE}/${id}/complete`, { method: 'POST' });
+          if (res.ok) {
+            showToast('Nice! Item completed 🎉');
+            loadQueue();
+            loadCompletedCount();
+          } else {
+            showToast('Failed to complete item', 'error');
+          }
+        } catch (err) {
+          showToast('Failed to complete item', 'error');
+        }
+      }
+      
+      async function skipItem(id) {
+        try {
+          const res = await fetch(`${API_BASE}/${id}/skip`, { method: 'POST' });
+          if (res.ok) {
+            showToast('Item skipped');
+            loadQueue();
+          } else {
+            showToast('Failed to skip item', 'error');
+          }
+        } catch (err) {
+          showToast('Failed to skip item', 'error');
+        }
+      }
+      
+      async function snoozeItem(id, duration) {
+        try {
+          const res = await fetch(`${API_BASE}/${id}/snooze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duration })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const until = new Date(data.snoozed_until);
+            showToast(`Snoozed until ${until.toLocaleString()}`);
+            loadQueue();
+          } else {
+            showToast('Failed to snooze item', 'error');
+          }
+        } catch (err) {
+          showToast('Failed to snooze item', 'error');
+        }
+      }
+      
+      // Event listeners for filters
+      document.getElementById('filter-status').addEventListener('change', loadQueue);
+      document.getElementById('filter-type').addEventListener('change', loadQueue);
+      document.getElementById('filter-sort').addEventListener('change', loadQueue);
+      
+      // Initial load
+      loadQueue();
+      loadCompletedCount();
     </script>
   </body>
-  </html>
+</html>

@@ -9,7 +9,12 @@ from src.models.workflow import (
     WorkflowError,
 )
 from src.models.form_submission import FormSubmission
-from src.models.command_queue import CommandQueueItem, ActionRecommendation
+from src.models.command_queue import (
+    CommandQueueItem, 
+    ActionRecommendation,
+    ActionType,
+    QueueItemStatus,
+)
 
 __all__ = [
     "Prospect",
@@ -23,4 +28,6 @@ __all__ = [
     "FormSubmission",
     "CommandQueueItem",
     "ActionRecommendation",
+    "ActionType",
+    "QueueItemStatus",
 ]

@@ -437,3 +437,56 @@ def _get_greeting() -> str:
         return "afternoon"
     else:
         return "evening"
+
+
+@router.get("/todays-moves")
+async def todays_moves(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve the Today's Moves page - the core command queue UI."""
+    from src.auth.decorators import get_current_user_optional
+    
+    user = await get_current_user_optional(request, db)
+    
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    # Serve the static HTML file
+    import os
+    static_path = os.path.join(os.path.dirname(__file__), "..", "static", "command-queue.html")
+    
+    try:
+        with open(static_path, "r") as f:
+            html = f.read()
+        return HTMLResponse(content=html)
+    except FileNotFoundError:
+        logger.error(f"command-queue.html not found at {static_path}")
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+
+@router.get("/queue/{item_id}")
+async def queue_item_detail(
+    item_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve the Queue Item Detail page."""
+    from src.auth.decorators import get_current_user_optional
+    
+    user = await get_current_user_optional(request, db)
+    
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    # Serve the static HTML file
+    import os
+    static_path = os.path.join(os.path.dirname(__file__), "..", "static", "queue-item-detail.html")
+    
+    try:
+        with open(static_path, "r") as f:
+            html = f.read()
+        return HTMLResponse(content=html)
+    except FileNotFoundError:
+        logger.error(f"queue-item-detail.html not found at {static_path}")
+        return RedirectResponse(url="/todays-moves", status_code=302)

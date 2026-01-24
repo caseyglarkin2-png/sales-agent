@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Queue Item Detail • CaseyOS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --primary: #4f46e5;
+        --primary-dark: #4338ca;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+      }
+      
+      * { box-sizing: border-box; }
+      
+      body {
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        background: var(--gray-50);
+        color: var(--gray-900);
+        line-height: 1.6;
+      }
+      
+      .nav {
+        background: white;
+        border-bottom: 1px solid var(--gray-200);
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      
+      .nav-brand {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary);
+        text-decoration: none;
+      }
+      
+      .nav-breadcrumb {
+        color: var(--gray-400);
+        font-size: 0.875rem;
+      }
+      
+      .nav-breadcrumb a {
+        color: var(--gray-600);
+        text-decoration: none;
+      }
+      
+      .nav-breadcrumb a:hover {
+        color: var(--primary);
+      }
+      
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--gray-500);
+        text-decoration: none;
+        font-size: 0.875rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .back-link:hover {
+        color: var(--primary);
+      }
+      
+      .card {
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+      }
+      
+      .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--gray-100);
+      }
+      
+      .card-body {
+        padding: 1.5rem;
+      }
+      
+      .item-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        color: var(--gray-900);
+      }
+      
+      .item-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+      
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+      
+      .badge-priority.high { background: #fee2e2; color: #b91c1c; }
+      .badge-priority.medium { background: #fef3c7; color: #b45309; }
+      .badge-priority.low { background: #dcfce7; color: #15803d; }
+      
+      .badge-status.pending { background: #dbeafe; color: #1e40af; }
+      .badge-status.completed { background: #dcfce7; color: #166534; }
+      .badge-status.skipped { background: var(--gray-100); color: var(--gray-600); }
+      .badge-status.snoozed { background: #fef3c7; color: #92400e; }
+      
+      .badge-type {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      
+      .section {
+        margin-bottom: 2rem;
+      }
+      
+      .section:last-child {
+        margin-bottom: 0;
+      }
+      
+      .section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--gray-400);
+        margin-bottom: 0.5rem;
+      }
+      
+      .section-content {
+        color: var(--gray-700);
+      }
+      
+      .reasoning-box {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border: 1px solid #86efac;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .reasoning-title {
+        font-weight: 600;
+        color: #166534;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .reasoning-text {
+        color: #15803d;
+      }
+      
+      .drivers-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+      }
+      
+      .driver-card {
+        background: var(--gray-50);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        text-align: center;
+      }
+      
+      .driver-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      
+      .driver-label {
+        font-size: 0.75rem;
+        color: var(--gray-500);
+      }
+      
+      .context-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      
+      .context-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem;
+        background: var(--gray-50);
+        border-radius: 0.5rem;
+      }
+      
+      .context-label {
+        color: var(--gray-500);
+        font-size: 0.875rem;
+      }
+      
+      .context-value {
+        font-weight: 500;
+        color: var(--gray-700);
+      }
+      
+      .context-value a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+      
+      .context-value a:hover {
+        text-decoration: underline;
+      }
+      
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        padding: 1.5rem;
+        background: var(--gray-50);
+        border-top: 1px solid var(--gray-200);
+      }
+      
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-complete {
+        background: var(--success);
+        color: white;
+        flex: 1;
+      }
+      
+      .btn-complete:hover {
+        background: #059669;
+      }
+      
+      .btn-skip {
+        background: white;
+        border-color: var(--gray-300);
+        color: var(--gray-600);
+      }
+      
+      .btn-skip:hover {
+        background: var(--gray-50);
+      }
+      
+      .btn-snooze {
+        background: white;
+        border-color: var(--gray-300);
+        color: var(--gray-600);
+      }
+      
+      .loading {
+        padding: 3rem;
+        text-align: center;
+        color: var(--gray-500);
+      }
+      
+      .error {
+        padding: 2rem;
+        text-align: center;
+        color: var(--danger);
+      }
+      
+      @media (max-width: 640px) {
+        .drivers-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .container {
+          padding: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/dashboard" class="nav-brand">CaseyOS</a>
+      <div class="nav-breadcrumb">
+        <a href="/todays-moves">Today's Moves</a> / <span id="breadcrumb-title">Loading...</span>
+      </div>
+    </nav>
+    
+    <div class="container">
+      <a href="/todays-moves" class="back-link">← Back to Today's Moves</a>
+      
+      <div class="card" id="item-card">
+        <div class="loading">Loading item details...</div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = '/api/command-queue';
+      
+      function getPriorityClass(score) {
+        if (score >= 75) return 'high';
+        if (score >= 50) return 'medium';
+        return 'low';
+      }
+      
+      function formatDate(isoString) {
+        if (!isoString) return 'Not set';
+        return new Date(isoString).toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+      }
+      
+      function formatActionType(type) {
+        return (type || 'other').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+      
+      async function loadItem() {
+        // Get item ID from URL
+        const pathParts = window.location.pathname.split('/');
+        const itemId = pathParts[pathParts.length - 1];
+        
+        if (!itemId) {
+          showError('No item ID provided');
+          return;
+        }
+        
+        try {
+          const res = await fetch(`${API_BASE}/${itemId}`);
+          if (!res.ok) {
+            if (res.status === 404) {
+              showError('Item not found');
+            } else {
+              showError('Failed to load item');
+            }
+            return;
+          }
+          
+          const item = await res.json();
+          renderItem(item);
+        } catch (err) {
+          console.error('Failed to load item:', err);
+          showError('Failed to load item');
+        }
+      }
+      
+      function showError(message) {
+        document.getElementById('item-card').innerHTML = `
+          <div class="error">
+            <p>${message}</p>
+            <a href="/todays-moves" style="color: var(--primary);">← Back to Today's Moves</a>
+          </div>
+        `;
+      }
+      
+      function renderItem(item) {
+        const priorityClass = getPriorityClass(item.priority_score);
+        const drivers = item.drivers || {};
+        
+        document.getElementById('breadcrumb-title').textContent = item.title.substring(0, 40) + (item.title.length > 40 ? '...' : '');
+        
+        document.getElementById('item-card').innerHTML = `
+          <div class="card-header">
+            <h1 class="item-title">${escapeHtml(item.title)}</h1>
+            <div class="item-meta">
+              <span class="badge badge-priority ${priorityClass}">Priority: ${Math.round(item.priority_score)}</span>
+              <span class="badge badge-status ${item.status}">${item.status}</span>
+              <span class="badge badge-type">${formatActionType(item.action_type)}</span>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            ${item.reasoning ? `
+              <div class="reasoning-box">
+                <div class="reasoning-title">💡 Why This Matters</div>
+                <div class="reasoning-text">${escapeHtml(item.reasoning)}</div>
+              </div>
+            ` : ''}
+            
+            ${item.description ? `
+              <div class="section">
+                <div class="section-title">Description</div>
+                <div class="section-content">${escapeHtml(item.description)}</div>
+              </div>
+            ` : ''}
+            
+            ${Object.keys(drivers).length > 0 ? `
+              <div class="section">
+                <div class="section-title">Priority Drivers</div>
+                <div class="drivers-grid">
+                  <div class="driver-card">
+                    <div class="driver-value">${drivers.urgency || 0}</div>
+                    <div class="driver-label">Urgency</div>
+                  </div>
+                  <div class="driver-card">
+                    <div class="driver-value">${drivers.revenue || 0}</div>
+                    <div class="driver-label">Revenue</div>
+                  </div>
+                  <div class="driver-card">
+                    <div class="driver-value">${drivers.effort || 0}</div>
+                    <div class="driver-label">Effort</div>
+                  </div>
+                  <div class="driver-card">
+                    <div class="driver-value">${drivers.strategic || 0}</div>
+                    <div class="driver-label">Strategic</div>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+            
+            <div class="section">
+              <div class="section-title">Context</div>
+              <div class="context-list">
+                <div class="context-item">
+                  <span class="context-label">Due Date</span>
+                  <span class="context-value">${formatDate(item.due_by)}</span>
+                </div>
+                <div class="context-item">
+                  <span class="context-label">Owner</span>
+                  <span class="context-value">${escapeHtml(item.owner)}</span>
+                </div>
+                ${item.contact_id ? `
+                  <div class="context-item">
+                    <span class="context-label">Contact</span>
+                    <span class="context-value">
+                      <a href="https://app.hubspot.com/contacts/${item.contact_id}" target="_blank">
+                        View in HubSpot →
+                      </a>
+                    </span>
+                  </div>
+                ` : ''}
+                ${item.deal_id ? `
+                  <div class="context-item">
+                    <span class="context-label">Deal</span>
+                    <span class="context-value">
+                      <a href="https://app.hubspot.com/deals/${item.deal_id}" target="_blank">
+                        View in HubSpot →
+                      </a>
+                    </span>
+                  </div>
+                ` : ''}
+                ${item.company_id ? `
+                  <div class="context-item">
+                    <span class="context-label">Company</span>
+                    <span class="context-value">
+                      <a href="https://app.hubspot.com/companies/${item.company_id}" target="_blank">
+                        View in HubSpot →
+                      </a>
+                    </span>
+                  </div>
+                ` : ''}
+                ${item.snoozed_until ? `
+                  <div class="context-item">
+                    <span class="context-label">Snoozed Until</span>
+                    <span class="context-value">${formatDate(item.snoozed_until)}</span>
+                  </div>
+                ` : ''}
+                ${item.completed_at ? `
+                  <div class="context-item">
+                    <span class="context-label">Completed At</span>
+                    <span class="context-value">${formatDate(item.completed_at)}</span>
+                  </div>
+                ` : ''}
+                <div class="context-item">
+                  <span class="context-label">Created</span>
+                  <span class="context-value">${formatDate(item.created_at)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="actions">
+            <button class="btn btn-complete" onclick="completeItem('${item.id}')">
+              ✓ Mark Complete
+            </button>
+            <button class="btn btn-skip" onclick="skipItem('${item.id}')">
+              Skip
+            </button>
+            <button class="btn btn-snooze" onclick="snoozeItem('${item.id}')">
+              ⏰ Snooze
+            </button>
+          </div>
+        `;
+      }
+      
+      function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+      
+      async function completeItem(id) {
+        try {
+          const res = await fetch(`${API_BASE}/${id}/complete`, { method: 'POST' });
+          if (res.ok) {
+            window.location.href = '/todays-moves';
+          }
+        } catch (err) {
+          console.error('Failed to complete:', err);
+        }
+      }
+      
+      async function skipItem(id) {
+        try {
+          const res = await fetch(`${API_BASE}/${id}/skip`, { method: 'POST' });
+          if (res.ok) {
+            window.location.href = '/todays-moves';
+          }
+        } catch (err) {
+          console.error('Failed to skip:', err);
+        }
+      }
+      
+      async function snoozeItem(id) {
+        const duration = prompt('Snooze for how long?\\n1h - 1 hour\\n4h - 4 hours\\ntomorrow - Tomorrow 9am\\nnext_week - Next Monday', '1h');
+        if (!duration) return;
+        
+        try {
+          const res = await fetch(`${API_BASE}/${id}/snooze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duration })
+          });
+          if (res.ok) {
+            window.location.href = '/todays-moves';
+          }
+        } catch (err) {
+          console.error('Failed to snooze:', err);
+        }
+      }
+      
+      // Load on page load
+      loadItem();
+    </script>
+  </body>
+</html>
