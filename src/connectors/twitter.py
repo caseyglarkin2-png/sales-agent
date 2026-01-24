@@ -462,3 +462,7 @@ def get_twitter_connector() -> Optional[TwitterConnector]:
             logger.warning("TWITTER_BEARER_TOKEN not configured")
             return None
     return _twitter_connector
+
+
+# Alias for consistency with other connectors
+get_twitter = get_twitter_connector

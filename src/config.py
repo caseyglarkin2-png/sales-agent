@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-2.0-flash-exp", alias="GEMINI_MODEL", description="Default Gemini Model")
     llm_provider: str = Field(default="openai", alias="LLM_PROVIDER", description="LLM provider: openai or gemini")
 
+    # xAI Grok (for real-time market intelligence)
+    xai_api_key: str = Field(default="", alias="XAI_API_KEY", description="xAI Grok API Key from console.x.ai")
+
+    # Twitter/X API (for social monitoring)
+    twitter_bearer_token: str = Field(default="", alias="TWITTER_BEARER_TOKEN", description="Twitter/X API Bearer Token for social monitoring")
+
     # Feature Flags
     feature_cold_start_demo: bool = Field(default=True, alias="FEATURE_COLD_START_DEMO", description="Enable cold-start demo")
     feature_validation_agent: bool = Field(default=False, alias="FEATURE_VALIDATION_AGENT", description="Enable validation agent")

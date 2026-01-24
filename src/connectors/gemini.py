@@ -460,29 +460,66 @@ Keep it under 100 words."""
         return response.text
     
     async def health_check(self) -> Dict[str, Any]:
-        """Check Gemini API connectivity."""
+        """
+        Check Gemini API connectivity.
+        
+        Uses a cached result to avoid rate limiting on repeated health checks.
+        Cache expires after 60 seconds.
+        """
         if not self.api_key:
             return {
                 "status": "not_configured",
                 "message": "GEMINI_API_KEY not set",
             }
         
+        # Check cached health result
+        import time
+        cache_key = "_health_cache"
+        cache_ttl = 60  # Cache for 60 seconds
+        
+        cached = getattr(self, cache_key, None)
+        if cached and (time.time() - cached.get("timestamp", 0)) < cache_ttl:
+            return cached.get("result", {"status": "cached"})
+        
         try:
+            start = time.time()
             response = await self.generate(
                 prompt="Reply with 'ok'",
-                model=GeminiModel.FLASH_2_0,
-                max_tokens=10,
+                model=GeminiModel.FLASH_8B,  # Use smallest model for health check
+                max_tokens=5,
+                temperature=0,
             )
-            return {
+            latency_ms = (time.time() - start) * 1000
+            
+            result = {
                 "status": "healthy",
                 "model": response.model,
+                "latency_ms": round(latency_ms, 2),
                 "message": "Gemini API connected",
             }
+            
+            # Cache result
+            setattr(self, cache_key, {"timestamp": time.time(), "result": result})
+            
+            return result
         except Exception as e:
-            return {
-                "status": "error",
-                "message": str(e),
-            }
+            error_msg = str(e)
+            # Check for rate limit error
+            if "429" in error_msg:
+                result = {
+                    "status": "rate_limited",
+                    "message": "Rate limited - try again later",
+                }
+            else:
+                result = {
+                    "status": "error",
+                    "message": error_msg,
+                }
+            
+            # Cache error result for shorter time
+            setattr(self, cache_key, {"timestamp": time.time(), "result": result})
+            
+            return result
     
     # ==================== CANVAS FEATURES ====================
     
