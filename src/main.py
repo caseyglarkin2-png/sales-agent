@@ -196,6 +196,7 @@ from src.routes import ui_command_queue
 from src.routes import signals as signals_routes
 from src.routes import web_auth  # CaseyOS Sprint 1: Web OAuth
 from src.routes import hubspot_signals  # CaseyOS Sprint 3: HubSpot Signal Ingestion
+from src.routes import hubspot_webhooks  # HubSpot CRM Real-Time Webhooks
 from src.routes import actions as actions_routes  # CaseyOS Sprint 9: Action Execution
 from src.routes import outcomes as outcomes_routes  # CaseyOS Sprint 10: Closed-Loop Outcomes
 from src.routes import caseyos_ui  # CaseyOS Sprint 11: Unified Dashboard
@@ -243,6 +244,7 @@ app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
 app.include_router(ui_command_queue.router)  # CaseyOS: Command Queue UI v0
 app.include_router(signals_routes.router)  # CaseyOS: Signals API (Sprint 8)
 app.include_router(hubspot_signals.router)  # CaseyOS: HubSpot Signal Ingestion (Sprint 3)
+app.include_router(hubspot_webhooks.router)  # HubSpot CRM Real-Time Webhooks
 app.include_router(actions_routes.router)  # CaseyOS Sprint 9: Action Execution
 app.include_router(outcomes_routes.router)  # CaseyOS Sprint 10: Closed-Loop Outcomes
 app.include_router(caseyos_ui.router)  # CaseyOS Sprint 11: Unified Dashboard UI

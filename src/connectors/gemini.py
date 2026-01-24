@@ -483,6 +483,427 @@ Keep it under 100 words."""
                 "status": "error",
                 "message": str(e),
             }
+    
+    # ==================== CANVAS FEATURES ====================
+    
+    async def create_document(
+        self,
+        title: str,
+        content_type: str = "sales_proposal",
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a structured document using Canvas-like generation.
+        
+        Content types:
+        - sales_proposal: Full sales proposal with sections
+        - meeting_recap: Meeting summary with action items
+        - case_study: Customer success story
+        - battle_card: Competitive analysis card
+        - email_sequence: Multi-email nurture sequence
+        
+        Args:
+            title: Document title
+            content_type: Type of document to generate
+            context: Additional context (company info, deal details, etc.)
+            
+        Returns:
+            Document with sections and metadata
+        """
+        templates = {
+            "sales_proposal": """Create a professional sales proposal with these sections:
+1. Executive Summary (2-3 sentences)
+2. Understanding Your Needs (based on context)
+3. Our Solution
+4. Key Benefits (bullet points)
+5. Investment & Timeline
+6. Next Steps
+
+Format as JSON with sections array.""",
+            
+            "meeting_recap": """Create a meeting recap with:
+1. Meeting Overview (date, attendees, purpose)
+2. Key Discussion Points
+3. Decisions Made
+4. Action Items (with owners and due dates)
+5. Next Meeting
+
+Format as JSON.""",
+            
+            "case_study": """Create a customer case study with:
+1. Customer Overview
+2. Challenge
+3. Solution
+4. Results (with metrics)
+5. Customer Quote
+
+Format as JSON.""",
+            
+            "battle_card": """Create a competitive battle card with:
+1. Competitor Overview
+2. Their Strengths
+3. Their Weaknesses
+4. Our Advantages
+5. Common Objections & Responses
+6. Win Themes
+
+Format as JSON.""",
+            
+            "email_sequence": """Create a 3-email nurture sequence with:
+1. Initial Outreach (subject, body)
+2. Follow-up #1 (subject, body, wait_days)
+3. Follow-up #2 (subject, body, wait_days)
+
+Format as JSON with emails array.""",
+        }
+        
+        template = templates.get(content_type, templates["sales_proposal"])
+        context_str = json.dumps(context or {}, indent=2)
+        
+        prompt = f"""Title: {title}
+
+Context:
+{context_str}
+
+{template}"""
+
+        response = await self.generate(
+            prompt=prompt,
+            model=GeminiModel.PRO_1_5,  # Use Pro for document generation
+            temperature=0.7,
+            max_tokens=4096,
+            system_instruction="You are a professional business writer. Create well-structured, compelling documents.",
+        )
+        
+        try:
+            text = response.text
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0]
+            
+            document = json.loads(text)
+            document["_meta"] = {
+                "title": title,
+                "type": content_type,
+                "model": response.model,
+                "tokens_used": response.usage.get("total_tokens", 0),
+            }
+            return document
+        except json.JSONDecodeError:
+            return {
+                "title": title,
+                "type": content_type,
+                "content": response.text,
+                "_meta": {"raw": True},
+            }
+    
+    async def refine_content(
+        self,
+        content: str,
+        instruction: str,
+        preserve_structure: bool = True,
+    ) -> str:
+        """
+        Refine/edit existing content based on instructions.
+        
+        Canvas-like editing capability.
+        
+        Args:
+            content: Original content to refine
+            instruction: What to change (e.g., "make it more concise", "add humor")
+            preserve_structure: Keep the original structure
+            
+        Returns:
+            Refined content
+        """
+        system = "You are an expert editor. Refine the content based on instructions."
+        if preserve_structure:
+            system += " Preserve the original structure and format."
+        
+        prompt = f"""Original Content:
+{content}
+
+---
+
+Instruction: {instruction}
+
+Provide the refined content:"""
+
+        response = await self.generate(
+            prompt=prompt,
+            model=GeminiModel.FLASH_2_0,
+            temperature=0.5,
+            max_tokens=4096,
+            system_instruction=system,
+        )
+        
+        return response.text
+    
+    # ==================== MULTIMODAL FEATURES ====================
+    
+    async def analyze_image(
+        self,
+        image_data: bytes,
+        prompt: str = "Describe this image in detail.",
+        mime_type: str = "image/png",
+    ) -> str:
+        """
+        Analyze an image using Gemini's vision capabilities.
+        
+        Args:
+            image_data: Raw image bytes
+            prompt: What to analyze/extract from the image
+            mime_type: Image MIME type (image/png, image/jpeg, etc.)
+            
+        Returns:
+            Analysis text
+        """
+        import base64
+        
+        image_b64 = base64.b64encode(image_data).decode("utf-8")
+        
+        body = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inlineData": {
+                            "mimeType": mime_type,
+                            "data": image_b64,
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {
+                "temperature": 0.4,
+                "maxOutputTokens": 2048,
+            }
+        }
+        
+        client = await self._get_client()
+        
+        try:
+            response = await client.post(
+                self._get_endpoint(GeminiModel.FLASH_2_0.value),
+                json=body,
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return "".join(p.get("text", "") for p in parts)
+            return "Could not analyze image"
+            
+        except Exception as e:
+            logger.error(f"Image analysis failed: {e}")
+            raise
+    
+    async def analyze_document_image(
+        self,
+        image_data: bytes,
+        extraction_type: str = "text",
+    ) -> Dict[str, Any]:
+        """
+        Extract structured data from document images.
+        
+        Useful for:
+        - Business cards → contact info
+        - Invoices → line items
+        - Contracts → key terms
+        - Screenshots → UI elements
+        
+        Args:
+            image_data: Raw image bytes
+            extraction_type: What to extract (text, contact, invoice, contract)
+            
+        Returns:
+            Extracted data as structured JSON
+        """
+        prompts = {
+            "text": "Extract all text from this image. Return as plain text.",
+            "contact": """Extract contact information from this business card.
+Return JSON with: name, title, company, email, phone, address, linkedin, website""",
+            "invoice": """Extract invoice data from this document.
+Return JSON with: invoice_number, date, vendor, line_items (array), subtotal, tax, total""",
+            "contract": """Extract key terms from this contract.
+Return JSON with: parties, effective_date, term_length, key_obligations, payment_terms, termination_clause""",
+        }
+        
+        prompt = prompts.get(extraction_type, prompts["text"])
+        result = await self.analyze_image(image_data, prompt)
+        
+        if extraction_type == "text":
+            return {"text": result}
+        
+        try:
+            if "```json" in result:
+                result = result.split("```json")[1].split("```")[0]
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"raw": result}
+    
+    # ==================== STREAMING FEATURES ====================
+    
+    async def generate_stream(
+        self,
+        prompt: str,
+        model: Optional[GeminiModel] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ):
+        """
+        Generate text with streaming response.
+        
+        Yields chunks as they're generated.
+        
+        Args:
+            prompt: User prompt
+            model: Gemini model
+            temperature: Creativity
+            max_tokens: Max output tokens
+            
+        Yields:
+            Text chunks as they arrive
+        """
+        model_name = (model or self.default_model).value
+        
+        body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            }
+        }
+        
+        endpoint = f"{self.BASE_URL}/models/{model_name}:streamGenerateContent?key={self.api_key}"
+        
+        client = await self._get_client()
+        
+        try:
+            async with client.stream("POST", endpoint, json=body) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            data = json.loads(line[6:])
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                for part in parts:
+                                    if "text" in part:
+                                        yield part["text"]
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            logger.error(f"Streaming generation failed: {e}")
+            raise
+    
+    # ==================== ADVANCED SALES FEATURES ====================
+    
+    async def score_lead(
+        self,
+        lead_data: Dict[str, Any],
+        icp_criteria: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        AI-powered lead scoring with explanation.
+        
+        Args:
+            lead_data: Lead information (name, company, role, etc.)
+            icp_criteria: Ideal Customer Profile criteria
+            
+        Returns:
+            Score (0-100) with reasoning
+        """
+        default_icp = {
+            "company_size": "50-500 employees",
+            "industry": "B2B SaaS, Technology",
+            "role": "VP Sales, CRO, Head of Revenue",
+            "pain_points": "sales efficiency, pipeline visibility, forecasting",
+        }
+        
+        icp = icp_criteria or default_icp
+        
+        prompt = f"""Score this lead against our ICP criteria.
+
+Lead Data:
+{json.dumps(lead_data, indent=2)}
+
+ICP Criteria:
+{json.dumps(icp, indent=2)}
+
+Return JSON with:
+- score: 0-100 overall fit score
+- fit_reasons: array of why they fit
+- gaps: array of concerns
+- recommended_action: what to do next
+- priority: high/medium/low"""
+
+        response = await self.generate(
+            prompt=prompt,
+            model=GeminiModel.FLASH_2_0,
+            temperature=0.3,
+            max_tokens=1024,
+            enable_grounding=True,  # Get real company data
+        )
+        
+        try:
+            text = response.text
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return {"score": 50, "raw_analysis": response.text}
+    
+    async def generate_objection_response(
+        self,
+        objection: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Generate response to sales objection.
+        
+        Args:
+            objection: The objection raised
+            context: Deal context (product, stage, etc.)
+            
+        Returns:
+            Response with talk track and supporting points
+        """
+        context_str = json.dumps(context or {}, indent=2)
+        
+        prompt = f"""A prospect raised this objection:
+
+"{objection}"
+
+Context: {context_str}
+
+Provide a response with:
+1. Acknowledge (show understanding)
+2. Reframe (shift perspective)
+3. Evidence (data/case study reference)
+4. Bridge to value
+5. Suggested response (2-3 sentences)
+
+Return as JSON."""
+
+        response = await self.generate(
+            prompt=prompt,
+            model=GeminiModel.FLASH_2_0,
+            temperature=0.6,
+            max_tokens=1024,
+        )
+        
+        try:
+            text = response.text
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return {"response": response.text}
 
 
 # Singleton instance
