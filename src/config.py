@@ -102,6 +102,8 @@ class Settings(BaseSettings):
 
     # Twitter/X API (for social monitoring)
     twitter_bearer_token: str = Field(default="", alias="TWITTER_BEARER_TOKEN", description="Twitter/X API Bearer Token for social monitoring")
+    twitter_consumer_key: str = Field(default="", alias="TWITTER_CONSUMER_KEY", description="Twitter/X Consumer Key (API Key) for OAuth 1.0a")
+    twitter_consumer_secret: str = Field(default="", alias="TWITTER_CONSUMER_SECRET", description="Twitter/X Consumer Secret (API Secret) for OAuth 1.0a")
 
     # Feature Flags
     feature_cold_start_demo: bool = Field(default=True, alias="FEATURE_COLD_START_DEMO", description="Enable cold-start demo")

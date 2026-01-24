@@ -203,6 +203,7 @@ from src.routes import caseyos_ui  # CaseyOS Sprint 11: Unified Dashboard
 from src.routes import celery_health  # Task 8.18: Celery Beat Health Check
 from src.routes import llm_api  # LLM: Multi-provider AI (OpenAI + Gemini)
 from src.routes import jarvis_api  # Jarvis: Master AI Orchestrator
+from src.routes import twitter_oauth  # Twitter OAuth for personal feed access
 
 # Configure logging
 settings = get_settings()
@@ -251,6 +252,7 @@ app.include_router(outcomes_routes.router)  # CaseyOS Sprint 10: Closed-Loop Out
 app.include_router(caseyos_ui.router)  # CaseyOS Sprint 11: Unified Dashboard UI
 app.include_router(jarvis_api.router)  # Jarvis: Master AI Orchestrator + Agent Hub
 app.include_router(llm_api.router)  # LLM: Multi-provider AI (OpenAI + Gemini)
+app.include_router(twitter_oauth.router)  # Twitter OAuth for personal feed access
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)
