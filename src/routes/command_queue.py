@@ -9,9 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db import get_db
 from src.models.command_queue import CommandQueueItem
 from src.security.auth import require_admin_role
-from src.telemetry import log_event
+from src.telemetry import log_event, track_event
 from src.services.aps_calculator import calculate_aps
-from src.telemetry.events import track_event
 
 router = APIRouter(prefix="/api/command-queue", tags=["Command Queue"])
 
