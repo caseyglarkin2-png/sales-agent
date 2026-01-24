@@ -1,17 +1,22 @@
 """HubSpot form webhook route for capturing new leads.
 
 Receives form submissions from HubSpot and initiates the prospecting workflow.
+Also creates signals for the CaseyOS command queue.
 """
 import asyncio
-from typing import Any
+from typing import Any, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.logger import get_logger
 from src.formlead_orchestrator import create_formlead_orchestrator
 from src.tasks.formlead_task import process_formlead_async
+from src.db import get_db
+from src.models.signal import SignalSource
+from src.services.signal_service import SignalService
 
 logger = get_logger(__name__)
 
@@ -108,16 +113,21 @@ def validate_form_id(form_id: str) -> bool:
 
 
 @router.post("/hubspot/form-submission", status_code=status.HTTP_202_ACCEPTED)
-async def hubspot_form_submission(payload: FormSubmissionPayload) -> dict[str, Any]:
+async def hubspot_form_submission(
+    payload: FormSubmissionPayload,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
     """Receive HubSpot form submission webhook.
 
     HubSpot sends a POST when a form is submitted. This endpoint:
     1. Validates the form ID
     2. Extracts contact information
-    3. Queues the prospecting workflow
+    3. Creates a Signal for CaseyOS command queue
+    4. Queues the prospecting workflow
 
     Args:
         payload: HubSpot form submission payload
+        db: Database session
 
     Returns:
         Acknowledgment with submission ID
@@ -173,6 +183,36 @@ async def hubspot_form_submission(payload: FormSubmissionPayload) -> dict[str, A
         "fieldValues": [{"name": f.name, "value": f.value} for f in payload.fieldValues],
     }
 
+    # Create signal for CaseyOS command queue
+    signal_id: Optional[str] = None
+    recommendation_id: Optional[str] = None
+    try:
+        signal_service = SignalService(db)
+        signal, recommendation = await signal_service.create_and_process(
+            source=SignalSource.FORM,
+            event_type="form_submitted",
+            payload={
+                "email": email,
+                "name": f"{first_name or ''} {last_name or ''}".strip() or "Unknown",
+                "company": company or "Unknown",
+                "form_id": payload.formId,
+                "portal_id": payload.portalId,
+                "form_submission_id": payload.formSubmissionId,
+            },
+            source_id=payload.formSubmissionId,
+        )
+        await db.commit()
+        signal_id = signal.id
+        recommendation_id = recommendation.id if recommendation else None
+        logger.info(
+            "Signal created for form submission",
+            signal_id=signal_id,
+            recommendation_id=recommendation_id,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to create signal (non-fatal): {e}")
+        await db.rollback()
+
     # Generate workflow ID for tracking
     workflow_id = f"form-lead-{uuid4()}"
 
@@ -198,6 +238,8 @@ async def hubspot_form_submission(payload: FormSubmissionPayload) -> dict[str, A
             "email": email,
             "workflow_id": workflow_id,
             "task_id": task.id,
+            "signal_id": signal_id,
+            "recommendation_id": recommendation_id,
             "message": "Form submission queued for processing",
             "status_url": f"/api/tasks/{workflow_id}/status",
         }
