@@ -34,7 +34,11 @@ class Signal(Base):
     )
     
     source: Mapped[SignalSource] = mapped_column(
-        SQLEnum(SignalSource, name="signal_source_enum"),
+        SQLEnum(
+            SignalSource, 
+            name="signal_source_enum",
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=False,
         index=True
     )
