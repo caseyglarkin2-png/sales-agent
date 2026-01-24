@@ -31,8 +31,15 @@ VALID_STATUSES: Set[str] = {"pending", "in_progress", "completed", "skipped", "s
 # Whitelist of valid action types for filtering
 VALID_ACTION_TYPES: Set[str] = {
     "send_email", "book_meeting", "review_deal", "send_proposal",
-    "follow_up", "check_in", "prep_meeting", "other"
+    "follow_up", "check_in", "prep_meeting", "other",
+    # Marketing Ops (Sprint 12a)
+    "content_repurpose", "social_post", "newsletter_draft", "asset_create",
+    # Customer Success (Sprint 12b)
+    "cs_health_check", "renewal_outreach", "risk_escalation", "onboarding_follow_up"
 }
+
+# Whitelist of valid domains for filtering (Sprint 12)
+VALID_DOMAINS: Set[str] = {"sales", "marketing", "cs"}
 
 # Regex for validating HubSpot IDs (alphanumeric only)
 HUBSPOT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -55,6 +62,7 @@ class CommandQueueItemCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=256)
     description: Optional[str] = None
     action_type: str = Field(default="other")
+    domain: str = Field(default="sales", description="GTM domain: sales, marketing, cs")
     priority_score: float = Field(default=50.0, ge=0, le=100)
     reasoning: Optional[str] = None
     drivers: Optional[DriverScores] = None
@@ -65,6 +73,14 @@ class CommandQueueItemCreate(BaseModel):
     
     due_by: Optional[datetime] = None
     action_context: Optional[Dict[str, Any]] = None
+    
+    @field_validator('domain', mode='before')
+    @classmethod
+    def validate_domain(cls, v: str) -> str:
+        """Validate domain against whitelist."""
+        if v not in VALID_DOMAINS:
+            return "sales"  # Default to 'sales' for unknown domains
+        return v
     
     @field_validator('contact_id', 'deal_id', 'company_id', mode='before')
     @classmethod
@@ -100,7 +116,9 @@ class CommandQueueItemResponse(BaseModel):
     title: str
     description: Optional[str]
     action_type: str
+    domain: str = "sales"  # GTM domain: sales, marketing, cs
     priority_score: float
+    aps_score: float = 0  # Alias for priority_score (UI compatibility)
     status: str
     
     reasoning: Optional[str]
@@ -113,10 +131,12 @@ class CommandQueueItemResponse(BaseModel):
     due_by: Optional[datetime]
     snoozed_until: Optional[datetime]
     completed_at: Optional[datetime]
+    executed_at: Optional[datetime] = None
     
     owner: str
     created_at: datetime
     updated_at: datetime
+    action_context: Optional[Dict[str, Any]] = None
     
     class Config:
         from_attributes = True
@@ -157,7 +177,9 @@ def _to_response(item: CommandQueueItem) -> CommandQueueItemResponse:
         title=item.title,
         description=item.description,
         action_type=item.action_type,
+        domain=getattr(item, 'domain', 'sales') or 'sales',
         priority_score=item.priority_score,
+        aps_score=item.priority_score,  # UI compatibility
         status=item.status,
         reasoning=item.reasoning,
         drivers=item.drivers,
@@ -167,9 +189,11 @@ def _to_response(item: CommandQueueItem) -> CommandQueueItemResponse:
         due_by=item.due_by,
         snoozed_until=item.snoozed_until,
         completed_at=item.completed_at,
+        executed_at=getattr(item, 'executed_at', None),
         owner=item.owner,
         created_at=item.created_at,
         updated_at=item.updated_at,
+        action_context=getattr(item, 'action_context', None),
     )
 
 
@@ -181,6 +205,7 @@ def _to_response(item: CommandQueueItem) -> CommandQueueItemResponse:
 async def list_queue_items(
     status: Optional[str] = Query(None, description="Filter by status (comma-separated: pending,completed)"),
     action_type: Optional[str] = Query(None, description="Filter by action type (comma-separated)"),
+    domain: Optional[str] = Query(None, description="Filter by domain: sales, marketing, cs"),
     sort: str = Query("-priority_score", description="Sort field with optional - prefix for desc"),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -192,6 +217,7 @@ async def list_queue_items(
     Filters:
     - status: pending, completed, skipped, snoozed (comma-separated)
     - action_type: send_email, book_meeting, etc. (comma-separated)
+    - domain: sales, marketing, cs (Sprint 12)
     
     Sort:
     - priority_score (default, descending)
@@ -264,6 +290,11 @@ async def list_queue_items(
             stmt = stmt.where(CommandQueueItem.action_type.in_(types))
             count_stmt = count_stmt.where(CommandQueueItem.action_type.in_(types))
     
+    # Domain filter (Sprint 12) - validate against whitelist
+    if domain and domain in VALID_DOMAINS:
+        stmt = stmt.where(CommandQueueItem.domain == domain)
+        count_stmt = count_stmt.where(CommandQueueItem.domain == domain)
+    
     # Sorting
     descending = sort.startswith("-")
     sort_field = sort.lstrip("-")
@@ -313,6 +344,67 @@ async def _get_item_with_auth(
         raise HTTPException(status_code=403, detail="You don't have access to this item")
     
     return item
+
+
+# =============================================================================
+# Today's Moves Endpoint (CaseyOS Dashboard) - BEFORE /{item_id} for routing
+# =============================================================================
+
+class TodayMovesResponse(BaseModel):
+    """Response for Today's Moves - dashboard-optimized."""
+    items: List[CommandQueueItemResponse]
+    today_moves: List[CommandQueueItemResponse]  # Alias for backward compatibility
+    total: int
+    domain: Optional[str] = None
+
+
+@router.get("/today", response_model=TodayMovesResponse)
+async def get_todays_moves(
+    domain: Optional[str] = Query(None, description="Filter by domain: sales, marketing, cs"),
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional),
+) -> TodayMovesResponse:
+    """Get Today's Moves - the heart of CaseyOS.
+    
+    Returns the top N prioritized actions for today, ranked by APS.
+    Supports domain filtering for Sales, Marketing, and CS tabs.
+    """
+    # Build query for pending items, sorted by priority
+    now = datetime.utcnow()
+    stmt = select(CommandQueueItem).where(
+        or_(
+            CommandQueueItem.status == "pending",
+            and_(
+                CommandQueueItem.status == "snoozed",
+                CommandQueueItem.snoozed_until <= now
+            )
+        )
+    )
+    
+    # Filter by owner if logged in
+    if user:
+        stmt = stmt.where(CommandQueueItem.owner == user.email)
+    
+    # Domain filter
+    if domain and domain in VALID_DOMAINS:
+        stmt = stmt.where(CommandQueueItem.domain == domain)
+    
+    # Sort by priority (highest first)
+    stmt = stmt.order_by(desc(CommandQueueItem.priority_score))
+    stmt = stmt.limit(limit)
+    
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    
+    responses = [_to_response(item) for item in items]
+    
+    return TodayMovesResponse(
+        items=responses,
+        today_moves=responses,  # Backward compatibility
+        total=len(responses),
+        domain=domain,
+    )
 
 
 @router.get("/{item_id}", response_model=CommandQueueItemResponse)
@@ -545,3 +637,6 @@ async def dismiss_item(
     """Legacy: Dismiss an item (same as skip)."""
     await skip_queue_item(item_id, db, user)
     return {"status": "ok", "item_id": item_id}
+
+
+

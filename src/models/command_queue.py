@@ -18,6 +18,7 @@ from src.db import Base
 
 class ActionType(str, Enum):
     """Types of actions Casey can take."""
+    # Sales actions
     SEND_EMAIL = "send_email"
     BOOK_MEETING = "book_meeting"
     REVIEW_DEAL = "review_deal"
@@ -25,7 +26,27 @@ class ActionType(str, Enum):
     FOLLOW_UP = "follow_up"
     CHECK_IN = "check_in"
     PREP_MEETING = "prep_meeting"
+    
+    # Marketing Ops actions (Sprint 12a)
+    CONTENT_REPURPOSE = "content_repurpose"
+    SOCIAL_POST = "social_post"
+    NEWSLETTER_DRAFT = "newsletter_draft"
+    ASSET_CREATE = "asset_create"
+    
+    # Customer Success actions (Sprint 12b)
+    CS_HEALTH_CHECK = "cs_health_check"
+    RENEWAL_OUTREACH = "renewal_outreach"
+    RISK_ESCALATION = "risk_escalation"
+    ONBOARDING_FOLLOW_UP = "onboarding_follow_up"
+    
     OTHER = "other"
+
+
+class DomainType(str, Enum):
+    """GTM domains for action categorization."""
+    SALES = "sales"
+    MARKETING = "marketing"
+    CS = "cs"  # Customer Success
 
 
 class QueueItemStatus(str, Enum):
@@ -82,6 +103,9 @@ class CommandQueueItem(Base):
     # Action details
     action_type: Mapped[str] = mapped_column(String(64), nullable=False)
     action_context: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    
+    # Domain categorization (Sprint 12)
+    domain: Mapped[str] = mapped_column(String(32), index=True, default="sales")  # sales, marketing, cs
 
     # Priority scoring (0-100)
     priority_score: Mapped[float] = mapped_column(Float, index=True, nullable=False, default=50.0)

@@ -965,16 +965,16 @@
         const res = await fetch('/api/outcomes/stats?days=7');
         if (res.ok) {
           const data = await res.json();
-          
+
           // Reply rate as percentage
           const replyRate = (data.reply_rate * 100).toFixed(0);
           document.getElementById('stat-reply-rate').textContent = replyRate + '%';
-          
+
           // Net impact with sign
           const netImpact = data.net_impact;
           const sign = netImpact >= 0 ? '+' : '';
           document.getElementById('stat-net-impact').textContent = sign + netImpact.toFixed(1);
-          
+
           // Color code based on positive/negative
           const impactEl = document.getElementById('stat-net-impact');
           if (netImpact > 0) impactEl.style.color = 'var(--success)';
