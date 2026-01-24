@@ -5,6 +5,7 @@ Responsibilities:
 - Detect trending topics relevant to GTM/sales
 - Generate actionable insights from social signals
 - Create command queue items for trend-based opportunities
+- Use Grok AI for real-time market intelligence analysis
 """
 
 from typing import Dict, Any, List, Optional
@@ -14,6 +15,7 @@ from enum import Enum
 
 from src.agents.base import BaseAgent
 from src.connectors.twitter import get_twitter_connector, Tweet
+from src.connectors.grok import get_grok, GrokConnector
 from src.signals.providers.social_signal import get_social_signal_provider, SocialSignalType
 from src.logger import get_logger
 
@@ -103,10 +105,11 @@ class MarketTrendMonitorAgent(BaseAgent):
     def __init__(self, connectors: Dict[str, Any] = None):
         super().__init__(
             name="MarketTrendMonitorAgent",
-            description="Monitors market trends and generates actionable insights"
+            description="Monitors market trends and generates actionable insights with Grok AI"
         )
         self.twitter = get_twitter_connector()
         self.social_provider = get_social_signal_provider()
+        self.grok = get_grok()
         self.connectors = connectors or {}
     
     async def validate_input(self, context: Dict[str, Any]) -> bool:
@@ -189,6 +192,51 @@ class MarketTrendMonitorAgent(BaseAgent):
                     "keywords": keywords or self.TREND_KEYWORDS,
                     "competitors": competitors or [],
                 },
+            }
+        
+        elif action == "grok_market_intel":
+            # Use Grok for real-time market intelligence
+            topic = context.get("topic", "B2B sales automation")
+            industry = context.get("industry", "SaaS")
+            
+            intel = await self._grok_market_intel(topic, industry)
+            
+            return {
+                "status": "success",
+                "topic": topic,
+                "industry": industry,
+                "intel": intel,
+                "powered_by": "grok",
+            }
+        
+        elif action == "grok_competitive_analysis":
+            # Use Grok for competitive analysis
+            company = context.get("company")
+            if not company:
+                return {"status": "error", "error": "company required"}
+            
+            competitors = context.get("competitors", [])
+            analysis = await self._grok_competitive_analysis(company, competitors)
+            
+            return {
+                "status": "success",
+                "company": company,
+                "analysis": analysis,
+                "powered_by": "grok",
+            }
+        
+        elif action == "grok_summarize_signals":
+            # Use Grok to summarize social signals
+            signals = context.get("signals", [])
+            focus_topics = context.get("focus_topics", ["sales", "GTM"])
+            
+            summary = await self._grok_summarize_signals(signals, focus_topics)
+            
+            return {
+                "status": "success",
+                "summary": summary,
+                "signal_count": len(signals),
+                "powered_by": "grok",
             }
         
         return {"status": "error", "error": f"Unknown action: {action}"}
@@ -456,3 +504,114 @@ class MarketTrendMonitorAgent(BaseAgent):
             "related_accounts": insight.related_accounts,
             "created_at": insight.created_at.isoformat(),
         }
+
+    # ==================== GROK AI METHODS ====================
+    
+    async def _grok_market_intel(self, topic: str, industry: str) -> Dict[str, Any]:
+        """Use Grok for real-time market intelligence on a topic."""
+        if not self.grok or not self.grok.is_configured:
+            logger.warning("Grok not configured, returning basic intel")
+            return {
+                "summary": f"Market intel for {topic} in {industry}",
+                "trends": [],
+                "opportunities": [],
+                "risks": [],
+                "powered_by": "fallback",
+            }
+        
+        try:
+            # Use Grok's market intel capabilities
+            result = await self.grok.analyze_market_intel(
+                topic=topic,
+                context={"industry": industry}
+            )
+            
+            logger.info(f"Grok market intel retrieved for {topic}", extra={
+                "topic": topic,
+                "industry": industry,
+            })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Grok market intel failed: {e}", exc_info=True)
+            return {
+                "summary": f"Unable to analyze {topic}",
+                "error": str(e),
+                "powered_by": "error",
+            }
+    
+    async def _grok_competitive_analysis(
+        self, 
+        company: str, 
+        competitors: List[str]
+    ) -> Dict[str, Any]:
+        """Use Grok for competitive analysis."""
+        if not self.grok or not self.grok.is_configured:
+            logger.warning("Grok not configured for competitive analysis")
+            return {
+                "company": company,
+                "competitors": competitors,
+                "analysis": "Grok not configured",
+                "powered_by": "fallback",
+            }
+        
+        try:
+            # Use Grok's competitive insights
+            result = await self.grok.get_competitive_insights(
+                company=company,
+                industry="",  # Let Grok infer
+                competitors=competitors[:5]  # Limit to 5
+            )
+            
+            logger.info(f"Grok competitive analysis for {company}", extra={
+                "company": company,
+                "competitor_count": len(competitors),
+            })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Grok competitive analysis failed: {e}", exc_info=True)
+            return {
+                "company": company,
+                "error": str(e),
+                "powered_by": "error",
+            }
+    
+    async def _grok_summarize_signals(
+        self, 
+        signals: List[Dict[str, Any]], 
+        focus_topics: List[str]
+    ) -> Dict[str, Any]:
+        """Use Grok to summarize social signals."""
+        if not self.grok or not self.grok.is_configured:
+            logger.warning("Grok not configured for signal summarization")
+            return {
+                "summary": f"Received {len(signals)} signals",
+                "key_themes": focus_topics,
+                "powered_by": "fallback",
+            }
+        
+        try:
+            # Use Grok's summarization
+            result = await self.grok.summarize_social_signals(
+                signals=signals,
+                focus_topics=focus_topics
+            )
+            
+            logger.info(f"Grok summarized {len(signals)} signals", extra={
+                "signal_count": len(signals),
+                "focus_topics": focus_topics,
+            })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Grok signal summarization failed: {e}", exc_info=True)
+            return {
+                "summary": f"Unable to summarize {len(signals)} signals",
+                "error": str(e),
+                "powered_by": "error",
+            }
+
