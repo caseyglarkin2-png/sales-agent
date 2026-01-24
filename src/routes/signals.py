@@ -2,9 +2,9 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_db
@@ -36,6 +36,19 @@ class SignalsListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+@router.get("/health")
+async def signals_health(db: AsyncSession = Depends(get_db)) -> dict:
+    """Check signals table health."""
+    try:
+        # Check if table exists by running a simple count
+        result = await db.execute(text("SELECT COUNT(*) FROM signals"))
+        count = result.scalar()
+        return {"status": "ok", "table_exists": True, "count": count}
+    except Exception as e:
+        logger.error(f"Signals health check failed: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 @router.get("", response_model=SignalsListResponse)
