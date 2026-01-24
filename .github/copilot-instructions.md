@@ -28,7 +28,7 @@
 │  └── src/operator_mode.py - Draft approval queue                    │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Connectors (External APIs)                                          │
-│  └── src/connectors/gmail.py - OAuth, search, drafts (NO send yet)  │
+│  └── src/connectors/gmail.py - OAuth, search, drafts, SEND ✅       │
 │  └── src/connectors/hubspot.py - Contacts, companies, tasks, deals  │
 │  └── src/connectors/drive.py - Asset hunting                        │
 │  └── src/connectors/llm.py - OpenAI GPT-4                           │
@@ -49,7 +49,7 @@
    - Apply voice profile, draft personalized email
    - Calculate ICP fit score, store in PostgreSQL
 3. Draft enters `DraftQueue` → Operator UI for approval
-4. **DRAFT_ONLY mode enforced**: approving queues draft, does NOT send
+4. **Auto-Approval + Send**: High-confidence drafts auto-approved and sent via Gmail API
 
 ---
 
@@ -282,8 +282,9 @@ Run specific tests: `pytest tests/test_rate_limiting.py -v -s`
 
 ## Critical Safety Guardrails
 
-1. **DRAFT_ONLY Mode**: `send_email()` is NOT implemented—approval only queues drafts
-2. **Rate Limiting**: 2/week, 20/day per contact via [src/rate_limiter.py](src/rate_limiter.py)
+1. **Email Sending**: `send_email()` implemented with MIME, threading, retries. Controlled by feature flags.
+2. **Auto-Approval**: Rules engine evaluates drafts; high-confidence auto-sends, borderline goes to review
+3. **Rate Limiting**: 2/week, 20/day per contact via [src/rate_limiter.py](src/rate_limiter.py)
 3. **Webhook Security**: HMAC-SHA256 validation in [src/webhook.py](src/webhook.py)
 4. **CSRF Protection**: All state-changing endpoints require CSRF token
 5. **Admin Auth**: Sensitive endpoints require `X-Admin-Token` header
