@@ -816,6 +816,74 @@ kbd {
     color: var(--success);
 }
 
+/* Mobile Bottom Navigation */
+.mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--bg-widget);
+    border-top: 1px solid var(--border-color);
+    z-index: 1000;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 0.5rem;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    min-width: 64px;
+    border-radius: var(--border-radius);
+    transition: all 0.2s;
+}
+
+.mobile-nav-item.active {
+    color: var(--primary);
+}
+
+.mobile-nav-item:active {
+    background: var(--gray-100);
+    transform: scale(0.95);
+}
+
+.mobile-nav-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.125rem;
+}
+
+.mobile-nav-label {
+    font-size: 0.625rem;
+    font-weight: 500;
+}
+
+/* Offline Banner */
+.offline-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--warning);
+    color: white;
+    padding: 0.5rem 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .content-grid {
@@ -829,8 +897,37 @@ kbd {
 }
 
 @media (max-width: 768px) {
+    /* Show mobile nav */
+    .mobile-nav {
+        display: flex;
+    }
+    
+    /* Add padding for mobile nav */
+    main.dashboard {
+        padding-bottom: 80px;
+    }
+    
+    /* Hide desktop header elements */
+    .header-right .keyboard-hint {
+        display: none;
+    }
+    
+    .header {
+        padding: 0.5rem 1rem;
+    }
+    
+    .logo-text {
+        font-size: 1rem;
+    }
+    
+    .nav-tabs {
+        display: none;
+    }
+    
+    /* Stack stats */
     .stats-row {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
     }
 
     .sidebar {
@@ -839,5 +936,108 @@ kbd {
 
     .keyboard-hint {
         display: none;
+    }
+    
+    /* Queue items mobile */
+    .queue-item {
+        padding: 0.75rem;
+    }
+    
+    .queue-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .queue-item-actions {
+        width: 100%;
+        display: flex;
+        justify-content: stretch;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .queue-item-actions .btn {
+        flex: 1;
+        min-height: 44px; /* Touch target */
+        font-size: 0.875rem;
+    }
+    
+    /* Priority badge larger */
+    .priority-badge {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
+    }
+    
+    /* Modal full screen on mobile */
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        margin: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-row {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .stat-card {
+        padding: 0.75rem;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.625rem;
+    }
+    
+    /* Ultra compact header */
+    .header {
+        padding: 0.5rem;
+    }
+    
+    .header-left {
+        gap: 0.5rem;
+    }
+    
+    .logo-icon {
+        font-size: 1.25rem;
+    }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+    /* Disable hover states on touch devices */
+    .queue-item:hover {
+        transform: none;
+        box-shadow: var(--shadow);
+    }
+    
+    /* Active states for touch */
+    .queue-item:active {
+        transform: scale(0.98);
+        background: var(--gray-50);
+    }
+    
+    .btn:active {
+        transform: scale(0.95);
+    }
+}
+
+/* PWA Safe Areas */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .mobile-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    main.dashboard {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
     }
 }
