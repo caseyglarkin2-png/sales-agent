@@ -710,3 +710,416 @@ def get_hubspot_connector() -> Optional["HubSpotConnector"]:
     return _hubspot_connector
 
 
+# =============================================================================
+# CRUD Operations for 100k+ Contact Management (Sprint 13)
+# =============================================================================
+
+class HubSpotBatchOperations:
+    """Batch operations for managing large contact volumes (100k+).
+    
+    Uses HubSpot's batch APIs which support 100 records per request,
+    reducing API calls by 100x compared to individual operations.
+    """
+    
+    def __init__(self, connector: HubSpotConnector):
+        self.connector = connector
+        self.headers = connector.headers
+        self.BASE_URL = connector.BASE_URL
+    
+    async def create_contact(
+        self, 
+        email: str, 
+        properties: Dict[str, Any]
+    ) -> Optional[str]:
+        """Create a single contact in HubSpot.
+        
+        Args:
+            email: Contact email address
+            properties: Contact properties (firstname, lastname, company, etc.)
+            
+        Returns:
+            Contact ID if created, None on error
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                payload = {
+                    "properties": {
+                        "email": email,
+                        **properties
+                    }
+                }
+                response = await client.post(
+                    f"{self.BASE_URL}/crm/v3/objects/contacts",
+                    headers=self.headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                contact_id = response.json().get("id")
+                logger.info(f"Created contact {contact_id} with email {email}")
+                return contact_id
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 409:
+                    # Contact already exists, return existing ID
+                    logger.info(f"Contact with email {email} already exists")
+                    existing = await self.connector.search_contacts(email)
+                    return existing.get("id") if existing else None
+                logger.error(f"Error creating contact: {e.response.text}")
+                return None
+            except Exception as e:
+                logger.error(f"Error creating contact: {e}")
+                return None
+    
+    async def update_contact(
+        self, 
+        contact_id: str, 
+        properties: Dict[str, Any]
+    ) -> bool:
+        """Update a single contact in HubSpot.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            properties: Properties to update
+            
+        Returns:
+            True if updated, False on error
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                payload = {"properties": properties}
+                response = await client.patch(
+                    f"{self.BASE_URL}/crm/v3/objects/contacts/{contact_id}",
+                    headers=self.headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                logger.info(f"Updated contact {contact_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Error updating contact {contact_id}: {e}")
+                return False
+    
+    async def delete_contact(self, contact_id: str) -> bool:
+        """Delete a contact from HubSpot (GDPR).
+        
+        Args:
+            contact_id: HubSpot contact ID
+            
+        Returns:
+            True if deleted, False on error
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.delete(
+                    f"{self.BASE_URL}/crm/v3/objects/contacts/{contact_id}",
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+                logger.info(f"Deleted contact {contact_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Error deleting contact {contact_id}: {e}")
+                return False
+    
+    async def batch_create_contacts(
+        self, 
+        contacts: List[Dict[str, Any]],
+        chunk_size: int = 100
+    ) -> Dict[str, Any]:
+        """Batch create up to 100 contacts per request.
+        
+        Args:
+            contacts: List of contact dicts with 'email' and 'properties'
+            chunk_size: Contacts per API call (max 100)
+            
+        Returns:
+            Dict with 'created', 'failed', 'errors' counts
+        """
+        results = {"created": 0, "failed": 0, "errors": [], "contact_ids": []}
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            for i in range(0, len(contacts), chunk_size):
+                chunk = contacts[i:i + chunk_size]
+                
+                # Format for HubSpot batch API
+                inputs = []
+                for c in chunk:
+                    inputs.append({
+                        "properties": {
+                            "email": c.get("email"),
+                            **c.get("properties", {})
+                        }
+                    })
+                
+                try:
+                    response = await client.post(
+                        f"{self.BASE_URL}/crm/v3/objects/contacts/batch/create",
+                        headers=self.headers,
+                        json={"inputs": inputs},
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for result in data.get("results", []):
+                        results["created"] += 1
+                        results["contact_ids"].append(result.get("id"))
+                    
+                    logger.info(f"Batch created {len(chunk)} contacts")
+                    
+                except httpx.HTTPStatusError as e:
+                    results["failed"] += len(chunk)
+                    results["errors"].append(f"Chunk {i//chunk_size}: {e.response.text[:200]}")
+                    logger.error(f"Batch create failed: {e.response.text}")
+                except Exception as e:
+                    results["failed"] += len(chunk)
+                    results["errors"].append(str(e))
+                    logger.error(f"Batch create error: {e}")
+                
+                # Rate limit protection
+                await asyncio.sleep(0.2)
+        
+        return results
+    
+    async def batch_update_contacts(
+        self, 
+        updates: List[Dict[str, Any]],
+        chunk_size: int = 100
+    ) -> Dict[str, Any]:
+        """Batch update up to 100 contacts per request.
+        
+        Args:
+            updates: List of dicts with 'id' and 'properties'
+            chunk_size: Contacts per API call (max 100)
+            
+        Returns:
+            Dict with 'updated', 'failed', 'errors' counts
+        """
+        results = {"updated": 0, "failed": 0, "errors": []}
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i:i + chunk_size]
+                
+                inputs = [
+                    {"id": u.get("id"), "properties": u.get("properties", {})}
+                    for u in chunk
+                ]
+                
+                try:
+                    response = await client.post(
+                        f"{self.BASE_URL}/crm/v3/objects/contacts/batch/update",
+                        headers=self.headers,
+                        json={"inputs": inputs},
+                    )
+                    response.raise_for_status()
+                    results["updated"] += len(chunk)
+                    logger.info(f"Batch updated {len(chunk)} contacts")
+                    
+                except httpx.HTTPStatusError as e:
+                    results["failed"] += len(chunk)
+                    results["errors"].append(f"Chunk {i//chunk_size}: {e.response.text[:200]}")
+                except Exception as e:
+                    results["failed"] += len(chunk)
+                    results["errors"].append(str(e))
+                
+                await asyncio.sleep(0.2)
+        
+        return results
+    
+    async def batch_read_contacts(
+        self, 
+        contact_ids: List[str],
+        properties: List[str] = None,
+        chunk_size: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Batch read contacts by ID.
+        
+        Args:
+            contact_ids: List of HubSpot contact IDs
+            properties: Properties to fetch
+            chunk_size: Contacts per API call (max 100)
+            
+        Returns:
+            List of contact objects
+        """
+        if properties is None:
+            properties = ["email", "firstname", "lastname", "company", "jobtitle", "phone"]
+        
+        all_contacts = []
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            for i in range(0, len(contact_ids), chunk_size):
+                chunk = contact_ids[i:i + chunk_size]
+                
+                try:
+                    response = await client.post(
+                        f"{self.BASE_URL}/crm/v3/objects/contacts/batch/read",
+                        headers=self.headers,
+                        json={
+                            "inputs": [{"id": cid} for cid in chunk],
+                            "properties": properties,
+                        },
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for result in data.get("results", []):
+                        all_contacts.append({
+                            "id": result.get("id"),
+                            **result.get("properties", {})
+                        })
+                    
+                except Exception as e:
+                    logger.error(f"Batch read error: {e}")
+                
+                await asyncio.sleep(0.1)
+        
+        return all_contacts
+    
+    async def get_all_contacts_paginated(
+        self,
+        properties: List[str] = None,
+        limit: int = 10000,
+        after: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Get all contacts with pagination for 100k+ datasets.
+        
+        Args:
+            properties: Properties to fetch
+            limit: Max contacts to return
+            after: Pagination cursor
+            
+        Returns:
+            Dict with 'contacts', 'total', 'next_cursor'
+        """
+        if properties is None:
+            properties = ["email", "firstname", "lastname", "company", "jobtitle", 
+                         "phone", "hs_lead_status", "lifecyclestage", "lastmodifieddate"]
+        
+        contacts = []
+        next_cursor = after
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            while len(contacts) < limit:
+                params = {
+                    "limit": min(100, limit - len(contacts)),
+                    "properties": ",".join(properties),
+                }
+                if next_cursor:
+                    params["after"] = next_cursor
+                
+                try:
+                    response = await client.get(
+                        f"{self.BASE_URL}/crm/v3/objects/contacts",
+                        headers=self.headers,
+                        params=params,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for result in data.get("results", []):
+                        contacts.append({
+                            "id": result.get("id"),
+                            **result.get("properties", {})
+                        })
+                    
+                    paging = data.get("paging", {})
+                    next_cursor = paging.get("next", {}).get("after")
+                    
+                    if not next_cursor:
+                        break
+                    
+                except Exception as e:
+                    logger.error(f"Pagination error: {e}")
+                    break
+                
+                await asyncio.sleep(0.1)
+        
+        logger.info(f"Retrieved {len(contacts)} contacts via pagination")
+        return {
+            "contacts": contacts,
+            "total": len(contacts),
+            "next_cursor": next_cursor,
+            "has_more": next_cursor is not None,
+        }
+    
+    async def delta_sync(
+        self,
+        since_timestamp: str,
+        properties: List[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get contacts modified since a timestamp (delta sync).
+        
+        Args:
+            since_timestamp: ISO timestamp (e.g., '2026-01-24T00:00:00Z')
+            properties: Properties to fetch
+            
+        Returns:
+            List of modified contacts
+        """
+        if properties is None:
+            properties = ["email", "firstname", "lastname", "company", "lastmodifieddate"]
+        
+        modified_contacts = []
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            after = None
+            
+            while True:
+                payload = {
+                    "filterGroups": [{
+                        "filters": [{
+                            "propertyName": "lastmodifieddate",
+                            "operator": "GTE",
+                            "value": since_timestamp,
+                        }]
+                    }],
+                    "sorts": [{"propertyName": "lastmodifieddate", "direction": "ASCENDING"}],
+                    "properties": properties,
+                    "limit": 100,
+                }
+                if after:
+                    payload["after"] = after
+                
+                try:
+                    response = await client.post(
+                        f"{self.BASE_URL}/crm/v3/objects/contacts/search",
+                        headers=self.headers,
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for result in data.get("results", []):
+                        modified_contacts.append({
+                            "id": result.get("id"),
+                            **result.get("properties", {})
+                        })
+                    
+                    paging = data.get("paging", {})
+                    after = paging.get("next", {}).get("after")
+                    
+                    if not after:
+                        break
+                    
+                except Exception as e:
+                    logger.error(f"Delta sync error: {e}")
+                    break
+                
+                await asyncio.sleep(0.1)
+        
+        logger.info(f"Delta sync found {len(modified_contacts)} modified contacts since {since_timestamp}")
+        return modified_contacts
+
+
+# Need asyncio for sleep
+import asyncio
+
+
+def get_batch_operations() -> Optional[HubSpotBatchOperations]:
+    """Get batch operations helper."""
+    connector = get_hubspot_connector()
+    if connector:
+        return HubSpotBatchOperations(connector)
+    return None
+
+
