@@ -232,7 +232,6 @@ class JarvisAgent(BaseAgent):
             "deliverable_tracker",
             DeliverableTrackerAgent(
                 hubspot_connector=self._connectors.get("hubspot"),
-                drive_connector=self._connectors.get("drive"),
             ),
             domain=AgentDomain.FULFILLMENT,
             capabilities=["track_deliverables", "flag_overdue", "send_reminders"]
@@ -267,7 +266,6 @@ class JarvisAgent(BaseAgent):
             "proposal_generator",
             ProposalGeneratorAgent(
                 drive_connector=self._connectors.get("drive"),
-                hubspot_connector=self._connectors.get("hubspot"),
                 llm_connector=self._connectors.get("llm"),
             ),
             domain=AgentDomain.CONTRACTS,
@@ -278,6 +276,7 @@ class JarvisAgent(BaseAgent):
             "contract_review",
             ContractReviewAgent(
                 llm_connector=self._connectors.get("llm"),
+                drive_connector=self._connectors.get("drive"),
             ),
             domain=AgentDomain.CONTRACTS,
             capabilities=["review_contract", "flag_risks", "suggest_edits"]
@@ -285,9 +284,7 @@ class JarvisAgent(BaseAgent):
         
         self._register_agent(
             "pricing_calculator",
-            PricingCalculatorAgent(
-                hubspot_connector=self._connectors.get("hubspot"),
-            ),
+            PricingCalculatorAgent(),
             domain=AgentDomain.CONTRACTS,
             capabilities=["calculate_quote", "apply_discounts", "validate_pricing"]
         )
@@ -300,7 +297,9 @@ class JarvisAgent(BaseAgent):
         
         self._register_agent(
             "competitor_watch",
-            CompetitorWatchAgent(),
+            CompetitorWatchAgent(
+                llm_connector=self._connectors.get("llm"),
+            ),
             domain=AgentDomain.OPS,
             capabilities=["track_competitors", "news_alerts", "market_intel"]
         )
@@ -318,6 +317,7 @@ class JarvisAgent(BaseAgent):
             "partner_coordinator",
             PartnerCoordinatorAgent(
                 hubspot_connector=self._connectors.get("hubspot"),
+                gmail_connector=self._connectors.get("gmail"),
             ),
             domain=AgentDomain.OPS,
             capabilities=["track_referrals", "cosell_opportunities", "partner_comms"]
@@ -509,14 +509,22 @@ class JarvisAgent(BaseAgent):
 
     def list_agents(self) -> Dict[str, Dict[str, Any]]:
         """List all registered agents with their capabilities."""
-        return {
-            name: {
+        result = {}
+        for name, info in self._agent_registry.items():
+            agent = info["agent"]
+            # Handle agents that may not extend BaseAgent properly
+            description = getattr(agent, 'description', None)
+            if description is None:
+                # Try to get from docstring
+                description = agent.__class__.__doc__ or f"{name} agent"
+                # Clean up multiline docstrings
+                description = description.strip().split('\n')[0]
+            result[name] = {
                 "domain": info["domain"].value,
                 "capabilities": info["capabilities"],
-                "description": info["agent"].description,
+                "description": description,
             }
-            for name, info in self._agent_registry.items()
-        }
+        return result
 
     def get_agents_by_domain(self, domain: AgentDomain) -> List[str]:
         """Get all agents in a specific domain."""
