@@ -199,6 +199,7 @@ from src.routes import hubspot_signals  # CaseyOS Sprint 3: HubSpot Signal Inges
 from src.routes import actions as actions_routes  # CaseyOS Sprint 9: Action Execution
 from src.routes import outcomes as outcomes_routes  # CaseyOS Sprint 10: Closed-Loop Outcomes
 from src.routes import caseyos_ui  # CaseyOS Sprint 11: Unified Dashboard
+from src.routes import celery_health  # Task 8.18: Celery Beat Health Check
 
 # Configure logging
 settings = get_settings()
@@ -227,6 +228,7 @@ app.add_middleware(TraceIDMiddleware)
 # Include routers
 app.include_router(web_auth.router)  # CaseyOS Sprint 1: Web OAuth (login, logout, dashboard)
 app.include_router(health.router)  # Sprint 6: Health check endpoints
+app.include_router(celery_health.router)  # Task 8.18: Celery Beat Health Check
 app.include_router(queue_routes.router)  # Morning email queue
 app.include_router(agents_routes.router)
 app.include_router(operator_routes.router)

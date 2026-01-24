@@ -1,188 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CaseyOS • GTM Command Center</title>
-  <link rel="stylesheet" href="/caseyos/styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CaseyOS • GTM Command Center</title>
+    <link rel="stylesheet" href="/caseyos/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <div class="logo">
-        <span class="logo-icon">⚡</span>
-        <span class="logo-text">CaseyOS</span>
-      </div>
-      <nav class="nav-tabs">
-        <button class="nav-tab active" data-domain="all">All</button>
-        <button class="nav-tab" data-domain="sales">Sales</button>
-        <button class="nav-tab" data-domain="marketing">Marketing</button>
-        <button class="nav-tab" data-domain="cs">CS</button>
-      </nav>
-    </div>
-    <div class="header-right">
-      <div class="health-indicator" id="health-status">
-        <span class="health-dot"></span>
-        <span class="health-text">Connecting...</span>
-      </div>
-      <div class="keyboard-hint">
-        <kbd>A</kbd> Accept
-        <kbd>D</kbd> Dismiss
-        <kbd>E</kbd> Execute
-        <kbd>R</kbd> Refresh
-      </div>
-      <button class="btn-icon" id="dark-mode-toggle" title="Toggle dark mode">🌙</button>
-    </div>
-  </header>
-
-  <!-- Main Grid -->
-  <main class="dashboard">
-    <!-- Stats Row -->
-    <section class="stats-row">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-pending">-</div>
-        <div class="stat-label">Pending</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-completed">-</div>
-        <div class="stat-label">Completed</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value positive" id="stat-reply-rate">-</div>
-        <div class="stat-label">Reply Rate</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-net-impact">-</div>
-        <div class="stat-label">Net Impact</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-signals">-</div>
-        <div class="stat-label">Signals Today</div>
-      </div>
-    </section>
-
-    <!-- Main Content Grid -->
-    <div class="content-grid">
-      <!-- Today's Moves (Main) -->
-      <section class="widget widget-moves">
-        <div class="widget-header">
-          <h2>Today's Moves</h2>
-          <div class="widget-actions">
-            <button class="btn-sm" id="btn-refresh" title="Refresh (R)">↻ Refresh</button>
-          </div>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">CaseyOS</span>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-domain="all">All</button>
+                <button class="nav-tab" data-domain="sales">Sales</button>
+                <button class="nav-tab" data-domain="marketing">Marketing</button>
+                <button class="nav-tab" data-domain="cs">CS</button>
+            </nav>
         </div>
-        <div class="widget-body" id="moves-list">
-          <div class="skeleton-loader">
-            <div class="skeleton-item"></div>
-            <div class="skeleton-item"></div>
-            <div class="skeleton-item"></div>
-          </div>
+        <div class="header-right">
+            <div class="health-indicator" id="health-status">
+                <span class="health-dot"></span>
+                <span class="health-text">Connecting...</span>
+            </div>
+            <div class="keyboard-hint">
+                <kbd>A</kbd> Accept
+                <kbd>D</kbd> Dismiss
+                <kbd>E</kbd> Execute
+                <kbd>R</kbd> Refresh
+            </div>
+            <button class="btn-icon" id="dark-mode-toggle" title="Toggle dark mode">🌙</button>
         </div>
-      </section>
+    </header>
 
-      <!-- Right Sidebar -->
-      <aside class="sidebar">
-        <!-- Recent Signals -->
-        <section class="widget widget-signals">
-          <div class="widget-header">
-            <h3>Recent Signals</h3>
-          </div>
-          <div class="widget-body" id="signals-list">
-            <div class="skeleton-loader small">
-              <div class="skeleton-item"></div>
-              <div class="skeleton-item"></div>
+    <!-- Main Grid -->
+    <main class="dashboard">
+        <!-- Stats Row -->
+        <section class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-pending">-</div>
+                <div class="stat-label">Pending</div>
             </div>
-          </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-completed">-</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value positive" id="stat-reply-rate">-</div>
+                <div class="stat-label">Reply Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-net-impact">-</div>
+                <div class="stat-label">Net Impact</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-signals">-</div>
+                <div class="stat-label">Signals Today</div>
+            </div>
         </section>
 
-        <!-- Execution History -->
-        <section class="widget widget-history">
-          <div class="widget-header">
-            <h3>Execution History</h3>
-          </div>
-          <div class="widget-body" id="history-list">
-            <div class="skeleton-loader small">
-              <div class="skeleton-item"></div>
-              <div class="skeleton-item"></div>
-            </div>
-          </div>
-        </section>
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Today's Moves (Main) -->
+            <section class="widget widget-moves">
+                <div class="widget-header">
+                    <h2>Today's Moves</h2>
+                    <div class="widget-actions">
+                        <button class="btn-sm" id="btn-refresh" title="Refresh (R)">↻ Refresh</button>
+                    </div>
+                </div>
+                <div class="widget-body" id="moves-list">
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Quick Actions -->
-        <section class="widget widget-quick-actions">
-          <div class="widget-header">
-            <h3>Quick Actions</h3>
-          </div>
-          <div class="widget-body">
-            <button class="btn-action" id="btn-sync-hubspot">
-              <span class="btn-icon">🔄</span> Sync HubSpot
-            </button>
-            <button class="btn-action" id="btn-seed-queue">
-              <span class="btn-icon">🌱</span> Seed Queue
-            </button>
-            <button class="btn-action danger" id="btn-kill-switch">
-              <span class="btn-icon">⚠️</span> Kill Switch
-            </button>
-          </div>
-        </section>
+            <!-- Right Sidebar -->
+            <aside class="sidebar">
+                <!-- Recent Signals -->
+                <section class="widget widget-signals">
+                    <div class="widget-header">
+                        <h3>Recent Signals</h3>
+                    </div>
+                    <div class="widget-body" id="signals-list">
+                        <div class="skeleton-loader small">
+                            <div class="skeleton-item"></div>
+                            <div class="skeleton-item"></div>
+                        </div>
+                    </div>
+                </section>
 
-        <!-- Outcome Funnel -->
-        <section class="widget widget-funnel">
-          <div class="widget-header">
-            <h3>Conversion Funnel</h3>
-          </div>
-          <div class="widget-body" id="funnel-chart">
-            <div class="funnel-stage">
-              <div class="funnel-bar" style="width: 100%"></div>
-              <span class="funnel-label">Sent</span>
-              <span class="funnel-value" id="funnel-sent">-</span>
+                <!-- Execution History -->
+                <section class="widget widget-history">
+                    <div class="widget-header">
+                        <h3>Execution History</h3>
+                    </div>
+                    <div class="widget-body" id="history-list">
+                        <div class="skeleton-loader small">
+                            <div class="skeleton-item"></div>
+                            <div class="skeleton-item"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Actions -->
+                <section class="widget widget-quick-actions">
+                    <div class="widget-header">
+                        <h3>Quick Actions</h3>
+                    </div>
+                    <div class="widget-body">
+                        <button class="btn-action" id="btn-sync-hubspot">
+                            <span class="btn-icon">🔄</span> Sync HubSpot
+                        </button>
+                        <button class="btn-action" id="btn-seed-queue">
+                            <span class="btn-icon">🌱</span> Seed Queue
+                        </button>
+                        <button class="btn-action danger" id="btn-kill-switch">
+                            <span class="btn-icon">⚠️</span> Kill Switch
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Outcome Funnel -->
+                <section class="widget widget-funnel">
+                    <div class="widget-header">
+                        <h3>Conversion Funnel</h3>
+                    </div>
+                    <div class="widget-body" id="funnel-chart">
+                        <div class="funnel-stage">
+                            <div class="funnel-bar" style="width: 100%"></div>
+                            <span class="funnel-label">Sent</span>
+                            <span class="funnel-value" id="funnel-sent">-</span>
+                        </div>
+                        <div class="funnel-stage">
+                            <div class="funnel-bar" style="width: 60%"></div>
+                            <span class="funnel-label">Opened</span>
+                            <span class="funnel-value" id="funnel-opened">-</span>
+                        </div>
+                        <div class="funnel-stage">
+                            <div class="funnel-bar" style="width: 30%"></div>
+                            <span class="funnel-label">Replied</span>
+                            <span class="funnel-value" id="funnel-replied">-</span>
+                        </div>
+                        <div class="funnel-stage">
+                            <div class="funnel-bar positive" style="width: 15%"></div>
+                            <span class="funnel-label">Meeting</span>
+                            <span class="funnel-value" id="funnel-meeting">-</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Execute Modal -->
+    <div class="modal" id="execute-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Execute Action</h3>
+                <button class="btn-close" id="modal-close">&times;</button>
             </div>
-            <div class="funnel-stage">
-              <div class="funnel-bar" style="width: 60%"></div>
-              <span class="funnel-label">Opened</span>
-              <span class="funnel-value" id="funnel-opened">-</span>
+            <div class="modal-body" id="modal-body">
+                <!-- Filled dynamically -->
             </div>
-            <div class="funnel-stage">
-              <div class="funnel-bar" style="width: 30%"></div>
-              <span class="funnel-label">Replied</span>
-              <span class="funnel-value" id="funnel-replied">-</span>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-preview">Preview (Dry Run)</button>
+                <button class="btn btn-primary" id="btn-execute">Execute</button>
             </div>
-            <div class="funnel-stage">
-              <div class="funnel-bar positive" style="width: 15%"></div>
-              <span class="funnel-label">Meeting</span>
-              <span class="funnel-value" id="funnel-meeting">-</span>
-            </div>
-          </div>
-        </section>
-      </aside>
+        </div>
     </div>
-  </main>
 
-  <!-- Toast Notifications -->
-  <div class="toast-container" id="toast-container"></div>
-
-  <!-- Execute Modal -->
-  <div class="modal" id="execute-modal">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Execute Action</h3>
-        <button class="btn-close" id="modal-close">&times;</button>
-      </div>
-      <div class="modal-body" id="modal-body">
-        <!-- Filled dynamically -->
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="btn-preview">Preview (Dry Run)</button>
-        <button class="btn btn-primary" id="btn-execute">Execute</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="/caseyos/app.js"></script>
+    <script src="/caseyos/app.js"></script>
 </body>
+
 </html>

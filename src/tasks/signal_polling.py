@@ -11,6 +11,7 @@ import logging
 from celery import shared_task
 
 from src.celery_app import celery_app
+from src.routes.celery_health import update_task_heartbeat
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ def poll_hubspot_signals(self):
     Runs every 5 minutes via Celery beat.
     """
     logger.info("Starting HubSpot signal polling")
+    update_task_heartbeat("src.tasks.signal_polling.poll_hubspot_signals")
     
     try:
         result = _run_async(_poll_hubspot_signals_async())
@@ -144,6 +146,7 @@ def poll_gmail_signals(self):
     Runs every 5 minutes via Celery beat.
     """
     logger.info("Starting Gmail signal polling")
+    update_task_heartbeat("src.tasks.signal_polling.poll_gmail_signals")
     
     try:
         result = _run_async(_poll_gmail_signals_async())
@@ -250,6 +253,7 @@ def process_unprocessed_signals(self, limit: int = 100):
     created but not processed (e.g., due to errors).
     """
     logger.info(f"Processing unprocessed signals (limit={limit})")
+    update_task_heartbeat("src.tasks.signal_polling.process_unprocessed_signals")
     
     try:
         result = _run_async(_process_unprocessed_signals_async(limit))
