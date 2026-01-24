@@ -1,18 +1,21 @@
 """Signal service for creating and processing signals."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
-from src.models.signal import Signal, SignalSource
+from src.models.signal import Signal, SignalSource, compute_payload_hash
 from src.models.command_queue import CommandQueueItem
 from src.services.signal_processors.form import FormSubmissionSignalProcessor
 from src.logger import get_logger
 from src.telemetry import log_event
 
 logger = get_logger(__name__)
+
+# Deduplication window in minutes
+DEDUP_WINDOW_MINUTES = 5
 
 
 class SignalService:
@@ -24,13 +27,45 @@ class SignalService:
             FormSubmissionSignalProcessor(),
         ]
 
+    async def check_duplicate(
+        self,
+        source: SignalSource,
+        payload: Dict[str, Any],
+        window_minutes: int = DEDUP_WINDOW_MINUTES,
+    ) -> Optional[Signal]:
+        """
+        Check if a duplicate signal exists within the dedup window.
+        
+        Args:
+            source: Signal source
+            payload: Signal payload to check
+            window_minutes: Deduplication window in minutes
+            
+        Returns:
+            Existing Signal if duplicate found, None otherwise
+        """
+        payload_hash = compute_payload_hash(payload)
+        cutoff = datetime.utcnow() - timedelta(minutes=window_minutes)
+        
+        query = select(Signal).where(
+            and_(
+                Signal.source == source,
+                Signal.payload_hash == payload_hash,
+                Signal.created_at >= cutoff,
+            )
+        ).limit(1)
+        
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
     async def create_signal(
         self,
         source: SignalSource,
         event_type: str,
         payload: Dict[str, Any],
         source_id: Optional[str] = None,
-    ) -> Signal:
+        skip_dedup: bool = False,
+    ) -> Optional[Signal]:
         """
         Create and persist a new signal.
         
@@ -39,15 +74,40 @@ class SignalService:
             event_type: Type of event (e.g. 'form_submitted')
             payload: Raw event data
             source_id: Optional external ID (e.g. HubSpot contact ID)
+            skip_dedup: If True, skip deduplication check
             
         Returns:
-            The created Signal instance
+            The created Signal instance, or None if duplicate
         """
+        # Compute payload hash for deduplication
+        payload_hash = compute_payload_hash(payload)
+        
+        # Check for duplicates unless skipped
+        if not skip_dedup:
+            existing = await self.check_duplicate(source, payload)
+            if existing:
+                logger.info(
+                    f"Duplicate signal detected, skipping",
+                    existing_signal_id=existing.id,
+                    source=source.value,
+                    payload_hash=payload_hash[:16],
+                )
+                await log_event(
+                    "signal_deduplicated",
+                    {
+                        "existing_signal_id": existing.id,
+                        "source": source.value,
+                        "payload_hash": payload_hash[:16],
+                    },
+                )
+                return None
+        
         signal = Signal(
             id=str(uuid4()),
             source=source,
             event_type=event_type,
             payload=payload,
+            payload_hash=payload_hash,
             source_id=source_id,
             created_at=datetime.utcnow(),
         )
@@ -151,7 +211,8 @@ class SignalService:
         event_type: str,
         payload: Dict[str, Any],
         source_id: Optional[str] = None,
-    ) -> tuple[Signal, Optional[CommandQueueItem]]:
+        skip_dedup: bool = False,
+    ) -> tuple[Optional[Signal], Optional[CommandQueueItem]]:
         """
         Create a signal and immediately process it.
         
@@ -159,8 +220,11 @@ class SignalService:
         
         Returns:
             Tuple of (Signal, Optional[CommandQueueItem])
+            Signal may be None if duplicate detected
         """
-        signal = await self.create_signal(source, event_type, payload, source_id)
+        signal = await self.create_signal(source, event_type, payload, source_id, skip_dedup)
+        if signal is None:
+            return None, None
         item = await self.process_signal(signal)
         return signal, item
 

@@ -194,6 +194,7 @@ from src.routes import ops
 from src.routes import command_queue
 from src.routes import ui_command_queue
 from src.routes import signals as signals_routes
+from src.routes import web_auth  # CaseyOS Sprint 1: Web OAuth
 
 # Configure logging
 settings = get_settings()
@@ -220,6 +221,7 @@ app.add_middleware(CSRFMiddleware)  # CSRF protection on POST/PUT/DELETE
 app.add_middleware(TraceIDMiddleware)
 
 # Include routers
+app.include_router(web_auth.router)  # CaseyOS Sprint 1: Web OAuth (login, logout, dashboard)
 app.include_router(health.router)  # Sprint 6: Health check endpoints
 app.include_router(queue_routes.router)  # Morning email queue
 app.include_router(agents_routes.router)

@@ -49,6 +49,21 @@ celery_app.conf.beat_schedule = {
         'schedule': 1800.0,  # Every 30 minutes
         'options': {'expires': 300}  # Expire if not run within 5 minutes
     },
+    'poll-hubspot-signals': {
+        'task': 'src.tasks.signal_polling.poll_hubspot_signals',
+        'schedule': 300.0,  # Every 5 minutes
+        'options': {'expires': 240}  # Expire if not run within 4 minutes
+    },
+    'poll-gmail-signals': {
+        'task': 'src.tasks.signal_polling.poll_gmail_signals',
+        'schedule': 300.0,  # Every 5 minutes
+        'options': {'expires': 240}  # Expire if not run within 4 minutes
+    },
+    'process-unprocessed-signals': {
+        'task': 'src.tasks.signal_polling.process_unprocessed_signals',
+        'schedule': 600.0,  # Every 10 minutes
+        'options': {'expires': 540}  # Expire if not run within 9 minutes
+    },
 }
 
 

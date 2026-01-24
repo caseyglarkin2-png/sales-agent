@@ -1,4 +1,6 @@
 """Signal models for CaseyOS signal ingestion framework."""
+import hashlib
+import json
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -17,6 +19,17 @@ class SignalSource(str, Enum):
     HUBSPOT = "hubspot"
     GMAIL = "gmail"
     MANUAL = "manual"
+
+
+def compute_payload_hash(payload: Dict[str, Any]) -> str:
+    """
+    Compute a hash of the payload for deduplication.
+    
+    Uses SHA-256 of the JSON-serialized payload.
+    """
+    # Sort keys for consistent hashing
+    payload_str = json.dumps(payload, sort_keys=True, default=str)
+    return hashlib.sha256(payload_str.encode()).hexdigest()
 
 
 class Signal(Base):
@@ -80,6 +93,13 @@ class Signal(Base):
         nullable=True,
         index=True,
         comment="External ID from source system (e.g. HubSpot contact ID, Gmail thread ID)"
+    )
+    
+    payload_hash: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+        comment="SHA-256 hash of payload for deduplication"
     )
     
     created_at: Mapped[datetime] = mapped_column(

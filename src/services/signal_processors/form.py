@@ -80,10 +80,10 @@ class FormSubmissionSignalProcessor(SignalProcessor):
         aps_result = calculate_aps(
             action_type="email_follow_up",
             context={
-                "revenue_potential": payload.get("revenue_potential", 0.6),
+                "revenue_impact": payload.get("revenue_potential", 0.6),
                 "urgency": 0.9,  # Hot lead - just submitted form
                 "strategic_value": payload.get("strategic_value", 0.5),
-                "effort_required": 0.2,  # Low effort - template email
+                "effort": 0.2,  # Low effort - template email
             }
         )
         
