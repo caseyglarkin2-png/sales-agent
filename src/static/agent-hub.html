@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,38 +8,89 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%); }
-        .card-hover { transition: all 0.2s; }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3); }
-        .domain-sales { border-left-color: #3b82f6; }
-        .domain-content { border-left-color: #10b981; }
-        .domain-fulfillment { border-left-color: #f59e0b; }
-        .domain-contracts { border-left-color: #8b5cf6; }
-        .domain-ops { border-left-color: #ef4444; }
-        .domain-research { border-left-color: #06b6d4; }
-        .capability-tag { 
-            background: rgba(99, 102, 241, 0.1); 
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+        }
+
+        .card-hover {
+            transition: all 0.2s;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+        }
+
+        .domain-sales {
+            border-left-color: #3b82f6;
+        }
+
+        .domain-content {
+            border-left-color: #10b981;
+        }
+
+        .domain-fulfillment {
+            border-left-color: #f59e0b;
+        }
+
+        .domain-contracts {
+            border-left-color: #8b5cf6;
+        }
+
+        .domain-ops {
+            border-left-color: #ef4444;
+        }
+
+        .domain-research {
+            border-left-color: #06b6d4;
+        }
+
+        .capability-tag {
+            background: rgba(99, 102, 241, 0.1);
             border: 1px solid rgba(99, 102, 241, 0.2);
             transition: all 0.15s;
         }
-        .capability-tag:hover { background: rgba(99, 102, 241, 0.2); }
-        .approval-badge { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+        .capability-tag:hover {
+            background: rgba(99, 102, 241, 0.2);
         }
-        .agent-card.approved { border-color: #10b981; }
-        .chat-bubble { 
+
+        .approval-badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .agent-card.approved {
+            border-color: #10b981;
+        }
+
+        .chat-bubble {
             background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             border-radius: 1rem 1rem 1rem 0;
         }
+
         .chat-bubble-user {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 1rem 1rem 0 1rem;
         }
     </style>
 </head>
+
 <body class="gradient-bg min-h-screen text-white">
     <!-- Header -->
     <header class="border-b border-white/10 px-6 py-4">
@@ -54,7 +106,8 @@
                     <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
                     <span class="text-sm">Connecting...</span>
                 </div>
-                <button onclick="openJarvisChat()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition flex items-center gap-2">
+                <button onclick="openJarvisChat()"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition flex items-center gap-2">
                     <span>💬</span> Ask Jarvis
                 </button>
             </div>
@@ -89,25 +142,39 @@
 
         <!-- Domain Filter -->
         <div class="flex flex-wrap gap-2 mb-6">
-            <button onclick="filterDomain('all')" class="domain-btn px-4 py-2 rounded-lg bg-white/20 font-medium transition hover:bg-white/30" data-domain="all">
+            <button onclick="filterDomain('all')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/20 font-medium transition hover:bg-white/30"
+                data-domain="all">
                 All Agents
             </button>
-            <button onclick="filterDomain('sales')" class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20" data-domain="sales">
+            <button onclick="filterDomain('sales')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20"
+                data-domain="sales">
                 🎯 Sales
             </button>
-            <button onclick="filterDomain('content')" class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20" data-domain="content">
+            <button onclick="filterDomain('content')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20"
+                data-domain="content">
                 📝 Content
             </button>
-            <button onclick="filterDomain('fulfillment')" class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20" data-domain="fulfillment">
+            <button onclick="filterDomain('fulfillment')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20"
+                data-domain="fulfillment">
                 📦 Fulfillment
             </button>
-            <button onclick="filterDomain('contracts')" class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20" data-domain="contracts">
+            <button onclick="filterDomain('contracts')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20"
+                data-domain="contracts">
                 📄 Contracts
             </button>
-            <button onclick="filterDomain('ops')" class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20" data-domain="ops">
+            <button onclick="filterDomain('ops')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20"
+                data-domain="ops">
                 ⚙️ Ops
             </button>
-            <button onclick="filterDomain('research')" class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20" data-domain="research">
+            <button onclick="filterDomain('research')"
+                class="domain-btn px-4 py-2 rounded-lg bg-white/10 font-medium transition hover:bg-white/20"
+                data-domain="research">
                 🔍 Research
             </button>
         </div>
@@ -116,22 +183,28 @@
         <div class="bg-white/5 rounded-xl p-4 border border-white/10 mb-8">
             <h3 class="text-sm font-medium text-white/60 mb-3">Quick Actions</h3>
             <div class="flex flex-wrap gap-2">
-                <button onclick="quickAction('draft_email')" class="px-4 py-2 bg-blue-600/30 hover:bg-blue-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="quickAction('draft_email')"
+                    class="px-4 py-2 bg-blue-600/30 hover:bg-blue-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     ✉️ Draft Email
                 </button>
-                <button onclick="quickAction('schedule_meeting')" class="px-4 py-2 bg-green-600/30 hover:bg-green-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="quickAction('schedule_meeting')"
+                    class="px-4 py-2 bg-green-600/30 hover:bg-green-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     📅 Schedule Meeting
                 </button>
-                <button onclick="quickAction('create_proposal')" class="px-4 py-2 bg-purple-600/30 hover:bg-purple-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="quickAction('create_proposal')"
+                    class="px-4 py-2 bg-purple-600/30 hover:bg-purple-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     📋 Create Proposal
                 </button>
-                <button onclick="quickAction('research_company')" class="px-4 py-2 bg-cyan-600/30 hover:bg-cyan-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="quickAction('research_company')"
+                    class="px-4 py-2 bg-cyan-600/30 hover:bg-cyan-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     🔍 Research Company
                 </button>
-                <button onclick="quickAction('score_lead')" class="px-4 py-2 bg-amber-600/30 hover:bg-amber-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="quickAction('score_lead')"
+                    class="px-4 py-2 bg-amber-600/30 hover:bg-amber-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     ⭐ Score Lead
                 </button>
-                <button onclick="quickAction('repurpose_content')" class="px-4 py-2 bg-pink-600/30 hover:bg-pink-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <button onclick="quickAction('repurpose_content')"
+                    class="px-4 py-2 bg-pink-600/30 hover:bg-pink-600/50 rounded-lg text-sm font-medium transition flex items-center gap-2">
                     ♻️ Repurpose Content
                 </button>
             </div>
@@ -141,21 +214,24 @@
         <div id="agents-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Loading state -->
             <div class="col-span-full text-center py-12 text-white/60">
-                <div class="animate-spin inline-block w-8 h-8 border-4 border-white/20 border-t-white rounded-full mb-4"></div>
+                <div
+                    class="animate-spin inline-block w-8 h-8 border-4 border-white/20 border-t-white rounded-full mb-4">
+                </div>
                 <p>Loading agents...</p>
             </div>
         </div>
     </main>
 
     <!-- Jarvis Chat Sidebar -->
-    <div id="jarvis-chat" class="fixed right-0 top-0 h-full w-96 bg-slate-900 border-l border-white/10 transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
+    <div id="jarvis-chat"
+        class="fixed right-0 top-0 h-full w-96 bg-slate-900 border-l border-white/10 transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
         <div class="p-4 border-b border-white/10 flex items-center justify-between">
             <h2 class="text-lg font-bold flex items-center gap-2">
                 <span class="text-2xl">🤖</span> Ask Jarvis
             </h2>
             <button onclick="closeJarvisChat()" class="text-white/60 hover:text-white text-2xl">&times;</button>
         </div>
-        
+
         <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
             <div class="chat-bubble p-4 text-sm max-w-[80%]">
                 <p><strong>Hey Casey!</strong> 👋</p>
@@ -168,12 +244,13 @@
                 </ul>
             </div>
         </div>
-        
+
         <div class="p-4 border-t border-white/10">
             <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-2">
-                <input type="text" id="chat-input" placeholder="Ask Jarvis anything..." 
-                       class="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition">
+                <input type="text" id="chat-input" placeholder="Ask Jarvis anything..."
+                    class="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition">
                     Send
                 </button>
             </form>
@@ -181,7 +258,8 @@
     </div>
 
     <!-- Agent Detail Modal -->
-    <div id="agent-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div id="agent-modal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 rounded-2xl border border-white/10 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6 border-b border-white/10 flex items-center justify-between">
                 <h2 id="modal-agent-name" class="text-xl font-bold">Agent Name</h2>
@@ -194,11 +272,13 @@
     </div>
 
     <!-- Quick Action Modal -->
-    <div id="quick-action-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div id="quick-action-modal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 rounded-2xl border border-white/10 max-w-lg w-full">
             <div class="p-6 border-b border-white/10 flex items-center justify-between">
                 <h2 id="quick-action-title" class="text-xl font-bold">Quick Action</h2>
-                <button onclick="closeQuickActionModal()" class="text-white/60 hover:text-white text-2xl">&times;</button>
+                <button onclick="closeQuickActionModal()"
+                    class="text-white/60 hover:text-white text-2xl">&times;</button>
             </div>
             <div id="quick-action-content" class="p-6">
                 <!-- Filled dynamically -->
@@ -225,16 +305,16 @@
                 const res = await fetch(`${API_BASE}/api/jarvis/agents`);
                 const data = await res.json();
                 agents = data.agents || {};
-                
+
                 // Update stats
                 document.getElementById('stat-total-agents').textContent = data.total || 0;
                 document.getElementById('stat-domains').textContent = data.domains?.length || 0;
-                
+
                 // Count capabilities
                 let capCount = 0;
                 Object.values(agents).forEach(a => capCount += (a.capabilities?.length || 0));
                 document.getElementById('stat-capabilities').textContent = capCount;
-                
+
                 renderAgents();
             } catch (e) {
                 console.error('Failed to load agents:', e);
@@ -295,7 +375,7 @@
                 if (currentDomain === 'all') return true;
                 return info.domain === currentDomain;
             });
-            
+
             if (filtered.length === 0) {
                 grid.innerHTML = `
                     <div class="col-span-full text-center py-12 text-white/60">
@@ -304,11 +384,11 @@
                 `;
                 return;
             }
-            
+
             grid.innerHTML = filtered.map(([name, info]) => {
                 const isApproved = info.capabilities?.some(cap => approvals[`${name}:${cap}`]);
                 const domainClass = `domain-${info.domain}`;
-                
+
                 return `
                     <div class="agent-card bg-white/5 rounded-xl p-5 border-l-4 ${domainClass} border border-white/10 card-hover cursor-pointer ${isApproved ? 'approved' : ''}"
                          onclick="openAgentModal('${name}')">
@@ -339,7 +419,7 @@
         // Filter by domain
         function filterDomain(domain) {
             currentDomain = domain;
-            
+
             // Update button styles
             document.querySelectorAll('.domain-btn').forEach(btn => {
                 if (btn.dataset.domain === domain) {
@@ -350,7 +430,7 @@
                     btn.classList.add('bg-white/10');
                 }
             });
-            
+
             renderAgents();
         }
 
@@ -358,7 +438,7 @@
         function openAgentModal(agentName) {
             const info = agents[agentName];
             if (!info) return;
-            
+
             document.getElementById('modal-agent-name').textContent = formatAgentName(agentName);
             document.getElementById('modal-content').innerHTML = `
                 <div class="space-y-6">
@@ -376,9 +456,9 @@
                         <h4 class="text-sm font-medium text-white/60 mb-2">Capabilities</h4>
                         <div class="space-y-2">
                             ${(info.capabilities || []).map(cap => {
-                                const key = `${agentName}:${cap}`;
-                                const isApproved = approvals[key];
-                                return `
+                const key = `${agentName}:${cap}`;
+                const isApproved = approvals[key];
+                return `
                                     <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                                         <div>
                                             <span class="font-medium">${cap}</span>
@@ -403,7 +483,7 @@
                                         </div>
                                     </div>
                                 `;
-                            }).join('')}
+            }).join('')}
                         </div>
                     </div>
                     
@@ -415,7 +495,7 @@
                     </div>
                 </div>
             `;
-            
+
             document.getElementById('agent-modal').classList.remove('hidden');
         }
 
@@ -492,10 +572,10 @@
                 'score_lead': { title: 'Score Lead', fields: ['email', 'company'] },
                 'repurpose_content': { title: 'Repurpose Content', fields: ['content_url'] }
             };
-            
+
             const config = configs[actionType];
             if (!config) return;
-            
+
             document.getElementById('quick-action-title').textContent = config.title;
             document.getElementById('quick-action-content').innerHTML = `
                 <form onsubmit="executeQuickAction(event, '${actionType}')" class="space-y-4">
@@ -516,7 +596,7 @@
                     </div>
                 </form>
             `;
-            
+
             document.getElementById('quick-action-modal').classList.remove('hidden');
         }
 
@@ -524,10 +604,10 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const target = Object.fromEntries(formData);
-            
+
             closeQuickActionModal();
             showToast('Executing...', 'info');
-            
+
             try {
                 const res = await fetch(`${API_BASE}/api/jarvis/quick-action`, {
                     method: 'POST',
@@ -560,7 +640,7 @@
             const input = document.getElementById('chat-input');
             const query = input.value.trim();
             if (!query) return;
-            
+
             // Add user message
             const messagesEl = document.getElementById('chat-messages');
             messagesEl.innerHTML += `
@@ -568,7 +648,7 @@
             `;
             input.value = '';
             messagesEl.scrollTop = messagesEl.scrollHeight;
-            
+
             // Call Jarvis
             try {
                 const res = await fetch(`${API_BASE}/api/jarvis/ask`, {
@@ -577,7 +657,7 @@
                     body: JSON.stringify({ query })
                 });
                 const data = await res.json();
-                
+
                 // Format response
                 let responseHtml = '';
                 if (data.status === 'success') {
@@ -590,7 +670,7 @@
                 } else {
                     responseHtml = `<p>${data.message || 'I couldn\'t process that request.'}</p>`;
                 }
-                
+
                 messagesEl.innerHTML += `
                     <div class="chat-bubble p-4 text-sm max-w-[80%]">${responseHtml}</div>
                 `;
@@ -611,14 +691,15 @@
                 error: 'bg-red-600',
                 info: 'bg-blue-600'
             };
-            
+
             const toast = document.createElement('div');
             toast.className = `fixed bottom-4 right-4 px-6 py-3 ${colors[type]} rounded-lg shadow-xl z-50 animate-pulse`;
             toast.textContent = message;
             document.body.appendChild(toast);
-            
+
             setTimeout(() => toast.remove(), 3000);
         }
     </script>
 </body>
+
 </html>
