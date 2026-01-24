@@ -92,6 +92,11 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY", description="OpenAI API Key")
     openai_model: str = Field(default="gpt-4-turbo-preview", alias="OPENAI_MODEL", description="OpenAI Model")
 
+    # Google Gemini AI
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY", description="Google Gemini API Key")
+    gemini_model: str = Field(default="gemini-2.0-flash-exp", alias="GEMINI_MODEL", description="Default Gemini Model")
+    llm_provider: str = Field(default="openai", alias="LLM_PROVIDER", description="LLM provider: openai or gemini")
+
     # Feature Flags
     feature_cold_start_demo: bool = Field(default=True, alias="FEATURE_COLD_START_DEMO", description="Enable cold-start demo")
     feature_validation_agent: bool = Field(default=False, alias="FEATURE_VALIDATION_AGENT", description="Enable validation agent")

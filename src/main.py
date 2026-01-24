@@ -200,6 +200,7 @@ from src.routes import actions as actions_routes  # CaseyOS Sprint 9: Action Exe
 from src.routes import outcomes as outcomes_routes  # CaseyOS Sprint 10: Closed-Loop Outcomes
 from src.routes import caseyos_ui  # CaseyOS Sprint 11: Unified Dashboard
 from src.routes import celery_health  # Task 8.18: Celery Beat Health Check
+from src.routes import llm_api  # LLM: Multi-provider AI (OpenAI + Gemini)
 
 # Configure logging
 settings = get_settings()
@@ -245,6 +246,7 @@ app.include_router(hubspot_signals.router)  # CaseyOS: HubSpot Signal Ingestion 
 app.include_router(actions_routes.router)  # CaseyOS Sprint 9: Action Execution
 app.include_router(outcomes_routes.router)  # CaseyOS Sprint 10: Closed-Loop Outcomes
 app.include_router(caseyos_ui.router)  # CaseyOS Sprint 11: Unified Dashboard UI
+app.include_router(llm_api.router)  # LLM: Multi-provider AI (OpenAI + Gemini)
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)
