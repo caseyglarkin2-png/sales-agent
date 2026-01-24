@@ -301,6 +301,25 @@
         background: #059669;
       }
       
+      .btn-execute {
+        background: var(--primary);
+        color: white;
+      }
+      
+      .btn-execute:hover {
+        background: var(--primary-dark);
+      }
+      
+      .btn-preview {
+        background: white;
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      
+      .btn-preview:hover {
+        background: #eef2ff;
+      }
+      
       .btn-skip {
         background: white;
         border-color: var(--gray-300);
@@ -658,6 +677,12 @@
                 </div>
               </div>
               <div class="queue-actions">
+                <button class="btn btn-execute" onclick="event.stopPropagation(); executeItem('${item.id}', '${item.action_type}', false)" title="Execute this action">
+                  ▶ Execute
+                </button>
+                <button class="btn btn-preview" onclick="event.stopPropagation(); executeItem('${item.id}', '${item.action_type}', true)" title="Preview (dry run)">
+                  👁 Preview
+                </button>
                 <button class="btn btn-complete" onclick="event.stopPropagation(); completeItem('${item.id}')">
                   ✓ Done
                 </button>
@@ -797,6 +822,49 @@
           }
         } catch (err) {
           showToast('Failed to snooze item', 'error');
+        }
+      }
+      
+      async function executeItem(id, actionType, dryRun = false) {
+        const action = dryRun ? 'previewing' : 'executing';
+        showToast(`${dryRun ? '👁 Previewing' : '▶ Executing'} action...`, 'info');
+        
+        try {
+          const res = await fetch('/api/actions/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              queue_item_id: id,
+              action_type: actionType || 'follow_up',
+              context: {},
+              dry_run: dryRun,
+              operator: 'casey'
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (res.ok && data.success) {
+            if (dryRun) {
+              // Show preview in alert/modal
+              const preview = data.data.preview || data.message;
+              alert(`DRY RUN PREVIEW:\n\n${preview}\n\nExecution time: ${data.execution_time_ms.toFixed(0)}ms`);
+              showToast('Preview complete (no action taken)', 'info');
+            } else {
+              showToast(`Action executed: ${data.message} 🚀`);
+              // Auto-complete the item after successful execution
+              await completeItem(id);
+            }
+          } else if (data.status === 'blocked') {
+            showToast('⚠️ Kill switch active - actions disabled', 'error');
+          } else if (data.status === 'rate_limited') {
+            showToast('⚠️ Rate limit exceeded - try again later', 'warning');
+          } else {
+            showToast(`Failed: ${data.message || 'Unknown error'}`, 'error');
+          }
+        } catch (err) {
+          console.error('Execute failed:', err);
+          showToast('Failed to execute action', 'error');
         }
       }
       
