@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
-from src.db import get_db
+from src.db import async_session
 from src.formlead_orchestrator import create_formlead_orchestrator
 from src.logger import get_logger
 from src.models.workflow import Workflow, WorkflowStatus, WorkflowMode
@@ -137,7 +137,7 @@ async def _process_formlead_workflow(
     Raises:
         Exception: Any error during workflow execution
     """
-    async with get_db() as session:
+    async with async_session() as session:
         try:
             # Create workflow record in database
             workflow = Workflow(
@@ -214,7 +214,7 @@ async def _store_failed_task(
     """
     from src.models.task import FailedTask
 
-    async with get_db() as session:
+    async with async_session() as session:
         try:
             failed_task = FailedTask(
                 task_id=task_id,

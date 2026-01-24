@@ -245,9 +245,9 @@ class WebhookProcessor:
         # TODO: Query database for existing submission
         # For now, return False (no duplicate detection until DB integrated)
         from src.models.form_submission import FormSubmission
-        from src.db import get_db
+        from src.db import async_session
         
-        async with get_db() as session:
+        async with async_session() as session:
             from sqlalchemy import select
             result = await session.execute(
                 select(FormSubmission).where(
@@ -271,10 +271,10 @@ class WebhookProcessor:
             WebhookValidationError: If storage fails
         """
         from src.models.form_submission import FormSubmission
-        from src.db import get_db
+        from src.db import async_session
         
         try:
-            async with get_db() as session:
+            async with async_session() as session:
                 submission = FormSubmission(
                     form_submission_id=data.submission_id,
                     portal_id=data.portal_id,

@@ -470,12 +470,12 @@ class FormleadOrchestrator:
         """
         from src.auto_approval import AutoApprovalEngine
         from src.config import get_settings
-        from src.db import get_db
+        from src.db import async_session
 
         settings = get_settings()
 
         try:
-            async with get_db() as session:
+            async with async_session() as session:
                 engine = AutoApprovalEngine(session)
                 
                 decision, rule_id, confidence, reasoning = await engine.evaluate_draft(
