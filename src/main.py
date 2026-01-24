@@ -202,6 +202,7 @@ from src.routes import outcomes as outcomes_routes  # CaseyOS Sprint 10: Closed-
 from src.routes import caseyos_ui  # CaseyOS Sprint 11: Unified Dashboard
 from src.routes import celery_health  # Task 8.18: Celery Beat Health Check
 from src.routes import llm_api  # LLM: Multi-provider AI (OpenAI + Gemini)
+from src.routes import jarvis_api  # Jarvis: Master AI Orchestrator
 
 # Configure logging
 settings = get_settings()
@@ -248,6 +249,7 @@ app.include_router(hubspot_webhooks.router)  # HubSpot CRM Real-Time Webhooks
 app.include_router(actions_routes.router)  # CaseyOS Sprint 9: Action Execution
 app.include_router(outcomes_routes.router)  # CaseyOS Sprint 10: Closed-Loop Outcomes
 app.include_router(caseyos_ui.router)  # CaseyOS Sprint 11: Unified Dashboard UI
+app.include_router(jarvis_api.router)  # Jarvis: Master AI Orchestrator + Agent Hub
 app.include_router(llm_api.router)  # LLM: Multi-provider AI (OpenAI + Gemini)
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
