@@ -195,6 +195,7 @@ from src.routes import command_queue
 from src.routes import ui_command_queue
 from src.routes import signals as signals_routes
 from src.routes import web_auth  # CaseyOS Sprint 1: Web OAuth
+from src.routes import hubspot_signals  # CaseyOS Sprint 3: HubSpot Signal Ingestion
 
 # Configure logging
 settings = get_settings()
@@ -235,6 +236,7 @@ app.include_router(ops.router)  # Ops: Sentry test and admin operations
 app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
 app.include_router(ui_command_queue.router)  # CaseyOS: Command Queue UI v0
 app.include_router(signals_routes.router)  # CaseyOS: Signals API (Sprint 8)
+app.include_router(hubspot_signals.router)  # CaseyOS: HubSpot Signal Ingestion (Sprint 3)
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)

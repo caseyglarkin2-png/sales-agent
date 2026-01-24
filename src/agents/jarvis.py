@@ -1,0 +1,544 @@
+"""Jarvis - The Master Orchestrator Agent for CaseyOS.
+
+Jarvis is the single source of truth that coordinates all specialized agents.
+It routes requests to the appropriate agent, aggregates responses, and maintains
+context across the entire GTM operation.
+
+Think of Jarvis as Casey's Chief of Staff who delegates to specialists.
+"""
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Type
+from enum import Enum
+
+from src.agents.base import BaseAgent
+from src.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class AgentDomain(str, Enum):
+    """Domains that Jarvis can route to."""
+    SALES = "sales"
+    CONTENT = "content"
+    FULFILLMENT = "fulfillment"
+    CONTRACTS = "contracts"
+    OPS = "ops"
+    RESEARCH = "research"
+
+
+class JarvisAgent(BaseAgent):
+    """Master orchestrator that coordinates all CaseyOS agents.
+    
+    Jarvis is the single entry point for all agent operations. It:
+    - Routes requests to specialized agents based on intent
+    - Maintains conversation context across interactions
+    - Aggregates responses from multiple agents when needed
+    - Provides a unified API for the Command Queue
+    
+    Usage:
+        jarvis = JarvisAgent()
+        await jarvis.initialize()  # Load all agents
+        
+        # Ask Jarvis anything
+        result = await jarvis.ask(
+            "Draft a follow-up email for the TechCorp deal",
+            context={"deal_id": "123", "contact_email": "john@techcorp.com"}
+        )
+    """
+
+    def __init__(self):
+        """Initialize Jarvis."""
+        super().__init__(
+            name="Jarvis",
+            description="Master orchestrator coordinating all CaseyOS agents"
+        )
+        self._agents: Dict[str, BaseAgent] = {}
+        self._agent_registry: Dict[str, Dict[str, Any]] = {}
+        self._conversation_context: Dict[str, Any] = {}
+        self._initialized = False
+
+    async def initialize(
+        self,
+        gmail_connector=None,
+        hubspot_connector=None,
+        calendar_connector=None,
+        drive_connector=None,
+        llm_connector=None,
+    ) -> None:
+        """Initialize all agents with their connectors.
+        
+        Args:
+            gmail_connector: Gmail API connector
+            hubspot_connector: HubSpot API connector
+            calendar_connector: Google Calendar connector
+            drive_connector: Google Drive connector
+            llm_connector: OpenAI/LLM connector
+        """
+        logger.info("Jarvis initializing agent network...")
+        
+        # Store connectors for agent initialization
+        self._connectors = {
+            "gmail": gmail_connector,
+            "hubspot": hubspot_connector,
+            "calendar": calendar_connector,
+            "drive": drive_connector,
+            "llm": llm_connector,
+        }
+        
+        # Initialize Sales agents
+        await self._init_sales_agents()
+        
+        # Initialize Content agents
+        await self._init_content_agents()
+        
+        # Initialize Fulfillment agents
+        await self._init_fulfillment_agents()
+        
+        # Initialize Contract agents
+        await self._init_contract_agents()
+        
+        # Initialize Ops agents
+        await self._init_ops_agents()
+        
+        self._initialized = True
+        logger.info(f"Jarvis initialized with {len(self._agents)} agents")
+
+    async def _init_sales_agents(self) -> None:
+        """Initialize sales domain agents."""
+        from src.agents.prospecting import ProspectingAgent
+        from src.agents.nurturing import NurturingAgent
+        from src.agents.research import ResearchAgent
+        from src.agents.specialized import (
+            ThreadReaderAgent,
+            LongMemoryAgent,
+            AssetHunterAgent,
+            MeetingSlotAgent,
+            NextStepPlannerAgent,
+            DraftWriterAgent,
+        )
+        from src.agents.validation import ValidationAgent
+        
+        # Register sales agents
+        self._register_agent(
+            "prospecting",
+            ProspectingAgent(self._connectors.get("llm")),
+            domain=AgentDomain.SALES,
+            capabilities=["analyze_intent", "score_relevance", "generate_response"]
+        )
+        
+        self._register_agent(
+            "nurturing",
+            NurturingAgent(self._connectors.get("hubspot")),
+            domain=AgentDomain.SALES,
+            capabilities=["follow_up_sequence", "create_tasks", "engagement_tracking"]
+        )
+        
+        self._register_agent(
+            "research",
+            ResearchAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+                gmail_connector=self._connectors.get("gmail"),
+            ),
+            domain=AgentDomain.RESEARCH,
+            capabilities=["enrich_prospect", "company_intel", "talking_points"]
+        )
+        
+        self._register_agent(
+            "thread_reader",
+            ThreadReaderAgent(),
+            domain=AgentDomain.SALES,
+            capabilities=["summarize_thread", "extract_context"]
+        )
+        
+        self._register_agent(
+            "long_memory",
+            LongMemoryAgent(gmail_connector=self._connectors.get("gmail")),
+            domain=AgentDomain.SALES,
+            capabilities=["find_patterns", "similar_situations"]
+        )
+        
+        self._register_agent(
+            "asset_hunter",
+            AssetHunterAgent(drive_connector=self._connectors.get("drive")),
+            domain=AgentDomain.SALES,
+            capabilities=["find_assets", "proposal_search", "case_study_search"]
+        )
+        
+        self._register_agent(
+            "meeting_slot",
+            MeetingSlotAgent(calendar_connector=self._connectors.get("calendar")),
+            domain=AgentDomain.SALES,
+            capabilities=["propose_slots", "check_availability"]
+        )
+        
+        self._register_agent(
+            "next_step",
+            NextStepPlannerAgent(),
+            domain=AgentDomain.SALES,
+            capabilities=["select_cta", "plan_action"]
+        )
+        
+        self._register_agent(
+            "draft_writer",
+            DraftWriterAgent(),
+            domain=AgentDomain.SALES,
+            capabilities=["write_email", "apply_voice_profile"]
+        )
+        
+        self._register_agent(
+            "validation",
+            ValidationAgent(),
+            domain=AgentDomain.SALES,
+            capabilities=["compliance_check", "tone_analysis", "pii_detection"]
+        )
+
+    async def _init_content_agents(self) -> None:
+        """Initialize content domain agents."""
+        from src.agents.content.repurpose import ContentRepurposeAgent
+        from src.agents.content.social_scheduler import SocialSchedulerAgent
+        from src.agents.content.graphics_request import GraphicsRequestAgent
+        
+        self._register_agent(
+            "content_repurpose",
+            ContentRepurposeAgent(
+                drive_connector=self._connectors.get("drive"),
+                llm_connector=self._connectors.get("llm"),
+            ),
+            domain=AgentDomain.CONTENT,
+            capabilities=["repurpose_content", "generate_posts", "create_threads"]
+        )
+        
+        self._register_agent(
+            "social_scheduler",
+            SocialSchedulerAgent(),
+            domain=AgentDomain.CONTENT,
+            capabilities=["schedule_post", "track_engagement", "optimize_timing"]
+        )
+        
+        self._register_agent(
+            "graphics_request",
+            GraphicsRequestAgent(),
+            domain=AgentDomain.CONTENT,
+            capabilities=["create_brief", "queue_design", "brand_guidelines"]
+        )
+
+    async def _init_fulfillment_agents(self) -> None:
+        """Initialize fulfillment domain agents."""
+        from src.agents.fulfillment.deliverable_tracker import DeliverableTrackerAgent
+        from src.agents.fulfillment.approval_gateway import ApprovalGatewayAgent
+        from src.agents.fulfillment.client_health import ClientHealthAgent
+        
+        self._register_agent(
+            "deliverable_tracker",
+            DeliverableTrackerAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+                drive_connector=self._connectors.get("drive"),
+            ),
+            domain=AgentDomain.FULFILLMENT,
+            capabilities=["track_deliverables", "flag_overdue", "send_reminders"]
+        )
+        
+        self._register_agent(
+            "approval_gateway",
+            ApprovalGatewayAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+            ),
+            domain=AgentDomain.FULFILLMENT,
+            capabilities=["route_approval", "track_signoffs", "escalate"]
+        )
+        
+        self._register_agent(
+            "client_health",
+            ClientHealthAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+                gmail_connector=self._connectors.get("gmail"),
+            ),
+            domain=AgentDomain.FULFILLMENT,
+            capabilities=["monitor_engagement", "flag_risk", "renewal_alerts"]
+        )
+
+    async def _init_contract_agents(self) -> None:
+        """Initialize contracts domain agents."""
+        from src.agents.contracts.proposal_generator import ProposalGeneratorAgent
+        from src.agents.contracts.contract_review import ContractReviewAgent
+        from src.agents.contracts.pricing_calculator import PricingCalculatorAgent
+        
+        self._register_agent(
+            "proposal_generator",
+            ProposalGeneratorAgent(
+                drive_connector=self._connectors.get("drive"),
+                hubspot_connector=self._connectors.get("hubspot"),
+                llm_connector=self._connectors.get("llm"),
+            ),
+            domain=AgentDomain.CONTRACTS,
+            capabilities=["generate_proposal", "customize_template", "add_pricing"]
+        )
+        
+        self._register_agent(
+            "contract_review",
+            ContractReviewAgent(
+                llm_connector=self._connectors.get("llm"),
+            ),
+            domain=AgentDomain.CONTRACTS,
+            capabilities=["review_contract", "flag_risks", "suggest_edits"]
+        )
+        
+        self._register_agent(
+            "pricing_calculator",
+            PricingCalculatorAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+            ),
+            domain=AgentDomain.CONTRACTS,
+            capabilities=["calculate_quote", "apply_discounts", "validate_pricing"]
+        )
+
+    async def _init_ops_agents(self) -> None:
+        """Initialize ops domain agents."""
+        from src.agents.ops.competitor_watch import CompetitorWatchAgent
+        from src.agents.ops.revenue_ops import RevenueOpsAgent
+        from src.agents.ops.partner_coordinator import PartnerCoordinatorAgent
+        
+        self._register_agent(
+            "competitor_watch",
+            CompetitorWatchAgent(),
+            domain=AgentDomain.OPS,
+            capabilities=["track_competitors", "news_alerts", "market_intel"]
+        )
+        
+        self._register_agent(
+            "revenue_ops",
+            RevenueOpsAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+            ),
+            domain=AgentDomain.OPS,
+            capabilities=["forecast_pipeline", "flag_stuck_deals", "commission_tracking"]
+        )
+        
+        self._register_agent(
+            "partner_coordinator",
+            PartnerCoordinatorAgent(
+                hubspot_connector=self._connectors.get("hubspot"),
+            ),
+            domain=AgentDomain.OPS,
+            capabilities=["track_referrals", "cosell_opportunities", "partner_comms"]
+        )
+
+    def _register_agent(
+        self,
+        name: str,
+        agent: BaseAgent,
+        domain: AgentDomain,
+        capabilities: List[str],
+    ) -> None:
+        """Register an agent with Jarvis."""
+        self._agents[name] = agent
+        self._agent_registry[name] = {
+            "agent": agent,
+            "domain": domain,
+            "capabilities": capabilities,
+            "registered_at": datetime.utcnow().isoformat(),
+        }
+        logger.debug(f"Registered agent: {name} ({domain.value})")
+
+    async def validate_input(self, context: Dict[str, Any]) -> bool:
+        """Validate input has required fields."""
+        return "query" in context or "action" in context
+
+    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a request by routing to appropriate agents."""
+        if not self._initialized:
+            await self.initialize()
+        
+        query = context.get("query", "")
+        action = context.get("action")
+        
+        # Route to specific agent if action specified
+        if action:
+            return await self._execute_action(action, context)
+        
+        # Otherwise, interpret the query and route
+        return await self.ask(query, context)
+
+    async def ask(
+        self,
+        query: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Ask Jarvis a question or request an action.
+        
+        Jarvis will:
+        1. Interpret the intent
+        2. Route to appropriate agent(s)
+        3. Aggregate and return results
+        
+        Args:
+            query: Natural language query or command
+            context: Additional context (deal_id, contact_email, etc.)
+            
+        Returns:
+            Aggregated response from relevant agents
+        """
+        if not self._initialized:
+            await self.initialize()
+        
+        context = context or {}
+        logger.info(f"Jarvis received query: {query[:100]}...")
+        
+        # Update conversation context
+        self._conversation_context.update(context)
+        self._conversation_context["last_query"] = query
+        self._conversation_context["timestamp"] = datetime.utcnow().isoformat()
+        
+        # Determine which agents to invoke
+        agents_to_invoke = await self._route_query(query, context)
+        
+        if not agents_to_invoke:
+            return {
+                "status": "no_match",
+                "message": "I couldn't determine which agent should handle this request.",
+                "suggestion": "Try being more specific about what you need.",
+            }
+        
+        # Execute agents and aggregate results
+        results = {}
+        for agent_name in agents_to_invoke:
+            agent_info = self._agent_registry.get(agent_name)
+            if agent_info:
+                try:
+                    agent = agent_info["agent"]
+                    agent_context = {
+                        **context,
+                        "query": query,
+                        "conversation_context": self._conversation_context,
+                    }
+                    result = await agent.execute(agent_context)
+                    results[agent_name] = {
+                        "status": "success",
+                        "domain": agent_info["domain"].value,
+                        "result": result,
+                    }
+                except Exception as e:
+                    logger.error(f"Agent {agent_name} failed: {e}")
+                    results[agent_name] = {
+                        "status": "error",
+                        "error": str(e),
+                    }
+        
+        return {
+            "status": "success",
+            "query": query,
+            "agents_invoked": list(results.keys()),
+            "results": results,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    async def _route_query(
+        self,
+        query: str,
+        context: Dict[str, Any],
+    ) -> List[str]:
+        """Determine which agents should handle this query.
+        
+        Uses keyword matching for now; can be upgraded to LLM-based routing.
+        """
+        query_lower = query.lower()
+        agents = []
+        
+        # Sales routing
+        if any(word in query_lower for word in ["email", "draft", "outreach", "follow up", "prospect"]):
+            agents.extend(["draft_writer", "research"])
+        if any(word in query_lower for word in ["meeting", "schedule", "calendar", "slot"]):
+            agents.append("meeting_slot")
+        if any(word in query_lower for word in ["nurture", "sequence", "engagement"]):
+            agents.append("nurturing")
+        
+        # Content routing
+        if any(word in query_lower for word in ["content", "repurpose", "linkedin", "twitter", "post"]):
+            agents.append("content_repurpose")
+        if any(word in query_lower for word in ["social", "schedule post", "engagement"]):
+            agents.append("social_scheduler")
+        if any(word in query_lower for word in ["graphic", "design", "image", "visual"]):
+            agents.append("graphics_request")
+        
+        # Fulfillment routing
+        if any(word in query_lower for word in ["deliverable", "deadline", "overdue", "project"]):
+            agents.append("deliverable_tracker")
+        if any(word in query_lower for word in ["approval", "sign off", "approve"]):
+            agents.append("approval_gateway")
+        if any(word in query_lower for word in ["client health", "churn", "renewal", "risk"]):
+            agents.append("client_health")
+        
+        # Contract routing
+        if any(word in query_lower for word in ["proposal", "generate proposal"]):
+            agents.append("proposal_generator")
+        if any(word in query_lower for word in ["contract", "review", "clause", "terms"]):
+            agents.append("contract_review")
+        if any(word in query_lower for word in ["price", "quote", "pricing", "discount"]):
+            agents.append("pricing_calculator")
+        
+        # Ops routing
+        if any(word in query_lower for word in ["competitor", "competition", "market"]):
+            agents.append("competitor_watch")
+        if any(word in query_lower for word in ["pipeline", "forecast", "revenue", "commission"]):
+            agents.append("revenue_ops")
+        if any(word in query_lower for word in ["partner", "referral", "cosell"]):
+            agents.append("partner_coordinator")
+        
+        # Research is often needed as context
+        if any(word in query_lower for word in ["research", "intel", "background", "info about"]):
+            agents.append("research")
+        
+        return list(set(agents))  # Dedupe
+
+    async def _execute_action(
+        self,
+        action: str,
+        context: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Execute a specific action on a specific agent."""
+        agent_name = context.get("agent")
+        if not agent_name or agent_name not in self._agents:
+            return {"status": "error", "error": f"Unknown agent: {agent_name}"}
+        
+        agent = self._agents[agent_name]
+        return await agent.execute(context)
+
+    def get_agent(self, name: str) -> Optional[BaseAgent]:
+        """Get a specific agent by name."""
+        return self._agents.get(name)
+
+    def list_agents(self) -> Dict[str, Dict[str, Any]]:
+        """List all registered agents with their capabilities."""
+        return {
+            name: {
+                "domain": info["domain"].value,
+                "capabilities": info["capabilities"],
+                "description": info["agent"].description,
+            }
+            for name, info in self._agent_registry.items()
+        }
+
+    def get_agents_by_domain(self, domain: AgentDomain) -> List[str]:
+        """Get all agents in a specific domain."""
+        return [
+            name for name, info in self._agent_registry.items()
+            if info["domain"] == domain
+        ]
+
+
+# Singleton instance
+_jarvis_instance: Optional[JarvisAgent] = None
+
+
+def get_jarvis() -> JarvisAgent:
+    """Get the singleton Jarvis instance."""
+    global _jarvis_instance
+    if _jarvis_instance is None:
+        _jarvis_instance = JarvisAgent()
+    return _jarvis_instance
+
+
+async def reset_jarvis() -> None:
+    """Reset Jarvis (for testing)."""
+    global _jarvis_instance
+    _jarvis_instance = None

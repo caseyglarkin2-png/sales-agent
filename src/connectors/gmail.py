@@ -129,7 +129,7 @@ class GmailConnector:
             return
         
         try:
-            from src.auth import store_oauth_token
+            from src.oauth_manager_legacy import store_oauth_token
             
             token_data = {
                 "token": self.credentials.token,
@@ -162,7 +162,7 @@ class GmailConnector:
             bool: True if token loaded successfully
         """
         try:
-            from src.auth import retrieve_oauth_token
+            from src.oauth_manager_legacy import retrieve_oauth_token
             
             token_data = await retrieve_oauth_token(user_email, provider="google")
             
@@ -213,7 +213,7 @@ class GmailConnector:
             
             # Remove from database
             if self.user_email:
-                from src.auth import revoke_oauth_token
+                from src.oauth_manager_legacy import revoke_oauth_token
                 await revoke_oauth_token(self.user_email, provider="google")
             
             logger.info(f"Revoked OAuth token for {self.user_email}")

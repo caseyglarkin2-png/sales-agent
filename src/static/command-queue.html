@@ -428,6 +428,47 @@
         cursor: pointer;
       }
       
+      /* Sync button */
+      .btn-sync {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1rem;
+        background: white;
+        border: 1px solid var(--gray-300);
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-sync:hover {
+        background: var(--gray-50);
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      
+      .btn-sync:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      .btn-sync .sync-icon {
+        font-size: 1rem;
+        transition: transform 0.3s;
+      }
+      
+      .btn-sync.syncing .sync-icon {
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
       /* Toast notifications */
       .toast {
         position: fixed;
@@ -474,9 +515,15 @@
     </nav>
     
     <div class="container">
-      <div class="page-header">
-        <h1>Today's Moves</h1>
-        <p>Your prioritized actions, ranked by impact. Let's crush it.</p>
+      <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h1>Today's Moves</h1>
+          <p>Your prioritized actions, ranked by impact. Let's crush it.</p>
+        </div>
+        <button id="sync-hubspot" class="btn-sync" onclick="syncFromHubSpot()" title="Detect signals from HubSpot">
+          <span class="sync-icon">↻</span>
+          <span class="sync-text">Sync from HubSpot</span>
+        </button>
       </div>
       
       <div class="stats-bar">

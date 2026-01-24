@@ -1,7 +1,7 @@
 """Tests for auth module."""
 import pytest
 
-from src.auth import OAuth2Manager
+from src.oauth_manager_legacy import OAuth2Manager
 
 
 @pytest.mark.asyncio
