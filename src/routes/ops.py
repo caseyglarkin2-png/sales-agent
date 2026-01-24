@@ -81,3 +81,62 @@ async def get_migration_status() -> dict:
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+
+@router.post("/ops/create-signals-table")
+async def create_signals_table() -> dict:
+    """Create signals table directly (emergency fallback)."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import text
+    import os
+    
+    try:
+        database_url = os.getenv("DATABASE_URL", "")
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif database_url.startswith("postgresql://"):
+            database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            
+        engine = create_async_engine(database_url)
+        
+        async with engine.begin() as conn:
+            # Create enum type
+            await conn.execute(text("""
+                DO $$ BEGIN
+                    CREATE TYPE signal_source_enum AS ENUM ('form', 'hubspot', 'gmail', 'manual');
+                EXCEPTION
+                    WHEN duplicate_object THEN NULL;
+                END $$;
+            """))
+            
+            # Create table
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS signals (
+                    id VARCHAR(36) PRIMARY KEY,
+                    source signal_source_enum NOT NULL,
+                    event_type VARCHAR(64) NOT NULL,
+                    payload JSONB NOT NULL DEFAULT '{}',
+                    processed_at TIMESTAMP,
+                    recommendation_id VARCHAR(36),
+                    source_id VARCHAR(128),
+                    created_at TIMESTAMP NOT NULL
+                );
+            """))
+            
+            # Create indexes
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_source ON signals(source);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_event_type ON signals(event_type);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_processed_at ON signals(processed_at);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_recommendation_id ON signals(recommendation_id);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_source_id ON signals(source_id);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_created_at ON signals(created_at);"))
+        
+        await engine.dispose()
+        
+        logger.info("Signals table created successfully")
+        return {"status": "success", "message": "Signals table created"}
+        
+    except Exception as e:
+        logger.error(f"Failed to create signals table: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
