@@ -6,12 +6,16 @@ Scores items on a 0-100 scale using weighted components:
 - Strategic value (20%)
 - Effort (10%, inverted so lower effort increases score)
 
+Plus outcome-based adjustments from closed-loop learning:
+- Contacts with positive history get score boost (+20 max)
+- Contacts with negative history get score penalty (-20 max)
+
 Heuristics are simple and deterministic for v0.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 
 @dataclass
@@ -19,6 +23,7 @@ class APSResult:
     score: float
     components: Dict[str, float]
     reasoning: str
+    outcome_adjustment: float = 0.0  # Adjustment from outcome history
 
 
 def _bounded(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
@@ -43,11 +48,20 @@ def _defaults_for_action(action_type: str) -> Tuple[float, float, float, float]:
     return 0.5, 0.5, 0.5, 0.5
 
 
-def calculate_aps(action_type: str, context: Dict | None = None) -> APSResult:
+def calculate_aps(
+    action_type: str, 
+    context: Dict | None = None,
+    outcome_adjustment: float = 0.0
+) -> APSResult:
     """Compute APS score and a concise reasoning string.
 
     Context may provide numeric hints (0-1 floats) for keys:
     - revenue_impact, urgency, effort, strategic_value
+    
+    Args:
+        action_type: Type of action (send_email, book_meeting, etc.)
+        context: Optional context dict with scoring hints
+        outcome_adjustment: Score adjustment from outcome history (-20 to +20)
     """
     context = context or {}
 
@@ -64,12 +78,24 @@ def calculate_aps(action_type: str, context: Dict | None = None) -> APSResult:
     eff_inverted = 1.0 - effort
 
     raw = (revenue * w_rev) + (urgency * w_urg) + (strategic * w_strat) + (eff_inverted * w_eff)
-    score = round(raw * 100.0, 2)
+    base_score = raw * 100.0
+    
+    # Apply outcome adjustment (cap to keep score in 0-100 range)
+    adjusted_score = base_score + outcome_adjustment
+    score = round(max(0.0, min(100.0, adjusted_score)), 2)
 
-    reasoning = (
-        f"Revenue {int(revenue*100)}%, Urgency {int(urgency*100)}%, "
-        f"Strategic {int(strategic*100)}%, Effort↓ {int(eff_inverted*100)}%"
-    )
+    # Build reasoning
+    parts = [
+        f"Revenue {int(revenue*100)}%",
+        f"Urgency {int(urgency*100)}%",
+        f"Strategic {int(strategic*100)}%",
+        f"Effort↓ {int(eff_inverted*100)}%"
+    ]
+    if outcome_adjustment != 0.0:
+        direction = "+" if outcome_adjustment > 0 else ""
+        parts.append(f"Outcome {direction}{outcome_adjustment:.1f}")
+    
+    reasoning = ", ".join(parts)
 
     components = {
         "revenue": round(revenue, 3),
@@ -78,4 +104,42 @@ def calculate_aps(action_type: str, context: Dict | None = None) -> APSResult:
         "strategic": round(strategic, 3),
     }
 
-    return APSResult(score=score, components=components, reasoning=reasoning)
+    return APSResult(
+        score=score, 
+        components=components, 
+        reasoning=reasoning,
+        outcome_adjustment=outcome_adjustment
+    )
+
+
+async def calculate_aps_with_outcomes(
+    action_type: str,
+    contact_email: Optional[str] = None,
+    context: Dict | None = None
+) -> APSResult:
+    """Calculate APS with outcome-based adjustments.
+    
+    This is the preferred method when you have a contact email,
+    as it automatically applies score adjustments based on
+    that contact's outcome history.
+    
+    Args:
+        action_type: Type of action
+        contact_email: Contact's email to look up outcome history
+        context: Optional context dict with scoring hints
+        
+    Returns:
+        APSResult with outcome adjustment applied
+    """
+    outcome_adjustment = 0.0
+    
+    if contact_email:
+        try:
+            from src.outcomes.service import get_outcome_service
+            service = get_outcome_service()
+            outcome_adjustment = await service.calculate_contact_score_adjustment(contact_email)
+        except Exception:
+            # If outcome service fails, proceed without adjustment
+            pass
+    
+    return calculate_aps(action_type, context, outcome_adjustment)
