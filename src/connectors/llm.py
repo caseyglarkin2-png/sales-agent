@@ -8,7 +8,7 @@ Supports:
 from typing import Any, Dict, List, Optional
 import asyncio
 
-import openai
+from openai import AsyncOpenAI
 
 from src.config import get_settings
 from src.logger import get_logger
@@ -46,9 +46,10 @@ class LLMConnector:
                 api_key=api_key or settings.gemini_api_key,
             )
             self.model = model or settings.gemini_model
+            self.openai_client = None
         else:
-            # Default to OpenAI
-            openai.api_key = api_key or settings.openai_api_key
+            # Default to OpenAI - use new client API
+            self.openai_client = AsyncOpenAI(api_key=api_key or settings.openai_api_key)
             self.model = model or settings.openai_model
             self.gemini = None
     
@@ -86,10 +87,15 @@ class LLMConnector:
         temperature: float,
         max_tokens: int,
     ) -> Optional[str]:
-        """Generate text using OpenAI."""
+        """Generate text using OpenAI (new 1.x API)."""
         try:
-            response = openai.ChatCompletion.create(
-                model=self.model,
+            # Create client on-demand if needed (for failover case)
+            client = self.openai_client
+            if client is None:
+                client = AsyncOpenAI(api_key=settings.openai_api_key)
+            
+            response = await client.chat.completions.create(
+                model=self.model or settings.openai_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -149,10 +155,15 @@ class LLMConnector:
         """
         Generate embedding for text.
         
-        Uses OpenAI embeddings (Gemini doesn't have public embedding API).
+        Uses OpenAI embeddings (new 1.x API).
         """
         try:
-            response = openai.Embedding.create(
+            # Create client on-demand if needed
+            client = self.openai_client
+            if client is None:
+                client = AsyncOpenAI(api_key=settings.openai_api_key)
+            
+            response = await client.embeddings.create(
                 input=text,
                 model="text-embedding-3-small",
             )
