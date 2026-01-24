@@ -302,6 +302,210 @@ POST /api/analytics/recovery/retry-failed?max_retries={3}&max_to_retry={50}
 
 ---
 
+## Outcomes (Sprint 10 - Closed-Loop Tracking)
+
+### List Outcome Types
+```bash
+GET /api/outcomes/types
+
+# Response:
+{
+    "outcome_types": [
+        {
+            "type": "email_replied",
+            "category": "email",
+            "impact_score": 5,
+            "description": "Recipient replied to email"
+        },
+        ...
+    ],
+    "total": 18
+}
+
+# Categories: email, meeting, deal, task, general
+# Impact scores: -5 (negative) to +10 (very positive)
+```
+
+### Get Outcome Stats
+```bash
+GET /api/outcomes/stats
+
+# Response:
+{
+    "total_outcomes": 127,
+    "positive_outcomes": 89,
+    "negative_outcomes": 12,
+    "neutral_outcomes": 26,
+    "reply_rate": 0.42,
+    "net_impact": 215,
+    "by_type": {
+        "email_replied": 45,
+        "meeting_booked": 23,
+        "deal_stage_advanced": 12
+    }
+}
+```
+
+### List Recent Outcomes
+```bash
+GET /api/outcomes/recent?limit={int}
+
+# Response:
+{
+    "outcomes": [
+        {
+            "id": "uuid",
+            "outcome_type": "email_replied",
+            "contact_email": "john@acme.com",
+            "queue_item_id": "uuid",
+            "impact_score": 5,
+            "context": {"thread_id": "abc123"},
+            "created_at": "2026-01-24T10:30:00Z"
+        },
+        ...
+    ]
+}
+```
+
+### Get Specific Outcome
+```bash
+GET /api/outcomes/{outcome_id}
+
+# Response: Single OutcomeRecord object
+```
+
+### Get Outcomes for Queue Item
+```bash
+GET /api/outcomes/queue/{queue_item_id}
+
+# Response:
+{
+    "queue_item_id": "uuid",
+    "outcomes": [...],
+    "net_impact": 10
+}
+```
+
+### Get Outcomes for Contact
+```bash
+GET /api/outcomes/contact/{email}
+
+# Response:
+{
+    "contact_email": "john@acme.com",
+    "outcomes": [...],
+    "net_impact": 15,
+    "positive_count": 4,
+    "negative_count": 1
+}
+```
+
+### Get Contact APS Score Adjustment
+```bash
+GET /api/outcomes/contact/{email}/score-adjustment
+
+# Response:
+{
+    "contact_email": "john@acme.com",
+    "aps_adjustment": 12.5,
+    "reason": "4 positive outcomes, 1 negative outcome"
+}
+
+# APS adjustment range: -20 to +20 points
+```
+
+### Record an Outcome
+```bash
+POST /api/outcomes/record
+Content-Type: application/json
+X-CSRF-Token: <token>
+
+{
+    "outcome_type": "email_replied",
+    "source": "gmail",
+    "contact_email": "john@acme.com",
+    "queue_item_id": "uuid",  # optional
+    "context": {
+        "thread_id": "abc123",
+        "reply_sentiment": "positive"
+    }
+}
+
+# Response:
+{
+    "id": "uuid",
+    "outcome_type": "email_replied",
+    "impact_score": 5,
+    "recorded_at": "2026-01-24T10:30:00Z"
+}
+```
+
+### Detect Gmail Reply (Auto-Detection)
+```bash
+POST /api/outcomes/detect/gmail-reply
+Content-Type: application/json
+X-CSRF-Token: <token>
+
+{
+    "thread_id": "gmail_thread_id",
+    "from_email": "john@acme.com",
+    "message_snippet": "Thanks for reaching out..."
+}
+
+# Response:
+{
+    "detected": true,
+    "outcome_id": "uuid",
+    "outcome_type": "email_replied",
+    "sentiment": "positive"
+}
+```
+
+### Detect HubSpot Deal Change
+```bash
+POST /api/outcomes/detect/deal-change
+Content-Type: application/json
+X-CSRF-Token: <token>
+
+{
+    "deal_id": "hubspot_deal_id",
+    "old_stage": "qualified",
+    "new_stage": "proposal",
+    "contact_email": "john@acme.com"
+}
+
+# Response:
+{
+    "detected": true,
+    "outcome_id": "uuid",
+    "outcome_type": "deal_stage_advanced",
+    "impact_score": 8
+}
+```
+
+### Detect Meeting Outcome
+```bash
+POST /api/outcomes/detect/meeting
+Content-Type: application/json
+X-CSRF-Token: <token>
+
+{
+    "calendar_event_id": "event_id",
+    "meeting_status": "held",  # held, no_show, rescheduled
+    "contact_email": "john@acme.com"
+}
+
+# Response:
+{
+    "detected": true,
+    "outcome_id": "uuid",
+    "outcome_type": "meeting_held",
+    "impact_score": 8
+}
+```
+
+---
+
 ## Admin (Feature Flags)
 
 ### List Feature Flags
@@ -410,5 +614,5 @@ curl https://web-production-a6ccf.up.railway.app/api/quotas/rate-limits/gmail
 
 ---
 
-**Last Updated**: January 23, 2026  
-**Version**: Phase 4 Complete
+**Last Updated**: January 24, 2026  
+**Version**: Sprint 10 Complete (Closed-Loop Outcomes)

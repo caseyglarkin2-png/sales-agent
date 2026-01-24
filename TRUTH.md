@@ -155,6 +155,41 @@
 
 ---
 
+### 9. Outcome Tracking (FULLY FUNCTIONAL - Sprint 10)
+**Files:** [src/outcomes/__init__.py](src/outcomes/__init__.py), [src/outcomes/service.py](src/outcomes/service.py), [src/outcomes/detector.py](src/outcomes/detector.py), [src/routes/outcomes.py](src/routes/outcomes.py)  
+**Status:** ✅ Production-ready, closes the feedback loop
+
+**What it does:**
+- Records outcomes from actions (email replies, meetings, deal changes)
+- Tracks 18 outcome types across 5 categories (email, meeting, deal, task, general)
+- Calculates impact scores (-5 to +10 per outcome)
+- Provides APS score adjustments based on contact history
+- Auto-detection for Gmail replies, HubSpot deal changes, Calendar events
+
+**Outcome Types (18 total):**
+- **Email:** email_sent, email_opened, email_clicked, email_replied, email_bounced, email_unsubscribed
+- **Meeting:** meeting_booked, meeting_held, meeting_no_show, meeting_rescheduled
+- **Deal:** deal_created, deal_stage_advanced, deal_stage_regressed, deal_won, deal_lost
+- **Task:** task_completed, task_overdue
+- **General:** positive_response, negative_response, no_response
+
+**APS Integration:**
+- Contacts with positive outcome history get score boost (+20 max)
+- Contacts with negative outcome history get penalty (-20 max)
+- `calculate_aps_with_outcomes()` function for automatic lookup
+
+**API Endpoints:**
+- GET /api/outcomes/types - List outcome types with impact scores
+- GET /api/outcomes/stats - Aggregated stats (reply rate, net impact)
+- GET /api/outcomes/recent - Recent outcomes list
+- GET /api/outcomes/contact/{email} - Outcomes for contact
+- POST /api/outcomes/record - Record an outcome (CSRF protected)
+- POST /api/outcomes/detect/* - Auto-detection endpoints
+
+**Evidence:** API live at https://web-production-a6ccf.up.railway.app/api/outcomes/stats
+
+---
+
 ## ❌ What Doesn't Work (Major Gaps)
 
 ### 1. Email Sending (SHOWSTOPPER)
