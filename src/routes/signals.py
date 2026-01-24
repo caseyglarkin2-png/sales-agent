@@ -51,55 +51,59 @@ async def list_signals(
     
     Returns recent signals, newest first.
     """
-    # Build query
-    query = select(Signal)
-    count_query = select(func.count(Signal.id))
-    
-    # Apply filters
-    if source:
-        try:
-            source_enum = SignalSource(source.lower())
-            query = query.where(Signal.source == source_enum)
-            count_query = count_query.where(Signal.source == source_enum)
-        except ValueError:
-            # Invalid source, return empty
-            return SignalsListResponse(signals=[], total=0, limit=limit, offset=offset)
-    
-    if processed is not None:
-        if processed:
-            query = query.where(Signal.processed_at.isnot(None))
-            count_query = count_query.where(Signal.processed_at.isnot(None))
-        else:
-            query = query.where(Signal.processed_at.is_(None))
-            count_query = count_query.where(Signal.processed_at.is_(None))
-    
-    # Get total count
-    count_result = await db.execute(count_query)
-    total = count_result.scalar() or 0
-    
-    # Get paginated results
-    query = query.order_by(Signal.created_at.desc()).limit(limit).offset(offset)
-    result = await db.execute(query)
-    signals = result.scalars().all()
-    
-    return SignalsListResponse(
-        signals=[
-            SignalResponse(
-                id=s.id,
-                source=s.source.value,
-                event_type=s.event_type,
-                payload=s.payload,
-                processed_at=s.processed_at,
-                recommendation_id=s.recommendation_id,
-                source_id=s.source_id,
-                created_at=s.created_at,
-            )
-            for s in signals
-        ],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+    try:
+        # Build query
+        query = select(Signal)
+        count_query = select(func.count(Signal.id))
+        
+        # Apply filters
+        if source:
+            try:
+                source_enum = SignalSource(source.lower())
+                query = query.where(Signal.source == source_enum)
+                count_query = count_query.where(Signal.source == source_enum)
+            except ValueError:
+                # Invalid source, return empty
+                return SignalsListResponse(signals=[], total=0, limit=limit, offset=offset)
+        
+        if processed is not None:
+            if processed:
+                query = query.where(Signal.processed_at.isnot(None))
+                count_query = count_query.where(Signal.processed_at.isnot(None))
+            else:
+                query = query.where(Signal.processed_at.is_(None))
+                count_query = count_query.where(Signal.processed_at.is_(None))
+        
+        # Get total count
+        count_result = await db.execute(count_query)
+        total = count_result.scalar() or 0
+        
+        # Get paginated results
+        query = query.order_by(Signal.created_at.desc()).limit(limit).offset(offset)
+        result = await db.execute(query)
+        signals = result.scalars().all()
+        
+        return SignalsListResponse(
+            signals=[
+                SignalResponse(
+                    id=s.id,
+                    source=s.source.value,
+                    event_type=s.event_type,
+                    payload=s.payload,
+                    processed_at=s.processed_at,
+                    recommendation_id=s.recommendation_id,
+                    source_id=s.source_id,
+                    created_at=s.created_at,
+                )
+                for s in signals
+            ],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as e:
+        logger.error(f"Error listing signals: {e}", exc_info=True)
+        raise
 
 
 @router.get("/{signal_id}", response_model=SignalResponse)
