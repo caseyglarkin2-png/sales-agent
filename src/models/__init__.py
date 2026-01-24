@@ -15,6 +15,13 @@ from src.models.command_queue import (
     ActionType,
     QueueItemStatus,
 )
+from src.models.auto_approval import (
+    AutoApprovalRule,
+    ApprovedRecipient,
+    AutoApprovalLog,
+    RuleType,
+    ApprovalDecision,
+)
 
 __all__ = [
     "Prospect",
@@ -30,4 +37,9 @@ __all__ = [
     "ActionRecommendation",
     "ActionType",
     "QueueItemStatus",
+    "AutoApprovalRule",
+    "ApprovedRecipient",
+    "AutoApprovalLog",
+    "RuleType",
+    "ApprovalDecision",
 ]
