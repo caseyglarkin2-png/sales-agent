@@ -19,6 +19,7 @@ class SignalSource(str, Enum):
     HUBSPOT = "hubspot"
     GMAIL = "gmail"
     MANUAL = "manual"
+    TWITTER = "twitter"  # Twitter/X social signals
 
 
 def compute_payload_hash(payload: Dict[str, Any]) -> str:

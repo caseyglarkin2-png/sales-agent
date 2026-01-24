@@ -16,6 +16,10 @@ from src.signals.providers.social_signal import (
     SocialSignalProvider,
     get_social_signal_provider,
 )
+from src.signals.providers.twitter_home import (
+    TwitterHomeProvider,
+    get_twitter_home_provider,
+)
 
 __all__ = [
     "Signal",
@@ -23,4 +27,6 @@ __all__ = [
     "SignalProcessor",
     "SocialSignalProvider",
     "get_social_signal_provider",
+    "TwitterHomeProvider",
+    "get_twitter_home_provider",
 ]

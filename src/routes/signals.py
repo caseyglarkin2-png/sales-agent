@@ -1,5 +1,5 @@
 """Signals API routes for CaseyOS signal framework."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -173,3 +173,107 @@ async def get_signal_stats(
         "unprocessed": unprocessed_count,
         "by_source": source_counts,
     }
+
+
+@router.post("/twitter/poll")
+async def poll_twitter_signals(
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Query(..., description="User ID to poll Twitter feed for"),
+    count: int = Query(50, ge=1, le=200, description="Number of tweets to fetch"),
+    min_relevance: float = Query(0.3, ge=0.0, le=1.0, description="Minimum relevance score"),
+) -> dict[str, Any]:
+    """
+    Poll Twitter home timeline for GTM-relevant signals.
+    
+    Requires user to have completed OAuth flow via /auth/twitter/login.
+    
+    Returns signals that were created and optionally processed into queue items.
+    """
+    from src.signals.providers.twitter_home import TwitterHomeProvider, get_twitter_home_provider
+    from src.services.signal_processors.social import SocialSignalProcessor
+    from src.models.signal import Signal as SignalModel, SignalSource, compute_payload_hash
+    
+    try:
+        # Get the Twitter home provider
+        provider = get_twitter_home_provider()
+        
+        # Check if user is authenticated
+        tokens = await provider.get_user_tokens(user_id)
+        if not tokens:
+            raise HTTPException(
+                status_code=401,
+                detail=f"User {user_id} not authenticated. Complete OAuth flow at /auth/twitter/login"
+            )
+        
+        # Poll for signals
+        since = datetime.utcnow() - timedelta(hours=24)
+        signals = await provider.poll_signals(since=since, user_id=user_id)
+        
+        # Filter by relevance
+        relevant_signals = [s for s in signals if s.payload.get("relevance_score", 0) >= min_relevance]
+        
+        # Store signals and process them
+        created_signals = []
+        created_queue_items = []
+        processor = SocialSignalProcessor()
+        
+        for signal in relevant_signals[:count]:
+            # Create DB model from signal dataclass
+            payload_hash = compute_payload_hash(signal.payload)
+            
+            # Check for duplicates
+            existing = await db.execute(
+                select(SignalModel).where(SignalModel.payload_hash == payload_hash)
+            )
+            if existing.scalar_one_or_none():
+                logger.debug(f"Skipping duplicate signal: {payload_hash[:16]}")
+                continue
+            
+            # Create DB signal
+            db_signal = SignalModel(
+                id=signal.id,
+                source=SignalSource.TWITTER,
+                event_type=signal.event_type,
+                payload=signal.payload,
+                source_id=signal.source_id,
+                payload_hash=payload_hash,
+                created_at=datetime.utcnow(),
+            )
+            db.add(db_signal)
+            created_signals.append(db_signal)
+            
+            # Process into command queue item
+            queue_item = await processor.process(db_signal)
+            if queue_item:
+                db.add(queue_item)
+                db_signal.recommendation_id = queue_item.id
+                db_signal.processed_at = datetime.utcnow()
+                created_queue_items.append(queue_item)
+        
+        await db.commit()
+        
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "signals_found": len(signals),
+            "signals_relevant": len(relevant_signals),
+            "signals_created": len(created_signals),
+            "queue_items_created": len(created_queue_items),
+            "min_relevance": min_relevance,
+            "sample_signals": [
+                {
+                    "id": s.id,
+                    "event_type": s.event_type,
+                    "relevance": s.payload.get("relevance_score", 0),
+                    "author": s.payload.get("author_handle", ""),
+                    "text": s.payload.get("text", "")[:100],
+                }
+                for s in created_signals[:5]
+            ],
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error polling Twitter signals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to poll Twitter: {str(e)}")
