@@ -98,6 +98,13 @@ def upgrade():
         WHERE title IS NULL
     """)
     
+    # Ensure ALL rows have titles before making non-nullable (safety net)
+    op.execute("""
+        UPDATE command_queue_items 
+        SET title = 'Untitled'
+        WHERE title IS NULL
+    """)
+    
     # Now make title non-nullable
     op.alter_column("command_queue_items", "title", nullable=False)
 

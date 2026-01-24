@@ -3,21 +3,39 @@
 This is the core API for managing Casey's prioritized action queue.
 Each item represents something Casey should do, ranked by APS (Action Priority Score).
 """
+import re
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy import select, desc, asc, or_, and_
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select, desc, asc, or_, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_db
 from src.models.command_queue import CommandQueueItem, ActionType, QueueItemStatus
-from src.auth.decorators import get_current_user_optional
+from src.auth.decorators import get_current_user_optional, get_current_user
 from src.models.user import User
 from src.telemetry import log_event
+
+
+# =============================================================================
+# Security Constants
+# =============================================================================
+
+# Whitelist of valid status values for filtering
+VALID_STATUSES: Set[str] = {"pending", "in_progress", "completed", "skipped", "snoozed"}
+
+# Whitelist of valid action types for filtering
+VALID_ACTION_TYPES: Set[str] = {
+    "send_email", "book_meeting", "review_deal", "send_proposal",
+    "follow_up", "check_in", "prep_meeting", "other"
+}
+
+# Regex for validating HubSpot IDs (alphanumeric only)
+HUBSPOT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 # =============================================================================
@@ -47,6 +65,24 @@ class CommandQueueItemCreate(BaseModel):
     
     due_by: Optional[datetime] = None
     action_context: Optional[Dict[str, Any]] = None
+    
+    @field_validator('contact_id', 'deal_id', 'company_id', mode='before')
+    @classmethod
+    def validate_hubspot_ids(cls, v: Optional[str]) -> Optional[str]:
+        """Validate HubSpot IDs are alphanumeric only (prevent injection)."""
+        if v is None:
+            return v
+        if not HUBSPOT_ID_PATTERN.match(v):
+            raise ValueError(f"Invalid ID format: must be alphanumeric")
+        return v
+    
+    @field_validator('action_type', mode='before')
+    @classmethod
+    def validate_action_type(cls, v: str) -> str:
+        """Validate action type against whitelist."""
+        if v not in VALID_ACTION_TYPES:
+            return "other"  # Default to 'other' for unknown types
+        return v
 
 
 class CommandQueueItemUpdate(BaseModel):
@@ -172,11 +208,33 @@ async def list_queue_items(
         stmt = stmt.where(CommandQueueItem.owner == user.email)
         count_stmt = count_stmt.where(CommandQueueItem.owner == user.email)
     
-    # Status filter
+    # Status filter - validate against whitelist
     if status:
-        statuses = [s.strip() for s in status.split(",")]
-        stmt = stmt.where(CommandQueueItem.status.in_(statuses))
-        count_stmt = count_stmt.where(CommandQueueItem.status.in_(statuses))
+        statuses = [s.strip() for s in status.split(",") if s.strip() in VALID_STATUSES]
+        if statuses:  # Only apply filter if valid statuses remain
+            stmt = stmt.where(CommandQueueItem.status.in_(statuses))
+            count_stmt = count_stmt.where(CommandQueueItem.status.in_(statuses))
+        else:
+            # Invalid statuses provided, use default
+            now = datetime.utcnow()
+            stmt = stmt.where(
+                or_(
+                    CommandQueueItem.status == "pending",
+                    and_(
+                        CommandQueueItem.status == "snoozed",
+                        CommandQueueItem.snoozed_until <= now
+                    )
+                )
+            )
+            count_stmt = count_stmt.where(
+                or_(
+                    CommandQueueItem.status == "pending",
+                    and_(
+                        CommandQueueItem.status == "snoozed",
+                        CommandQueueItem.snoozed_until <= now
+                    )
+                )
+            )
     else:
         # Default: show pending items, plus snoozed items that are due
         now = datetime.utcnow()
@@ -199,11 +257,12 @@ async def list_queue_items(
             )
         )
     
-    # Action type filter
+    # Action type filter - validate against whitelist
     if action_type:
-        types = [t.strip() for t in action_type.split(",")]
-        stmt = stmt.where(CommandQueueItem.action_type.in_(types))
-        count_stmt = count_stmt.where(CommandQueueItem.action_type.in_(types))
+        types = [t.strip() for t in action_type.split(",") if t.strip() in VALID_ACTION_TYPES]
+        if types:  # Only apply filter if valid types remain
+            stmt = stmt.where(CommandQueueItem.action_type.in_(types))
+            count_stmt = count_stmt.where(CommandQueueItem.action_type.in_(types))
     
     # Sorting
     descending = sort.startswith("-")
@@ -219,9 +278,10 @@ async def list_queue_items(
     sort_column = sort_map.get(sort_field, CommandQueueItem.priority_score)
     stmt = stmt.order_by(desc(sort_column) if descending else asc(sort_column))
     
-    # Get total count
-    count_result = await db.execute(count_stmt)
-    total = len(count_result.scalars().all())
+    # Get total count efficiently using COUNT()
+    count_query = select(func.count()).select_from(count_stmt.subquery())
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
     
     # Apply pagination
     stmt = stmt.offset(offset).limit(limit)
@@ -238,15 +298,31 @@ async def list_queue_items(
     )
 
 
+async def _get_item_with_auth(
+    item_id: str, 
+    db: AsyncSession, 
+    user: Optional[User],
+    require_ownership: bool = True
+) -> CommandQueueItem:
+    """Get queue item with optional ownership check."""
+    item = await db.get(CommandQueueItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    
+    if require_ownership and user and item.owner != user.email:
+        raise HTTPException(status_code=403, detail="You don't have access to this item")
+    
+    return item
+
+
 @router.get("/{item_id}", response_model=CommandQueueItemResponse)
 async def get_queue_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional),
 ) -> CommandQueueItemResponse:
     """Get a single queue item by ID."""
-    item = await db.get(CommandQueueItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+    item = await _get_item_with_auth(item_id, db, user, require_ownership=True)
     return _to_response(item)
 
 
@@ -254,7 +330,7 @@ async def get_queue_item(
 async def create_queue_item(
     data: CommandQueueItemCreate,
     db: AsyncSession = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user_optional),
+    user: User = Depends(get_current_user),  # Require auth for creating items
 ) -> CommandQueueItemResponse:
     """Create a new queue item.
     
@@ -298,6 +374,7 @@ async def update_queue_item(
     item_id: str,
     data: CommandQueueItemUpdate,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> CommandQueueItemResponse:
     """Update a queue item.
     
@@ -306,11 +383,13 @@ async def update_queue_item(
     - Skip: `{"status": "skipped"}`
     - Snooze: Use POST /{item_id}/snooze instead for presets
     """
-    item = await db.get(CommandQueueItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+    item = await _get_item_with_auth(item_id, db, user)
     
     update_data = data.model_dump(exclude_unset=True)
+    
+    # Validate status if provided
+    if "status" in update_data and update_data["status"] not in VALID_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(VALID_STATUSES)}")
     
     for field, value in update_data.items():
         setattr(item, field, value)
@@ -337,11 +416,10 @@ async def update_queue_item(
 async def complete_queue_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> CommandQueueItemResponse:
     """Mark a queue item as completed."""
-    item = await db.get(CommandQueueItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+    item = await _get_item_with_auth(item_id, db, user)
     
     item.status = "completed"
     item.completed_at = datetime.utcnow()
@@ -362,11 +440,10 @@ async def complete_queue_item(
 async def skip_queue_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> CommandQueueItemResponse:
     """Skip a queue item."""
-    item = await db.get(CommandQueueItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+    item = await _get_item_with_auth(item_id, db, user)
     
     item.status = "skipped"
     item.updated_at = datetime.utcnow()
@@ -387,11 +464,10 @@ async def snooze_queue_item(
     item_id: str,
     snooze: SnoozeRequest,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> CommandQueueItemResponse:
     """Snooze a queue item for a preset duration."""
-    item = await db.get(CommandQueueItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+    item = await _get_item_with_auth(item_id, db, user)
     
     now = datetime.utcnow()
     
@@ -434,16 +510,15 @@ async def snooze_queue_item(
 async def delete_queue_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> None:
-    """Delete a queue item (admin only)."""
-    item = await db.get(CommandQueueItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Queue item not found")
+    """Delete a queue item (owner only)."""
+    item = await _get_item_with_auth(item_id, db, user)
     
     await db.delete(item)
     await db.commit()
     
-    await log_event("queue_item_deleted", {"item_id": item_id})
+    await log_event("queue_item_deleted", {"item_id": item_id, "by_user": user.email})
 
 
 # =============================================================================
@@ -454,9 +529,10 @@ async def delete_queue_item(
 async def accept_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Legacy: Accept an item (same as complete)."""
-    result = await complete_queue_item(item_id, db)
+    await complete_queue_item(item_id, db, user)
     return {"status": "ok", "item_id": item_id}
 
 
@@ -464,7 +540,8 @@ async def accept_item(
 async def dismiss_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Legacy: Dismiss an item (same as skip)."""
-    result = await skip_queue_item(item_id, db)
+    await skip_queue_item(item_id, db, user)
     return {"status": "ok", "item_id": item_id}

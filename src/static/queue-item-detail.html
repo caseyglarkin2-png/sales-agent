@@ -376,12 +376,15 @@
       }
       
       function showError(message) {
-        document.getElementById('item-card').innerHTML = `
+        // Use textContent to prevent XSS
+        const card = document.getElementById('item-card');
+        card.innerHTML = `
           <div class="error">
-            <p>${message}</p>
+            <p id="error-message"></p>
             <a href="/todays-moves" style="color: var(--primary);">← Back to Today's Moves</a>
           </div>
         `;
+        document.getElementById('error-message').textContent = message;
       }
       
       function renderItem(item) {
