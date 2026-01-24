@@ -100,17 +100,26 @@ async def get_current_user_redirect(
 
 
 def require_auth(redirect_to_login: bool = False):
-    """Decorator to require authentication on a route.
+    """Deprecated - use Depends(get_current_user) or Depends(get_current_user_redirect) instead.
     
-    Args:
-        redirect_to_login: If True, redirect to /login instead of returning 401
+    This decorator exists for backwards compatibility but does nothing.
+    The actual auth check is done via FastAPI's Depends() system.
     
-    Usage:
-        @router.get("/protected")
-        @require_auth()
-        async def protected_route(request: Request, user: User = Depends(get_current_user)):
-            return {"user": user.email}
+    For API routes:
+        async def my_route(user: User = Depends(get_current_user)):
+            ...
+    
+    For HTML pages that should redirect to login:
+        async def my_page(user: User = Depends(get_current_user_redirect)):
+            ...
     """
+    import warnings
+    warnings.warn(
+        "require_auth is deprecated. Use Depends(get_current_user) instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):

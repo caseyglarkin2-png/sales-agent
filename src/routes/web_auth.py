@@ -2,9 +2,10 @@
 
 Sprint 1 - Google OAuth web flow for browser-based login.
 """
+import json
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -43,7 +44,12 @@ OAUTH_SCOPES = [
 ]
 
 # State tokens for CSRF protection
+# Note: In production with multiple workers, use Redis instead
+# For single-worker Railway deployment, in-memory is acceptable
 _oauth_states: dict[str, dict] = {}
+
+# Cookie security - only require HTTPS in production
+_is_production = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("PRODUCTION"))
 
 
 def get_base_url(request: Request) -> str:
@@ -229,15 +235,16 @@ async def google_auth_callback(
             result = await db.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
             
+            # Calculate token expiry correctly
+            token_expiry = datetime.utcnow() + timedelta(seconds=expires_in)
+            
             if user:
                 # Update existing user
                 user.name = name
                 user.picture = picture
                 user.google_access_token = access_token
                 user.google_refresh_token = refresh_token or user.google_refresh_token
-                user.google_token_expiry = datetime.utcnow().replace(
-                    second=datetime.utcnow().second + expires_in
-                )
+                user.google_token_expiry = token_expiry
                 user.google_token_scopes = OAUTH_SCOPES
                 user.last_login = datetime.utcnow()
                 user.is_allowed = True
@@ -250,9 +257,7 @@ async def google_auth_callback(
                     picture=picture,
                     google_access_token=access_token,
                     google_refresh_token=refresh_token,
-                    google_token_expiry=datetime.utcnow().replace(
-                        second=datetime.utcnow().second + expires_in
-                    ),
+                    google_token_expiry=token_expiry,
                     google_token_scopes=OAUTH_SCOPES,
                     last_login=datetime.utcnow(),
                     is_active=True,
@@ -278,7 +283,7 @@ async def google_auth_callback(
                 key=SESSION_COOKIE_NAME,
                 value=session.session_token,
                 httponly=True,
-                secure=True,  # HTTPS only
+                secure=_is_production,  # Only require HTTPS in production
                 samesite="lax",
                 max_age=7 * 24 * 60 * 60,  # 7 days
             )

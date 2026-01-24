@@ -3,11 +3,12 @@
 Sprint 1, Task 1.1 - Google OAuth Setup
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, String, DateTime, JSON, Boolean, Text
+from sqlalchemy import Column, String, DateTime, JSON, Boolean, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.orm import relationship
 
 from src.db import Base
 
@@ -56,6 +57,9 @@ class User(Base):
         if not self.google_token_scopes:
             return False
         return scope in self.google_token_scopes
+    
+    # Relationship to sessions
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSession(Base):
@@ -66,7 +70,7 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
     
     id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     session_token = Column(String(255), unique=True, nullable=False, index=True)
     
     # Session metadata
@@ -79,6 +83,9 @@ class UserSession(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_accessed = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationship to user
+    user = relationship("User", back_populates="sessions", lazy="selectin")
     
     def __repr__(self) -> str:
         return f"<UserSession {self.id} user={self.user_id}>"
