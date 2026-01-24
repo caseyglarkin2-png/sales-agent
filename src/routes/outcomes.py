@@ -133,32 +133,22 @@ async def record_outcome(request: RecordOutcomeRequest):
     return _to_response(outcome)
 
 
-@router.get("/{outcome_id}", response_model=OutcomeResponse)
-async def get_outcome(outcome_id: str):
-    """Get a specific outcome by ID."""
-    service = get_outcome_service()
-    outcome = await service.get_outcome(outcome_id)
-    
-    if not outcome:
-        raise HTTPException(status_code=404, detail="Outcome not found")
-    
-    return _to_response(outcome)
+# NOTE: Static routes MUST be defined before parameterized routes
+# to avoid /{outcome_id} matching "types", "recent", "stats", etc.
 
-
-@router.get("/queue/{queue_item_id}", response_model=List[OutcomeResponse])
-async def get_outcomes_for_queue_item(queue_item_id: str):
-    """Get all outcomes for a specific queue item."""
-    service = get_outcome_service()
-    outcomes = await service.get_outcomes_for_queue_item(queue_item_id)
-    return [_to_response(o) for o in outcomes]
-
-
-@router.get("/contact/{contact_email}", response_model=List[OutcomeResponse])
-async def get_outcomes_for_contact(contact_email: str):
-    """Get all outcomes for a specific contact."""
-    service = get_outcome_service()
-    outcomes = await service.get_outcomes_for_contact(contact_email)
-    return [_to_response(o) for o in outcomes]
+@router.get("/types")
+async def list_outcome_types():
+    """List all outcome types with their default impact scores."""
+    return {
+        "outcome_types": [
+            {
+                "type": ot.value,
+                "impact_score": get_impact_score(ot),
+                "category": _categorize_outcome(ot)
+            }
+            for ot in OutcomeType
+        ]
+    }
 
 
 @router.get("/recent", response_model=List[OutcomeResponse])
@@ -192,6 +182,22 @@ async def get_outcome_stats(
     return OutcomeStatsResponse(**stats)
 
 
+@router.get("/queue/{queue_item_id}", response_model=List[OutcomeResponse])
+async def get_outcomes_for_queue_item(queue_item_id: str):
+    """Get all outcomes for a specific queue item."""
+    service = get_outcome_service()
+    outcomes = await service.get_outcomes_for_queue_item(queue_item_id)
+    return [_to_response(o) for o in outcomes]
+
+
+@router.get("/contact/{contact_email}", response_model=List[OutcomeResponse])
+async def get_outcomes_for_contact(contact_email: str):
+    """Get all outcomes for a specific contact."""
+    service = get_outcome_service()
+    outcomes = await service.get_outcomes_for_contact(contact_email)
+    return [_to_response(o) for o in outcomes]
+
+
 @router.get("/contact/{contact_email}/score-adjustment")
 async def get_contact_score_adjustment(contact_email: str):
     """Get APS score adjustment for a contact based on outcome history.
@@ -207,6 +213,19 @@ async def get_contact_score_adjustment(contact_email: str):
         "score_adjustment": adjustment,
         "interpretation": _interpret_adjustment(adjustment)
     }
+
+
+# Parameterized route LAST to avoid matching static paths
+@router.get("/{outcome_id}", response_model=OutcomeResponse)
+async def get_outcome(outcome_id: str):
+    """Get a specific outcome by ID."""
+    service = get_outcome_service()
+    outcome = await service.get_outcome(outcome_id)
+    
+    if not outcome:
+        raise HTTPException(status_code=404, detail="Outcome not found")
+    
+    return _to_response(outcome)
 
 
 @router.post("/detect/gmail-reply", response_model=OutcomeResponse)
@@ -268,21 +287,6 @@ async def detect_meeting_outcome(request: MeetingOutcomeRequest):
     )
     
     return _to_response(outcome)
-
-
-@router.get("/types")
-async def list_outcome_types():
-    """List all outcome types with their default impact scores."""
-    return {
-        "outcome_types": [
-            {
-                "type": ot.value,
-                "impact_score": get_impact_score(ot),
-                "category": _categorize_outcome(ot)
-            }
-            for ot in OutcomeType
-        ]
-    }
 
 
 def _interpret_adjustment(adjustment: float) -> str:
