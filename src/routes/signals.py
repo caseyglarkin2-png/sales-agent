@@ -277,3 +277,136 @@ async def poll_twitter_signals(
     except Exception as e:
         logger.error(f"Error polling Twitter signals: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to poll Twitter: {str(e)}")
+
+
+@router.post("/twitter/thought-leaders")
+async def poll_thought_leaders(
+    db: AsyncSession = Depends(get_db),
+    since_hours: int = Query(24, ge=1, le=168, description="Hours to look back"),
+    min_engagement: int = Query(10, ge=0, description="Minimum engagement (likes+retweets)"),
+) -> dict[str, Any]:
+    """
+    Poll thought leader timelines for GTM-relevant signals.
+    
+    Uses Bearer Token (no OAuth required) to monitor public thought leaders.
+    
+    Thought leaders are defined in MarketTrendMonitorAgent.DEFAULT_THOUGHT_LEADERS.
+    """
+    from src.connectors.twitter import get_twitter_connector
+    from src.agents.market_trend_monitor import MarketTrendMonitorAgent
+    from src.services.signal_processors.social import SocialSignalProcessor
+    from src.models.signal import Signal as SignalModel, SignalSource, compute_payload_hash
+    
+    try:
+        twitter = get_twitter_connector()
+        
+        if not twitter or not twitter.is_configured:
+            raise HTTPException(
+                status_code=503,
+                detail="Twitter connector not configured. Set TWITTER_BEARER_TOKEN."
+            )
+        
+        # Get thought leader list from agent
+        thought_leaders = MarketTrendMonitorAgent.DEFAULT_THOUGHT_LEADERS
+        
+        # Poll their tweets
+        tweets = await twitter.monitor_credible_voices(
+            usernames=thought_leaders,
+            keywords=MarketTrendMonitorAgent.TREND_KEYWORDS,
+            since_hours=since_hours,
+        )
+        
+        # Filter by engagement
+        high_engagement_tweets = [
+            t for t in tweets 
+            if sum(t.metrics.values()) >= min_engagement
+        ]
+        
+        # Store signals and process them
+        created_signals = []
+        created_queue_items = []
+        processor = SocialSignalProcessor()
+        
+        for tweet in high_engagement_tweets[:50]:  # Limit to 50
+            # Create payload
+            payload = {
+                "tweet_id": tweet.id,
+                "author": tweet.author_name,
+                "author_handle": tweet.author_username,
+                "text": tweet.text,
+                "relevance_score": tweet.relevance_score,
+                "engagement_count": sum(tweet.metrics.values()),
+                "is_thought_leader": True,
+                "matching_keywords": [kw for kw in MarketTrendMonitorAgent.TREND_KEYWORDS if kw.lower() in tweet.text.lower()][:5],
+                "metrics": tweet.metrics,
+            }
+            
+            payload_hash = compute_payload_hash(payload)
+            
+            # Check for duplicates
+            existing = await db.execute(
+                select(SignalModel).where(SignalModel.payload_hash == payload_hash)
+            )
+            if existing.scalar_one_or_none():
+                continue
+            
+            # Create DB signal
+            db_signal = SignalModel(
+                source=SignalSource.TWITTER,
+                event_type="thought_leader",
+                payload=payload,
+                source_id=tweet.id,
+                payload_hash=payload_hash,
+                created_at=datetime.utcnow(),
+            )
+            db.add(db_signal)
+            created_signals.append(db_signal)
+            
+            # Process into command queue item
+            queue_item = await processor.process(db_signal)
+            if queue_item:
+                db.add(queue_item)
+                db_signal.recommendation_id = queue_item.id
+                db_signal.processed_at = datetime.utcnow()
+                created_queue_items.append(queue_item)
+        
+        await db.commit()
+        
+        return {
+            "status": "success",
+            "thought_leaders_monitored": len(thought_leaders),
+            "tweets_found": len(tweets),
+            "high_engagement_tweets": len(high_engagement_tweets),
+            "signals_created": len(created_signals),
+            "queue_items_created": len(created_queue_items),
+            "since_hours": since_hours,
+            "min_engagement": min_engagement,
+            "sample_signals": [
+                {
+                    "author": s.payload.get("author_handle", ""),
+                    "text": s.payload.get("text", "")[:100],
+                    "engagement": s.payload.get("engagement_count", 0),
+                }
+                for s in created_signals[:5]
+            ],
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error polling thought leaders: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to poll thought leaders: {str(e)}")
+
+
+@router.get("/twitter/thought-leaders/list")
+async def list_thought_leaders() -> dict[str, Any]:
+    """
+    List configured thought leaders being monitored.
+    """
+    from src.agents.market_trend_monitor import MarketTrendMonitorAgent
+    
+    return {
+        "thought_leaders": MarketTrendMonitorAgent.DEFAULT_THOUGHT_LEADERS,
+        "total": len(MarketTrendMonitorAgent.DEFAULT_THOUGHT_LEADERS),
+        "keywords": MarketTrendMonitorAgent.TREND_KEYWORDS[:20],  # First 20 keywords
+    }

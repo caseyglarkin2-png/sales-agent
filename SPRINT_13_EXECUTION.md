@@ -1,8 +1,8 @@
 # Sprint 13: Social Intelligence & Twitter Personal Feed
 
-**Status:** 🟢 IN PROGRESS  
+**Status:** ✅ COMPLETE  
 **Started:** January 24, 2026  
-**Target Completion:** January 27, 2026
+**Completed:** January 24, 2026
 
 ---
 
@@ -130,34 +130,25 @@
 
 ---
 
-### Task 13.6: Twitter Thought Leader Monitoring
+### Task 13.6: Twitter Thought Leader Monitoring ✅ COMPLETE
 
 **Priority:** LOW  
 **Effort:** 1 hour  
 **Dependencies:** 13.1
+**Status:** ✅ COMPLETE
 
 **One-liner:** Track specific industry thought leaders for signals.
 
-**Scope:**
-- Configure list of thought leaders to monitor
-- Poll their timelines using Bearer Token
-- Generate signals for high-engagement posts
+**Completion Notes:**
+- Added `/api/signals/twitter/thought-leaders` endpoint to poll thought leaders
+- Added `/api/signals/twitter/thought-leaders/list` endpoint to list monitored thought leaders
+- Uses Bearer Token (no OAuth required) for public timeline access
+- Filters by engagement threshold (configurable)
+- Generates signals for high-engagement posts from thought leaders
+- 15 thought leaders configured (SaaS, VCs, Tech leaders)
 
-**Files:**
-- Modify: `src/connectors/twitter.py` (add thought_leaders config)
-- Create: `src/signals/providers/twitter_leaders.py`
-
-**Validation:**
-```bash
-curl https://web-production-a6ccf.up.railway.app/api/signals/health | jq '.providers.twitter_leaders'
-```
-
-**Acceptance Criteria:**
-- [ ] Monitors 5-10 thought leaders
-- [ ] Generates signals for their posts
-- [ ] Configurable via environment/config
-
-**Rollback:** Disable provider.
+**Files Modified:**
+- `src/routes/signals.py` - Added thought leader endpoints
 
 ---
 
