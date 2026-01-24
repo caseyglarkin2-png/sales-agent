@@ -1,7 +1,7 @@
-# CaseyOS: Ready to Execute (v3.1)
+# CaseyOS: Ready to Execute (v3.2)
 
 **Date:** January 24, 2026  
-**Status:** 🟢 Sprint 11-12 Complete  
+**Status:** 🟢 Sprint 8-12 Complete - All Enhancements Done  
 **Live System:** https://web-production-a6ccf.up.railway.app  
 **CaseyOS Dashboard:** https://web-production-a6ccf.up.railway.app/caseyos  
 **Railway Project:** ideal-fascination (production environment)
@@ -12,9 +12,9 @@
 
 Transform the Sales Agent dashboard into **CaseyOS** - a GTM command center that operates as Casey Larkin's Chief of Staff. The system proactively ingests signals, prioritizes work via Action Priority Score (APS), executes with guardrails, and closes the loop on outcomes.
 
-**Total Sprints:** 8 → 12b (5 major sprints + 2 expansion sprints)  
+**Total Sprints:** 8 → 12b (5 major sprints + 2 expansion sprints) ✅ COMPLETE  
 **Total Atomic Tasks:** ~110 independently testable pieces of work  
-**Target:** Production-ready GTM orchestration platform
+**Target:** Production-ready GTM orchestration platform ✅ ACHIEVED
 
 ---
 
@@ -47,7 +47,14 @@ Transform the Sales Agent dashboard into **CaseyOS** - a GTM command center that
 - [x] Telemetry decorator + `log_event()`
 - [x] API docs (`docs/API_COMMAND_QUEUE.md`)
 
-### ✅ Signal Ingestion (Sprint 8 - Complete)
+### ✅ Signal Ingestion (Sprint 8 - Complete with Enhancements)
+- [x] Signal model with deduplication (`src/models/signal.py`)
+- [x] SignalService with 5-minute dedup window (`src/services/signal_service.py`)
+- [x] SignalToRecommendationService (`src/services/signal_to_recommendation.py`)
+- [x] Signal processors (Form, HubSpot, Gmail)
+- [x] Composite index on (source, processed_at)
+- [x] Telemetry: signal_received, signal_processed, recommendation_generated
+- [x] Celery Beat health check (`/api/health/beat`, `/api/health/summary`)
 - [x] Signal model with SignalSource enum (FORM, HUBSPOT, GMAIL, MANUAL)
 - [x] Signals migration (table created in production)
 - [x] SignalProcessor ABC interface
