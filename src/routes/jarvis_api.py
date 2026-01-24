@@ -204,14 +204,14 @@ async def ask_jarvis(request: JarvisQueryRequest):
     if not jarvis._initialized:
         await jarvis.initialize()
     
-    log_event("jarvis_query", query=request.query[:100])
+    await log_event("jarvis_query", properties={"query": request.query[:100]})
     
     try:
         result = await jarvis.ask(request.query, request.context or {})
         
-        log_event("jarvis_response", 
-                  agents_invoked=result.get("agents_invoked", []),
-                  status=result.get("status"))
+        await log_event("jarvis_response", 
+                  properties={"agents_invoked": result.get("agents_invoked", []),
+                  "status": result.get("status")})
         
         return result
     except Exception as e:
@@ -230,10 +230,10 @@ async def execute_action(request: JarvisActionRequest):
     if request.agent not in jarvis._agents:
         raise HTTPException(status_code=404, detail=f"Agent '{request.agent}' not found")
     
-    log_event("jarvis_execute", 
-              agent=request.agent, 
-              action=request.action,
-              dry_run=request.dry_run)
+    await log_event("jarvis_execute", 
+              properties={"agent": request.agent, 
+              "action": request.action,
+              "dry_run": request.dry_run})
     
     context = {
         **request.context,
@@ -288,7 +288,7 @@ async def quick_action(request: QuickActionRequest, background_tasks: Background
             detail=f"Unknown action type: {request.action_type}. Available: {list(action_handlers.keys())}"
         )
     
-    log_event("jarvis_quick_action", action_type=request.action_type)
+    await log_event("jarvis_quick_action", properties={"action_type": request.action_type})
     
     try:
         result = await handler(jarvis, request.target, request.options or {})
@@ -450,7 +450,7 @@ async def approve_agent_action(agent_name: str, request: AgentApprovalRequest):
         "expires_at": None,  # Could add expiration logic
     }
     
-    log_event("agent_approved", agent=agent_name, action=request.action, scope=request.scope)
+    await log_event("agent_approved", properties={"agent": agent_name, "action": request.action, "scope": request.scope})
     
     return {
         "status": "approved",
@@ -468,7 +468,7 @@ async def revoke_agent_approval(agent_name: str, action: str):
     
     if key in _agent_approvals:
         del _agent_approvals[key]
-        log_event("agent_approval_revoked", agent=agent_name, action=action)
+        await log_event("agent_approval_revoked", properties={"agent": agent_name, "action": action})
         return {"status": "revoked", "agent": agent_name, "action": action}
     
     raise HTTPException(status_code=404, detail="Approval not found")
@@ -500,7 +500,7 @@ async def configure_agent(agent_name: str, request: AgentConfigRequest):
         "updated_at": datetime.utcnow().isoformat(),
     }
     
-    log_event("agent_configured", agent=agent_name, settings=list(request.settings.keys()))
+    await log_event("agent_configured", properties={"agent": agent_name, "settings": list(request.settings.keys())})
     
     return {
         "status": "configured",

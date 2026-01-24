@@ -300,7 +300,7 @@ async def clear_execution_history():
     count = len(_executed_actions)
     _executed_actions.clear()
     
-    log_event("execution_history_cleared", {"count": count})
+    await log_event("execution_history_cleared", properties={"count": count})
     
     return {
         "success": True,

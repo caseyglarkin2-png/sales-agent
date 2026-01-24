@@ -94,7 +94,7 @@ class OutcomeService:
             _outcomes_by_contact[contact_email].append(outcome.id)
         
         # Log event for telemetry
-        log_event("outcome_recorded", {
+        await log_event("outcome_recorded", properties={
             "outcome_id": outcome.id,
             "outcome_type": outcome_type.value,
             "source": source.value,

@@ -127,7 +127,7 @@ class ActionExecutor:
             if not self._is_actions_enabled():
                 logger.warning(f"Kill switch active, blocking action: {request.action_type}")
                 result = ActionResult.blocked_result("Kill switch is active - all actions disabled")
-                log_event("action_blocked", {
+                await log_event("action_blocked", properties={
                     "queue_item_id": request.queue_item_id,
                     "action_type": request.action_type.value,
                     "reason": "kill_switch"
@@ -142,7 +142,7 @@ class ActionExecutor:
                     if not can_send:
                         logger.warning(f"Rate limited: {limit_reason}")
                         result = ActionResult.rate_limited_result(limit_reason)
-                        log_event("action_rate_limited", {
+                        await log_event("action_rate_limited", properties={
                             "queue_item_id": request.queue_item_id,
                             "action_type": request.action_type.value,
                             "contact": contact_email,
@@ -155,7 +155,7 @@ class ActionExecutor:
                 logger.info(f"Dry-run: {request.action_type.value}")
                 result = ActionResult.dry_run_result(request.action_type, request.context)
                 result.idempotency_key = idempotency_key
-                log_event("action_dry_run", {
+                await log_event("action_dry_run", properties={
                     "queue_item_id": request.queue_item_id,
                     "action_type": request.action_type.value,
                     "context": request.context
@@ -185,7 +185,7 @@ class ActionExecutor:
             self._log_action(request, result)
             
             # 9. Telemetry
-            log_event("action_executed", {
+            await log_event("action_executed", properties={
                 "queue_item_id": request.queue_item_id,
                 "action_type": request.action_type.value,
                 "success": result.success,
@@ -201,7 +201,7 @@ class ActionExecutor:
             logger.error(f"Action execution failed: {str(e)}", exc_info=True)
             result = ActionResult.failed_result(str(e), execution_time)
             
-            log_event("action_failed", {
+            await log_event("action_failed", properties={
                 "queue_item_id": request.queue_item_id,
                 "action_type": request.action_type.value,
                 "error": str(e),
@@ -254,7 +254,7 @@ class ActionExecutor:
             # Remove from registry
             del _rollback_registry[request.rollback_token]
             
-            log_event("action_rolled_back", {
+            await log_event("action_rolled_back", properties={
                 "rollback_token": request.rollback_token,
                 "action_type": action_type,
                 "operator": request.operator,
