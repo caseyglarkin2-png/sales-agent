@@ -57,9 +57,11 @@ class SignalService:
         
         await log_event(
             "signal_received",
-            signal_id=signal.id,
-            source=source.value,
-            event_type=event_type,
+            {
+                "signal_id": signal.id,
+                "source": source.value,
+                "event_type": event_type,
+            },
         )
         
         logger.info(
@@ -103,9 +105,11 @@ class SignalService:
                         
                         await log_event(
                             "recommendation_generated",
-                            signal_id=signal.id,
-                            recommendation_id=item.id,
-                            action_type=item.action_type,
+                            {
+                                "signal_id": signal.id,
+                                "recommendation_id": item.id,
+                                "action_type": item.action_type,
+                            },
                         )
                         
                         logger.info(
@@ -123,8 +127,10 @@ class SignalService:
                         
                         await log_event(
                             "signal_processed",
-                            signal_id=signal.id,
-                            recommendation_generated=False,
+                            {
+                                "signal_id": signal.id,
+                                "recommendation_generated": False,
+                            },
                         )
                         
                 except Exception as e:
