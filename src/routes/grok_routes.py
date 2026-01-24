@@ -66,9 +66,9 @@ async def grok_health() -> Dict[str, Any]:
     
     return {
         "configured": grok.is_configured,
-        "api_key_set": bool(settings.xai_api_key),
-        "model": grok.model if grok.is_configured else None,
-        "base_url": grok.base_url if grok.is_configured else None,
+        "api_key_set": bool(getattr(settings, 'xai_api_key', '')),
+        "model": grok.default_model if grok.is_configured else None,
+        "base_url": grok.BASE_URL if grok.is_configured else None,
         "status": "ready" if grok.is_configured else "not_configured",
     }
 
