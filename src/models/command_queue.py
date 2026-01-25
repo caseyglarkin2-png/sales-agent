@@ -102,7 +102,7 @@ class CommandQueueItem(Base):
     
     # Action details
     action_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    action_context: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    action_context: Mapped[Optional[Dict[str, Any]]] = mapped_column(SafeJSON, default=dict)
     
     # Domain categorization (Sprint 12)
     domain: Mapped[str] = mapped_column(String(32), index=True, default="sales")  # sales, marketing, cs
