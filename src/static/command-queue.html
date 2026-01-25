@@ -576,10 +576,37 @@
       background: var(--danger);
     }
 
-    /* Responsive */
+    /* Responsive - Mobile First */
     @media (max-width: 768px) {
       .container {
-        padding: 1rem;
+        padding: 0.75rem;
+      }
+
+      .nav {
+        padding: 0.5rem 1rem;
+      }
+
+      .nav-links {
+        display: none; /* Hide on mobile - use hamburger menu pattern */
+      }
+
+      .nav-brand {
+        font-size: 1.125rem;
+      }
+
+      .page-header {
+        flex-direction: column !important;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.375rem;
+      }
+
+      .btn-sync {
+        width: 100%;
+        justify-content: center;
       }
 
       .queue-content {
@@ -589,12 +616,175 @@
 
       .queue-actions {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: space-between;
         padding: 0.5rem 1rem 1rem;
       }
 
+      .queue-actions .btn {
+        flex: 1;
+        justify-content: center;
+      }
+
       .stats-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .stat-card {
+        flex: 1 1 calc(50% - 0.5rem);
+        min-width: 120px;
+        padding: 0.75rem 1rem;
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 1.25rem;
+      }
+
+      .stat-label {
+        font-size: 0.75rem;
+      }
+
+      .filters {
         flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .filter-group {
+        flex-wrap: wrap;
+      }
+
+      .filter-btn {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+
+      .priority-bar {
+        width: 4px;
+        min-width: 4px;
+      }
+
+      .queue-main {
+        padding: 0.75rem 0.75rem 0.75rem 0;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .queue-info h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .queue-meta {
+        font-size: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .action-type-pill {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+      }
+
+      /* Touch-friendly buttons */
+      .btn {
+        min-height: 44px;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+      }
+
+      /* Make items easier to tap */
+      .queue-item {
+        min-height: 80px;
+      }
+
+      /* Hide less important info on mobile */
+      .queue-meta .meta-item:nth-child(n+3) {
+        display: none;
+      }
+
+      /* Floating action button for quick add */
+      .fab {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+        font-size: 1.5rem;
+        cursor: pointer;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .fab:hover {
+        background: var(--primary-dark);
+        transform: scale(1.05);
+      }
+    }
+
+    /* Small phones */
+    @media (max-width: 480px) {
+      .container {
+        padding: 0.5rem;
+      }
+
+      .stats-bar {
+        gap: 0.375rem;
+      }
+
+      .stat-card {
+        flex: 1 1 calc(50% - 0.25rem);
+        padding: 0.5rem 0.75rem;
+      }
+
+      .stat-value {
+        font-size: 1.125rem;
+      }
+
+      .queue-actions {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .queue-actions .btn {
+        flex: 1 1 100%;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --gray-50: #111827;
+        --gray-100: #1f2937;
+        --gray-200: #374151;
+        --gray-300: #4b5563;
+        --gray-400: #6b7280;
+        --gray-500: #9ca3af;
+        --gray-600: #d1d5db;
+        --gray-700: #e5e7eb;
+        --gray-800: #f3f4f6;
+        --gray-900: #f9fafb;
+      }
+
+      body {
+        background: var(--gray-50);
+        color: var(--gray-900);
+      }
+
+      .nav, .queue-list, .stat-card {
+        background: var(--gray-100);
+        border-color: var(--gray-200);
+      }
+
+      .queue-item:hover {
+        background: var(--gray-200);
       }
     }
   </style>
@@ -987,11 +1177,72 @@
       }
     }
 
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('open');
+    }
+
+    // Floating action button - quick add
+    function showQuickAdd() {
+      const title = prompt('Quick add task title:');
+      if (title && title.trim()) {
+        // Create a quick task
+        fetch('/api/command-queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title.trim(),
+            action_type: 'other',
+            priority_score: 50
+          })
+        })
+        .then(res => {
+          if (res.ok) {
+            showToast('Task added!', 'success');
+            loadQueue();
+          } else {
+            showToast('Failed to add task', 'error');
+          }
+        })
+        .catch(() => showToast('Failed to add task', 'error'));
+      }
+    }
+
+    // Pull-to-refresh support for mobile
+    let touchStartY = 0;
+    let pullToRefreshActive = false;
+
+    document.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        touchStartY = e.touches[0].clientY;
+      }
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (window.scrollY === 0 && e.touches[0].clientY > touchStartY + 80) {
+        pullToRefreshActive = true;
+      }
+    });
+
+    document.addEventListener('touchend', () => {
+      if (pullToRefreshActive) {
+        pullToRefreshActive = false;
+        loadQueue();
+        loadOutcomeStats();
+        showToast('Refreshed!', 'success');
+      }
+      touchStartY = 0;
+    });
+
     // Initial load
     loadQueue();
     loadCompletedCount();
     loadOutcomeStats();
   </script>
+  
+  <!-- Mobile Floating Action Button -->
+  <button class="fab" onclick="showQuickAdd()" title="Quick add task">+</button>
 </body>
 
 </html>

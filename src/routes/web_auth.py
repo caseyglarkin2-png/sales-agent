@@ -336,15 +336,73 @@ async def dashboard(
     <title>CaseyOS - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        /* Mobile menu styles */
+        .mobile-menu {{
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+        }}
+        .mobile-menu.open {{
+            display: flex;
+        }}
+        .mobile-menu-content {{
+            background: white;
+            width: 280px;
+            height: 100%;
+            padding: 1.5rem;
+            animation: slideIn 0.2s ease;
+        }}
+        @keyframes slideIn {{
+            from {{ transform: translateX(-100%); }}
+            to {{ transform: translateX(0); }}
+        }}
+        .hamburger {{
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }}
+        @media (max-width: 768px) {{
+            .hamburger {{
+                display: block;
+            }}
+        }}
+    </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" id="mobile-menu" onclick="closeMobileMenu(event)">
+        <div class="mobile-menu-content" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-xl font-bold">🎯 CaseyOS</span>
+                <button onclick="toggleMobileMenu()" class="text-2xl">&times;</button>
+            </div>
+            <nav class="flex flex-col space-y-4">
+                <a href="/dashboard" class="text-purple-600 font-medium py-2">Today's Moves</a>
+                <a href="/static/command-queue.html" class="text-gray-600 py-2">Command Queue</a>
+                <a href="/dashboard/signals" class="text-gray-600 py-2">Signals</a>
+                <a href="/dashboard/voice" class="text-gray-600 py-2">Voice</a>
+                <a href="/dashboard/settings" class="text-gray-600 py-2">Settings</a>
+                <hr class="my-2">
+                <a href="/logout" class="text-red-500 py-2">Logout</a>
+            </nav>
+        </div>
+    </div>
+
     <!-- Top Nav -->
     <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-4">
+                <button class="hamburger" onclick="toggleMobileMenu()">☰</button>
                 <a href="/dashboard" class="text-xl font-bold text-gray-800">🎯 CaseyOS</a>
-                <div class="hidden md:flex items-center space-x-6">
+                <div class="hidden md:flex items-center space-x-6 ml-4">
                     <a href="/dashboard" class="text-purple-600 font-medium text-sm border-b-2 border-purple-600 pb-1">Today's Moves</a>
+                    <a href="/static/command-queue.html" class="text-gray-600 hover:text-gray-800 text-sm">Queue</a>
                     <a href="/dashboard/signals" class="text-gray-600 hover:text-gray-800 text-sm">Signals</a>
                     <a href="/dashboard/voice" class="text-gray-600 hover:text-gray-800 text-sm">Voice</a>
                     <a href="/dashboard/settings" class="text-gray-600 hover:text-gray-800 text-sm">Settings</a>
@@ -356,7 +414,7 @@ async def dashboard(
                          class="w-8 h-8 rounded-full" alt="Profile">
                     <span class="text-sm text-gray-700 hidden md:inline">{user.name or user.email}</span>
                 </div>
-                <a href="/logout" class="text-gray-500 hover:text-gray-700 text-sm">Logout</a>
+                <a href="/logout" class="text-gray-500 hover:text-gray-700 text-sm hidden md:inline">Logout</a>
             </div>
         </div>
     </nav>
@@ -418,9 +476,121 @@ async def dashboard(
 
     <script>
         async function refreshMoves() {{
-            // TODO: Wire up to command queue API
-            console.log('Refreshing moves...');
+            document.getElementById('moves-list').innerHTML = '<div class="p-4 text-center text-gray-400">Loading...</div>';
+            await loadMoves();
         }}
+
+        async function loadMoves() {{
+            try {{
+                const res = await fetch('/api/command-queue/today?limit=10');
+                const data = await res.json();
+                
+                document.getElementById('moves-count').textContent = data.total || 0;
+                
+                const movesList = document.getElementById('moves-list');
+                
+                if (!data.items || data.items.length === 0) {{
+                    movesList.innerHTML = `
+                        <div class="p-6 text-center text-gray-500">
+                            <p class="mb-2">✅ All caught up!</p>
+                            <p class="text-sm">No pending moves. Check back later.</p>
+                        </div>
+                    `;
+                    return;
+                }}
+                
+                movesList.innerHTML = data.items.map(item => `
+                    <div class="p-4 hover:bg-gray-50 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                 style="background: ${{item.priority_score >= 0.8 ? '#ef4444' : item.priority_score >= 0.6 ? '#f59e0b' : '#10b981'}}">
+                                ${{Math.round(item.priority_score * 100)}}
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-800">${{item.title}}</div>
+                                <div class="text-sm text-gray-500">
+                                    <span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">${{item.action_type}}</span>
+                                    ${{item.due_by ? ' · Due ' + new Date(item.due_by).toLocaleDateString() : ''}}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="acceptItem('${{item.id}}')" 
+                                    class="px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600">
+                                ✓ Accept
+                            </button>
+                            <button onclick="skipItem('${{item.id}}')"
+                                    class="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">
+                                Skip
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Calculate avg APS
+                if (data.items.length > 0) {{
+                    const avgAps = data.items.reduce((sum, i) => sum + i.priority_score, 0) / data.items.length;
+                    document.getElementById('aps-score').textContent = Math.round(avgAps * 100);
+                }}
+            }} catch (err) {{
+                console.error('Failed to load moves:', err);
+                document.getElementById('moves-list').innerHTML = '<div class="p-4 text-center text-red-500">Failed to load</div>';
+            }}
+        }}
+
+        async function loadStats() {{
+            try {{
+                const [signalsRes, outcomesRes] = await Promise.all([
+                    fetch('/api/signals?limit=1'),
+                    fetch('/api/outcomes/stats?days=7')
+                ]);
+                
+                if (signalsRes.ok) {{
+                    const signalsData = await signalsRes.json();
+                    document.getElementById('signals-count').textContent = signalsData.total || 0;
+                }}
+                
+                if (outcomesRes.ok) {{
+                    const outcomesData = await outcomesRes.json();
+                    document.getElementById('completed-count').textContent = outcomesData.positive_outcomes || 0;
+                }}
+            }} catch (err) {{
+                console.error('Failed to load stats:', err);
+            }}
+        }}
+
+        async function acceptItem(id) {{
+            try {{
+                await fetch(`/api/command-queue/${{id}}/accept`, {{ method: 'POST' }});
+                await loadMoves();
+            }} catch (err) {{
+                console.error('Failed to accept item:', err);
+            }}
+        }}
+
+        async function skipItem(id) {{
+            try {{
+                await fetch(`/api/command-queue/${{id}}/dismiss`, {{ method: 'POST' }});
+                await loadMoves();
+            }} catch (err) {{
+                console.error('Failed to skip item:', err);
+            }}
+        }}
+
+        // Mobile menu functions
+        function toggleMobileMenu() {{
+            document.getElementById('mobile-menu').classList.toggle('open');
+        }}
+        
+        function closeMobileMenu(event) {{
+            if (event.target.id === 'mobile-menu') {{
+                document.getElementById('mobile-menu').classList.remove('open');
+            }}
+        }}
+
+        // Initial load
+        loadMoves();
+        loadStats();
     </script>
 </body>
 </html>
