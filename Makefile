@@ -155,7 +155,13 @@ test-smoke:
 
 coverage:
 	@echo "Running tests with coverage..."
-	pytest tests/ --cov=src --cov-report=html --cov-report=term
+	pytest tests/ --cov=src --cov-report=html --cov-report=term -q
+	@echo ""
+	@echo "📊 Coverage report generated:"
+	@echo "   HTML: htmlcov/index.html"
+	@echo "   Terminal: see above"
+	@echo ""
+	@echo "⚠️  Baseline: 40% (Sprint 22) - DO NOT decrease below this"
 
 lint:
 	@echo "Linting code..."
