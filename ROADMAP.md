@@ -184,8 +184,119 @@ MCP server now exists at `src/mcp/`:
 
 ---
 
-### Sprint 22: Slack Integration (4 days)
+### Sprint 22: Emergency Stabilization (3 days) 🔴 CRITICAL
+**Goal:** Fix P0 bugs, establish foundation health metrics
+
+**Background:**
+Production audit (January 25, 2026) revealed critical issues:
+- 🔴 Jarvis `/whats-up` 500 error (proactive notifications broken)
+- 🔴 Database session anti-pattern (only 5 `async with` for 35 `session.execute` calls)
+- 🔴 CSRF coverage 1.4% (17/1,196 state-changing endpoints protected)
+- 🔴 Route explosion (2,719 decorators across 197 files)
+- ⚠️ Test coverage unknown (373 tests for 519 files = 0.72 tests/file)
+
+**Rationale:** Fix foundation BEFORE adding features (Slack deferred to Sprint 24)
+
+**Tasks:**
+1. **Fix Jarvis `/whats-up` 500 error** (4h)
+   - Debug `src/routes/jarvis_api.py`
+   - Fix async session issue or missing data
+   - Add error handling + integration test
+
+2. **Database session audit** (16h)
+   - Grep all 197 route files for `session.execute()`
+   - Verify `async with get_session():` wraps each
+   - Add pre-commit hook to enforce pattern
+   - Document in `.github/copilot-instructions.md`
+
+3. **CSRF protection expansion** (8h)
+   - Apply CSRF middleware globally in `src/main.py`
+   - Whitelist exceptions: `/api/webhooks/*`, `/mcp/*`
+   - Update all 12 HTML files with CSRF tokens
+   - Test with CSRF attack simulation
+
+4. **Test coverage baseline** (4h)
+   - Run `pytest --cov=src --cov-report=term --cov-report=html`
+   - Document baseline in `COVERAGE_REPORT.md`
+   - Set CI gate: coverage must not decrease
+
+5. **Quick route cleanup** (8h)
+   - Find routes with only `return {"message": "Not implemented"}`
+   - Delete stub files (target: 197 → <180 files)
+   - Update `src/main.py` imports
+   - Document in `ROUTE_CLEANUP_LOG.md`
+
+**Exit Criteria:**
+- [ ] Jarvis `/whats-up` returns 200 OK
+- [ ] Database session audit complete (zero violations)
+- [ ] CSRF coverage >80% (1,000+ endpoints protected)
+- [ ] Test coverage baseline documented
+- [ ] 17+ stub route files deleted
+- [ ] All changes deployed to production
+- [ ] Health check passing
+- [ ] Zero P0 bugs remaining
+
+**Reference:** See `CASEYOS_PRODUCTION_AUDIT_REPORT.md` for full analysis
+
+---
+
+### Sprint 23: Route Cleanup (Sprint 0 Redux) (5 days) ⏫ ACCELERATED
+**Goal:** Clean API surface, reduce from 197 → 50 route files
+
+**Background:**
+- 2,719 route decorators = incomprehensible API surface
+- Blocks developer onboarding (30min → hours)
+- Makes security audits impossible
+- High maintenance burden
+
+**Tasks:**
+1. **Audit all 197 route files** (2d)
+   - Categorize: A) Critical, B) Integration-required, C) Nice-to-have, D) Pure scaffolding
+   - Map dependencies between routes
+   - Identify consolidation opportunities
+
+2. **Delete pure scaffolding** (1d)
+   - Category D: NotImplementedError stubs
+   - Remove from `src/main.py` imports
+   - Update OpenAPI docs
+
+3. **Consolidate related routes** (1.5d)
+   - Merge 5+ scheduling route files → 1
+   - Merge territory management routes
+   - Merge gamification routes
+   - Keep one file per domain
+
+4. **Security & testing** (0.5d)
+   - Ensure remaining routes have CSRF/auth
+   - Add tests for critical routes
+   - Create route inventory document
+
+5. **Documentation** (0.5d)
+   - Update `API_ENDPOINTS.md`
+   - Create `ROUTE_INVENTORY.md`
+   - Update developer onboarding guide
+
+**Exit Criteria:**
+- [ ] Route count: 197 → <60 files
+- [ ] All remaining routes tested or marked as tested
+- [ ] API surface documented in `ROUTE_INVENTORY.md`
+- [ ] Developer onboarding time <30min
+- [ ] OpenAPI docs updated
+- [ ] No dead code (all routes functional)
+
+**Expected Impact:**
+- Developer velocity +3x (easier code navigation)
+- Security audit feasible (60 files vs 197)
+- Maintenance burden -70%
+
+---
+
+### Sprint 24: Slack Integration (4 days) ⏸️ DEFERRED FROM SPRINT 22
 **Goal:** CaseyOS notifications in Slack
+
+**Background:**
+- Originally Sprint 22, deferred to stabilize foundation first
+- Now safe to add integrations (P0 bugs fixed, routes cleaned)
 
 **Tasks:**
 1. Create `src/connectors/slack.py`
@@ -197,33 +308,70 @@ MCP server now exists at `src/mcp/`:
    - `/caseyos voice [query]` - Ask Jarvis
 5. Add Slack webhook for incoming signals
 
-**Acceptance:**
+**Exit Criteria:**
 - [ ] Slack app installed in workspace
 - [ ] Notifications post to channel
 - [ ] Slash commands work
 - [ ] Bidirectional communication
+- [ ] Error handling for Slack API failures
+- [ ] Rate limiting respected (Slack tier limits)
 
 ---
 
-### Sprint 23: Route Cleanup (Sprint 0 Redux) (3 days)
-**Goal:** Clean API surface
+### Sprint 25: UI/UX Modernization (5 days)
+**Goal:** Component framework, optimized assets, accessibility
+
+**Background:**
+- `index.html` is 77KB (1,544 lines) - monolithic
+- 12 HTML files, no component reuse
+- Tailwind CDN (3MB payload, not optimized)
+- Accessibility score unknown
 
 **Tasks:**
-1. Audit 196 route files for functionality
-2. Delete files with only `raise NotImplementedError`
-3. Consolidate related routes
-4. Update OpenAPI docs
-5. Create route inventory document
+1. **Component strategy decision** (0.5d)
+   - Option A: Migrate to React/Vue (high effort, high ROI)
+   - Option B: HTMX + HTML partials (low effort, medium ROI)
+   - **Recommendation:** Option B for Sprint 25, Option A for Sprint 28+
 
-**Expected:**
-- Reduce from 196 to ~50 essential routes
-- Clear API documentation
-- No dead code
+2. **Break index.html into partials** (2d)
+   - Create `src/static/partials/` directory
+   - Extract: header, sidebar, stats-cards, queue-list, etc.
+   - Use HTMX `hx-include` for composition
+   - Reduce index.html from 1,544 → <200 lines
+
+3. **Optimize Tailwind** (1d)
+   - Add build step (PurgeCSS)
+   - Remove CDN, use compiled CSS
+   - Reduce payload: 3MB → <50KB
+
+4. **Accessibility audit** (1d)
+   - Run Lighthouse on all 12 pages
+   - Add ARIA labels
+   - Test keyboard navigation
+   - Fix color contrast issues
+   - Target: 90+ accessibility score
+
+5. **Validate PWA** (0.5d)
+   - Check `manifest.json` exists (Sprint 14 claim)
+   - Test service worker
+   - Verify "Add to Home Screen" works
+   - Document PWA status in TRUTH.md
+
+**Exit Criteria:**
+- [ ] index.html <300 lines (from 1,544)
+- [ ] Tailwind payload <100KB (from 3MB)
+- [ ] Lighthouse accessibility score >90 (all pages)
+- [ ] PWA functionality verified or documented as missing
+- [ ] Component reuse across 12 HTML files
 
 ---
 
-### Sprint 24: Chrome Extension (5 days)
+### Sprint 26: Chrome Extension (5 days) ⏸️ DEFERRED FROM SPRINT 24
 **Goal:** CaseyOS in browser
+
+**Background:**
+- Deferred from Sprint 24 to prioritize UI/UX modernization
+- Now safe to build after component framework established
 
 **Tasks:**
 1. Create `chrome-extension/` directory
@@ -233,7 +381,7 @@ MCP server now exists at `src/mcp/`:
 5. Add keyboard shortcuts
 6. Publish to Chrome Web Store (unlisted)
 
-**Acceptance:**
+**Exit Criteria:**
 - [ ] Extension installs
 - [ ] Shows Today's Moves
 - [ ] Can execute actions
@@ -248,9 +396,11 @@ MCP server now exists at `src/mcp/`:
 | 19: Action Wiring | ✅ Complete | - | - | **DONE** |
 | 20: MCP Integration | ✅ Complete | - | - | **DONE** |
 | 21: Doc Consolidation | ✅ Complete | - | - | **DONE** |
-| 22: Slack Integration | 🟢 High | Medium | None | **NOW** |
-| 23: Route Cleanup | 🟡 Medium | Low | None | PARALLEL |
-| 24: Chrome Extension | 🟢 High | High | None | NEXT |
+| 22: Emergency Stabilization | 🔴 Critical | Low | None | **NOW** |
+| 23: Route Cleanup | 🔴 Critical | High | Sprint 22 | **NEXT** |
+| 24: Slack Integration | 🟢 High | Medium | Sprint 23 | AFTER |
+| 25: UI/UX Modernization | 🟡 Medium | High | Sprint 24 | AFTER |
+| 26: Chrome Extension | 🟡 Medium | High | Sprint 25 | FUTURE |
 
 ---
 
@@ -259,8 +409,10 @@ MCP server now exists at `src/mcp/`:
 1. ~~**Start Sprint 19** - Wire action executor to real APIs~~ ✅ **COMPLETE**
 2. ~~**Start Sprint 20** - MCP server integration~~ ✅ **COMPLETE**
 3. ~~**Start Sprint 21** - Documentation consolidation~~ ✅ **COMPLETE**
-4. **Start Sprint 22** - Slack integration
-5. **Start Sprint 23** - Route cleanup (parallel)
+4. 🔴 **CRITICAL: Review production audit report** - `CASEYOS_PRODUCTION_AUDIT_REPORT.md`
+5. 🔴 **DECISION REQUIRED: Approve Sprint 22 re-sequencing** (Emergency Stabilization instead of Slack)
+6. **Start Sprint 22** - Fix P0 bugs, database session audit, CSRF expansion
+7. **Start Sprint 23** - Route cleanup (197 → 50 files)
 
 ---
 
