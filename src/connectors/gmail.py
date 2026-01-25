@@ -484,6 +484,29 @@ class GmailConnector:
         retryable_codes = {429, 500, 502, 503, 504}
         return error.resp.status in retryable_codes
 
+    async def delete_draft(self, draft_id: str) -> bool:
+        """Delete a draft email from Gmail.
+        
+        Args:
+            draft_id: Gmail draft ID to delete
+            
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        if not self.service:
+            self._build_service()
+        
+        try:
+            self.service.users().drafts().delete(
+                userId="me",
+                id=draft_id
+            ).execute()
+            logger.info(f"Deleted draft {draft_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting draft {draft_id}: {e}")
+            return False
+
     def _create_message(self, to: str, subject: str, body: str, from_email: Optional[str] = None) -> str:
         """Create a message in base64 format."""
         import base64

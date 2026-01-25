@@ -693,6 +693,76 @@ class HubSpotConnector:
                 logger.error(f"Error fetching marketing emails: {e}")
                 return []
 
+    async def delete_task(self, task_id: str) -> bool:
+        """Delete a task from HubSpot.
+        
+        Args:
+            task_id: HubSpot task ID
+            
+        Returns:
+            True if deleted, False on error
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.delete(
+                    f"{self.BASE_URL}/crm/v3/objects/tasks/{task_id}",
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+                logger.info(f"Deleted task {task_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Error deleting task {task_id}: {e}")
+                return False
+
+    async def update_task(self, task_id: str, properties: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update a task in HubSpot.
+        
+        Args:
+            task_id: HubSpot task ID
+            properties: Dict of properties to update
+            
+        Returns:
+            Updated task dict or None on error
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.patch(
+                    f"{self.BASE_URL}/crm/v3/objects/tasks/{task_id}",
+                    headers=self.headers,
+                    json={"properties": properties},
+                )
+                response.raise_for_status()
+                logger.info(f"Updated task {task_id}")
+                return response.json()
+            except Exception as e:
+                logger.error(f"Error updating task {task_id}: {e}")
+                return None
+
+    async def update_deal(self, deal_id: str, properties: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update a deal in HubSpot.
+        
+        Args:
+            deal_id: HubSpot deal ID
+            properties: Dict of properties to update (e.g., dealstage)
+            
+        Returns:
+            Updated deal dict or None on error
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.patch(
+                    f"{self.BASE_URL}/crm/v3/objects/deals/{deal_id}",
+                    headers=self.headers,
+                    json={"properties": properties},
+                )
+                response.raise_for_status()
+                logger.info(f"Updated deal {deal_id}")
+                return response.json()
+            except Exception as e:
+                logger.error(f"Error updating deal {deal_id}: {e}")
+                return None
+
 
 _hubspot_connector: Optional["HubSpotConnector"] = None
 
@@ -819,7 +889,7 @@ class HubSpotBatchOperations:
             except Exception as e:
                 logger.error(f"Error deleting contact {contact_id}: {e}")
                 return False
-    
+
     async def batch_create_contacts(
         self, 
         contacts: List[Dict[str, Any]],

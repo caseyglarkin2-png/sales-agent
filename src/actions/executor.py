@@ -17,8 +17,9 @@ Usage:
         dry_run=True
     ))
 """
+import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
 from uuid import uuid4
 
@@ -35,6 +36,11 @@ from src.feature_flags import get_flag_manager
 from src.rate_limiter import RateLimiter, get_rate_limiter
 from src.logger import get_logger
 from src.telemetry import log_event
+
+# Import connectors for real action execution
+from src.connectors.gmail import create_gmail_connector
+from src.connectors.hubspot import create_hubspot_connector
+from src.connectors.calendar_connector import create_calendar_connector
 
 logger = get_logger(__name__)
 
@@ -71,9 +77,33 @@ class ActionExecutor:
         self.rate_limiter = rate_limiter or get_rate_limiter()
         self.flag_manager = get_flag_manager()
         self._handlers: Dict[ActionType, Callable] = handlers or {}
+        
+        # Initialize connectors (lazy-loaded to avoid startup errors)
+        self._gmail_connector = None
+        self._hubspot_connector = None
+        self._calendar_connector = None
+        
         self._register_default_handlers()
         
         logger.info("ActionExecutor initialized with guardrails")
+    
+    def _get_gmail(self):
+        """Lazy-load Gmail connector."""
+        if self._gmail_connector is None:
+            self._gmail_connector = create_gmail_connector()
+        return self._gmail_connector
+    
+    def _get_hubspot(self):
+        """Lazy-load HubSpot connector."""
+        if self._hubspot_connector is None:
+            self._hubspot_connector = create_hubspot_connector()
+        return self._hubspot_connector
+    
+    def _get_calendar(self):
+        """Lazy-load Calendar connector."""
+        if self._calendar_connector is None:
+            self._calendar_connector = create_calendar_connector()
+        return self._calendar_connector
     
     def _register_default_handlers(self) -> None:
         """Register default handlers for each action type."""
@@ -233,14 +263,30 @@ class ActionExecutor:
             if action_type == ActionType.CREATE_DRAFT.value:
                 # Delete the draft from Gmail
                 draft_id = rollback_info.get("draft_id")
-                logger.info(f"Rolling back draft: {draft_id}")
-                # TODO: Implement actual Gmail draft deletion
+                if draft_id:
+                    logger.info(f"Rolling back draft: {draft_id}")
+                    gmail = self._get_gmail()
+                    success = await gmail.delete_draft(draft_id)
+                    if not success:
+                        return RollbackResult(
+                            success=False,
+                            message=f"Failed to delete draft {draft_id}",
+                            original_action=rollback_info
+                        )
                 
             elif action_type == ActionType.CREATE_TASK.value:
                 # Delete the task from HubSpot
                 task_id = rollback_info.get("task_id")
-                logger.info(f"Rolling back task: {task_id}")
-                # TODO: Implement actual HubSpot task deletion
+                if task_id:
+                    logger.info(f"Rolling back task: {task_id}")
+                    hubspot = self._get_hubspot()
+                    success = await hubspot.delete_task(task_id)
+                    if not success:
+                        return RollbackResult(
+                            success=False,
+                            message=f"Failed to delete task {task_id}",
+                            original_action=rollback_info
+                        )
             
             # Log rollback
             AuditTrail.log_config_change(
@@ -314,14 +360,15 @@ class ActionExecutor:
     # ============ ACTION HANDLERS ============
     
     async def _handle_send_email(self, request: ActionRequest) -> ActionResult:
-        """Handle email send action.
+        """Handle email send action via Gmail API.
         
-        Note: Currently creates draft only (DRAFT_ONLY mode enforced).
+        Note: DRAFT_ONLY mode creates draft instead of sending.
         Real sending requires SEND mode to be enabled.
         """
         recipient = request.context.get("recipient")
         subject = request.context.get("subject", "Follow up")
         body = request.context.get("body", "")
+        body_html = request.context.get("body_html")
         
         if not recipient:
             return ActionResult.failed_result("Missing recipient email")
@@ -332,28 +379,53 @@ class ActionExecutor:
             logger.info(f"DRAFT_ONLY mode: Creating draft instead of sending to {recipient}")
             return await self._handle_create_draft(request)
         
-        # TODO: Implement actual email sending via Gmail API
-        # For now, simulate success
-        rollback_token = str(uuid4())
-        _rollback_registry[rollback_token] = {
-            "action_type": ActionType.SEND_EMAIL.value,
-            "recipient": recipient,
-            "subject": subject,
-            "executed_at": datetime.utcnow().isoformat()
-        }
+        # Send via Gmail API
+        gmail = self._get_gmail()
+        from_email = os.environ.get("GMAIL_DELEGATED_USER", "me")
         
-        return ActionResult.success_result(
-            message=f"Email sent to {recipient}",
-            data={
-                "recipient": recipient,
-                "subject": subject,
-                "message_id": f"msg_{uuid4().hex[:12]}"
-            },
-            rollback_token=rollback_token
-        )
+        try:
+            result = await gmail.send_email(
+                from_email=from_email,
+                to_email=recipient,
+                subject=subject,
+                body_text=body,
+                body_html=body_html,
+            )
+            
+            if result:
+                message_id = result.get("id")
+                thread_id = result.get("threadId")
+                
+                rollback_token = str(uuid4())
+                _rollback_registry[rollback_token] = {
+                    "action_type": ActionType.SEND_EMAIL.value,
+                    "message_id": message_id,
+                    "recipient": recipient,
+                    "subject": subject,
+                    "executed_at": datetime.utcnow().isoformat()
+                }
+                
+                logger.info(f"Email sent: {message_id} to {recipient}")
+                
+                return ActionResult.success_result(
+                    message=f"Email sent to {recipient}",
+                    data={
+                        "recipient": recipient,
+                        "subject": subject,
+                        "message_id": message_id,
+                        "thread_id": thread_id
+                    },
+                    rollback_token=rollback_token
+                )
+            else:
+                return ActionResult.failed_result(f"Failed to send email to {recipient}")
+                
+        except Exception as e:
+            logger.error(f"Error sending email: {e}")
+            return ActionResult.failed_result(f"Error sending email: {str(e)}")
     
     async def _handle_create_draft(self, request: ActionRequest) -> ActionResult:
-        """Handle draft creation action."""
+        """Handle draft creation via Gmail API."""
         recipient = request.context.get("recipient")
         subject = request.context.get("subject", "Follow up")
         body = request.context.get("body", "")
@@ -361,94 +433,170 @@ class ActionExecutor:
         if not recipient:
             return ActionResult.failed_result("Missing recipient email")
         
-        # TODO: Integrate with actual Gmail draft creation
-        draft_id = f"draft_{uuid4().hex[:12]}"
+        # Create draft via Gmail API
+        gmail = self._get_gmail()
         
-        rollback_token = str(uuid4())
-        _rollback_registry[rollback_token] = {
-            "action_type": ActionType.CREATE_DRAFT.value,
-            "draft_id": draft_id,
-            "recipient": recipient,
-            "created_at": datetime.utcnow().isoformat()
-        }
-        
-        logger.info(f"Draft created: {draft_id} for {recipient}")
-        
-        return ActionResult.success_result(
-            message=f"Draft created for {recipient}",
-            data={
-                "draft_id": draft_id,
-                "recipient": recipient,
-                "subject": subject
-            },
-            rollback_token=rollback_token
-        )
+        try:
+            draft_id = await gmail.create_draft(
+                to=recipient,
+                subject=subject,
+                body=body
+            )
+            
+            if draft_id:
+                rollback_token = str(uuid4())
+                _rollback_registry[rollback_token] = {
+                    "action_type": ActionType.CREATE_DRAFT.value,
+                    "draft_id": draft_id,
+                    "recipient": recipient,
+                    "created_at": datetime.utcnow().isoformat()
+                }
+                
+                logger.info(f"Draft created: {draft_id} for {recipient}")
+                
+                return ActionResult.success_result(
+                    message=f"Draft created for {recipient}",
+                    data={
+                        "draft_id": draft_id,
+                        "recipient": recipient,
+                        "subject": subject
+                    },
+                    rollback_token=rollback_token
+                )
+            else:
+                return ActionResult.failed_result(f"Failed to create draft for {recipient}")
+                
+        except Exception as e:
+            logger.error(f"Error creating draft: {e}")
+            return ActionResult.failed_result(f"Error creating draft: {str(e)}")
     
     async def _handle_create_task(self, request: ActionRequest) -> ActionResult:
-        """Handle HubSpot task creation."""
+        """Handle HubSpot task creation via HubSpot API."""
         title = request.context.get("title", "Follow up task")
         contact_id = request.context.get("contact_id")
+        body = request.context.get("body", "")
         due_date = request.context.get("due_date")
         
-        # TODO: Integrate with HubSpot task creation
-        task_id = f"task_{uuid4().hex[:12]}"
+        # Create task via HubSpot API
+        hubspot = self._get_hubspot()
         
-        rollback_token = str(uuid4())
-        _rollback_registry[rollback_token] = {
-            "action_type": ActionType.CREATE_TASK.value,
-            "task_id": task_id,
-            "contact_id": contact_id,
-            "created_at": datetime.utcnow().isoformat()
-        }
-        
-        logger.info(f"Task created: {task_id}")
-        
-        return ActionResult.success_result(
-            message=f"Task created: {title}",
-            data={
-                "task_id": task_id,
-                "title": title,
-                "contact_id": contact_id
-            },
-            rollback_token=rollback_token
-        )
+        try:
+            task_id = await hubspot.create_task(
+                contact_id=contact_id or "",
+                title=title,
+                body=body,
+                due_date=due_date
+            )
+            
+            if task_id:
+                rollback_token = str(uuid4())
+                _rollback_registry[rollback_token] = {
+                    "action_type": ActionType.CREATE_TASK.value,
+                    "task_id": task_id,
+                    "contact_id": contact_id,
+                    "created_at": datetime.utcnow().isoformat()
+                }
+                
+                logger.info(f"Task created: {task_id}")
+                
+                return ActionResult.success_result(
+                    message=f"Task created: {title}",
+                    data={
+                        "task_id": task_id,
+                        "title": title,
+                        "contact_id": contact_id
+                    },
+                    rollback_token=rollback_token
+                )
+            else:
+                return ActionResult.failed_result(f"Failed to create task: {title}")
+                
+        except Exception as e:
+            logger.error(f"Error creating task: {e}")
+            return ActionResult.failed_result(f"Error creating task: {str(e)}")
     
     async def _handle_complete_task(self, request: ActionRequest) -> ActionResult:
-        """Handle task completion."""
+        """Handle task completion via HubSpot API."""
         task_id = request.context.get("task_id")
         
         if not task_id:
             return ActionResult.failed_result("Missing task_id")
         
-        # TODO: Integrate with HubSpot task update
-        logger.info(f"Task completed: {task_id}")
+        # Update task via HubSpot API
+        hubspot = self._get_hubspot()
         
-        return ActionResult.success_result(
-            message=f"Task {task_id} marked complete",
-            data={"task_id": task_id, "status": "completed"}
-        )
+        try:
+            result = await hubspot.update_task(
+                task_id=task_id,
+                properties={"hs_task_status": "COMPLETED"}
+            )
+            
+            if result:
+                logger.info(f"Task completed: {task_id}")
+                return ActionResult.success_result(
+                    message=f"Task {task_id} marked complete",
+                    data={"task_id": task_id, "status": "completed"}
+                )
+            else:
+                return ActionResult.failed_result(f"Failed to complete task {task_id}")
+                
+        except Exception as e:
+            logger.error(f"Error completing task: {e}")
+            return ActionResult.failed_result(f"Error completing task: {str(e)}")
     
     async def _handle_book_meeting(self, request: ActionRequest) -> ActionResult:
-        """Handle meeting booking."""
+        """Handle meeting booking via Calendar API."""
         contact_email = request.context.get("contact_email")
+        title = request.context.get("title", "Meeting")
+        description = request.context.get("description", "")
         meeting_time = request.context.get("meeting_time")
+        duration_minutes = request.context.get("duration_minutes", 30)
         
         if not contact_email:
             return ActionResult.failed_result("Missing contact_email")
         
-        # TODO: Integrate with Calendar API
-        meeting_id = f"mtg_{uuid4().hex[:12]}"
+        # Parse meeting time
+        if meeting_time:
+            if isinstance(meeting_time, str):
+                start_time = datetime.fromisoformat(meeting_time.replace("Z", "+00:00"))
+            else:
+                start_time = meeting_time
+        else:
+            # Default to tomorrow at 10am
+            start_time = datetime.utcnow().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=1)
         
-        logger.info(f"Meeting booked: {meeting_id} with {contact_email}")
+        end_time = start_time + timedelta(minutes=duration_minutes)
         
-        return ActionResult.success_result(
-            message=f"Meeting booked with {contact_email}",
-            data={
-                "meeting_id": meeting_id,
-                "contact_email": contact_email,
-                "meeting_time": meeting_time
-            }
-        )
+        # Create event via Calendar API
+        calendar = self._get_calendar()
+        
+        try:
+            event_id = await calendar.create_event(
+                title=title,
+                description=description,
+                start_time=start_time,
+                end_time=end_time,
+                attendees=[contact_email]
+            )
+            
+            if event_id:
+                logger.info(f"Meeting booked: {event_id} with {contact_email}")
+                
+                return ActionResult.success_result(
+                    message=f"Meeting booked with {contact_email}",
+                    data={
+                        "meeting_id": event_id,
+                        "contact_email": contact_email,
+                        "meeting_time": start_time.isoformat(),
+                        "duration_minutes": duration_minutes
+                    }
+                )
+            else:
+                return ActionResult.failed_result(f"Failed to book meeting with {contact_email}")
+                
+        except Exception as e:
+            logger.error(f"Error booking meeting: {e}")
+            return ActionResult.failed_result(f"Error booking meeting: {str(e)}")
     
     async def _handle_follow_up(self, request: ActionRequest) -> ActionResult:
         """Handle follow-up action (creates draft)."""
@@ -463,20 +611,35 @@ class ActionExecutor:
         return await self._handle_create_draft(request)
     
     async def _handle_update_deal_stage(self, request: ActionRequest) -> ActionResult:
-        """Handle deal stage update in HubSpot."""
+        """Handle deal stage update via HubSpot API."""
         deal_id = request.context.get("deal_id")
         new_stage = request.context.get("new_stage")
         
         if not deal_id or not new_stage:
             return ActionResult.failed_result("Missing deal_id or new_stage")
         
-        # TODO: Integrate with HubSpot deal update
-        logger.info(f"Deal {deal_id} stage updated to {new_stage}")
+        # Update deal via HubSpot API
+        hubspot = self._get_hubspot()
         
-        return ActionResult.success_result(
-            message=f"Deal stage updated to {new_stage}",
-            data={"deal_id": deal_id, "new_stage": new_stage}
-        )
+        try:
+            result = await hubspot.update_deal(
+                deal_id=deal_id,
+                properties={"dealstage": new_stage}
+            )
+            
+            if result:
+                logger.info(f"Deal {deal_id} stage updated to {new_stage}")
+                
+                return ActionResult.success_result(
+                    message=f"Deal stage updated to {new_stage}",
+                    data={"deal_id": deal_id, "new_stage": new_stage}
+                )
+            else:
+                return ActionResult.failed_result(f"Failed to update deal {deal_id}")
+                
+        except Exception as e:
+            logger.error(f"Error updating deal: {e}")
+            return ActionResult.failed_result(f"Error updating deal: {str(e)}")
     
     async def _handle_custom(self, request: ActionRequest) -> ActionResult:
         """Handle custom action type."""
