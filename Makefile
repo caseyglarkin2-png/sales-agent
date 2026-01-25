@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format clean docker-build docker-up docker-down secrets-check auth-google smoke-formlead
+.PHONY: help install dev test lint format clean docker-build docker-up docker-down secrets-check auth-google smoke-formlead local-up local-down local-logs local-shell
 
 help:
 	@echo "Sales Agent Makefile"
@@ -13,6 +13,13 @@ help:
 	@echo "  make docker-up        - Start Docker Compose stack"
 	@echo "  make docker-down      - Stop Docker Compose stack"
 	@echo "  make docker-logs      - View Docker logs"
+	@echo ""
+	@echo "Local Development (Sprint 18):"
+	@echo "  make local-up         - Start full local stack (API + Celery)"
+	@echo "  make local-down       - Stop local stack"
+	@echo "  make local-logs       - Tail local stack logs"
+	@echo "  make local-shell      - Open CaseyOS Python shell"
+	@echo "  make local-health     - Check local stack health"
 	@echo ""
 	@echo "Authentication & Integration:"
 	@echo "  make auth-google      - Authenticate with Google (Gmail, Drive, Calendar)"
@@ -83,6 +90,52 @@ docker-down:
 docker-logs:
 	@echo "Viewing Docker logs..."
 	docker compose logs -f
+
+# ============================================================================
+# Local Development (Sprint 18)
+# ============================================================================
+
+local-up:
+	@echo "🚀 Starting CaseyOS local stack..."
+	@if [ ! -f .env.local ]; then \
+		echo "❌ .env.local not found. Copying template..."; \
+		cp .env.local.template .env.local; \
+		echo "📝 Please edit .env.local with your API keys, then run 'make local-up' again."; \
+		exit 1; \
+	fi
+	docker compose up --build -d
+	@echo "✅ Stack started! Access at http://localhost:8000"
+	@echo "   View logs: make local-logs"
+	@echo "   Check health: make local-health"
+
+local-down:
+	@echo "Stopping CaseyOS local stack..."
+	docker compose down
+
+local-logs:
+	@echo "Tailing CaseyOS logs (Ctrl+C to exit)..."
+	docker compose logs -f --tail=100
+
+local-shell:
+	@echo "Opening CaseyOS Python shell..."
+	python -m src shell
+
+local-health:
+	@echo "Checking CaseyOS health..."
+	@curl -s http://localhost:8000/health | python -m json.tool || echo "❌ API not responding"
+	@curl -s http://localhost:8000/api/jarvis/health | python -m json.tool || echo "⚠️  Jarvis not responding"
+
+local-worker:
+	@echo "Starting Celery worker..."
+	celery -A src.celery_app worker --loglevel=info
+
+local-beat:
+	@echo "Starting Celery beat..."
+	celery -A src.celery_app beat --loglevel=info
+
+# ============================================================================
+# Tests
+# ============================================================================
 
 test:
 	@echo "Running all tests..."

@@ -3,11 +3,13 @@ Jarvis API - The AI Gateway for CaseyOS.
 
 Surfaces all agent capabilities, enables natural language queries,
 and provides endpoints for agent management and approval workflows.
+
+Sprint 16: Added proactive "Hey Jarvis" endpoints for daemon mode.
 """
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,7 @@ from src.connectors.llm import get_llm
 from src.connectors.gemini import get_gemini
 from src.config import get_settings
 from src.deps import get_db_session
+from src.db import async_session
 from src.logger import get_logger
 from src.telemetry import log_event
 
@@ -90,6 +93,342 @@ async def jarvis_health():
         "timestamp": datetime.utcnow().isoformat(),
     }
 
+
+# ============================================================================
+# Sprint 16: Proactive "Hey Jarvis" Endpoints (Daemon Mode)
+# ============================================================================
+
+@router.get("/whats-up")
+async def whats_up(
+    user_id: str = Query(default="casey", description="User identifier"),
+):
+    """
+    "Hey Jarvis, what's up?" - Get proactive notifications and suggestions.
+    
+    This is the primary entry point for daemon mode. Returns:
+    - Urgent items needing attention
+    - Notification counts by priority
+    - Top items to review
+    
+    The daemon monitor (monitor_signals.py) creates notifications
+    automatically when signals are detected.
+    """
+    from src.services.notification_service import NotificationService
+    
+    async with async_session() as db:
+        notifications = NotificationService(db)
+        result = await notifications.get_whats_up(user_id)
+        
+        log_event("whats_up_checked", user_id=user_id, total=result["total_unread"])
+        
+        return result
+
+
+@router.get("/notifications")
+async def get_notifications(
+    user_id: str = Query(default="casey", description="User identifier"),
+    limit: int = Query(default=20, ge=1, le=100),
+    include_read: bool = Query(default=False),
+):
+    """Get notifications for a user."""
+    from src.services.notification_service import NotificationService
+    
+    async with async_session() as db:
+        service = NotificationService(db)
+        notifications = await service.get_recent(user_id, limit, include_read)
+        
+        return {
+            "notifications": [n.to_dict() for n in notifications],
+            "count": len(notifications),
+            "user_id": user_id,
+        }
+
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str):
+    """Mark a notification as read."""
+    from src.services.notification_service import NotificationService
+    
+    async with async_session() as db:
+        service = NotificationService(db)
+        success = await service.mark_read(notification_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        return {"status": "marked_read", "notification_id": notification_id}
+
+
+@router.post("/notifications/{notification_id}/acknowledge")
+async def acknowledge_notification(notification_id: str):
+    """Acknowledge (dismiss) a notification."""
+    from src.services.notification_service import NotificationService
+    
+    async with async_session() as db:
+        service = NotificationService(db)
+        success = await service.mark_acknowledged(notification_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        return {"status": "acknowledged", "notification_id": notification_id}
+
+
+@router.post("/notifications/{notification_id}/action")
+async def notification_actioned(notification_id: str):
+    """Mark that the user took the suggested action."""
+    from src.services.notification_service import NotificationService
+    
+    async with async_session() as db:
+        service = NotificationService(db)
+        success = await service.mark_actioned(notification_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        log_event("notification_action_taken", notification_id=notification_id)
+        
+        return {"status": "actioned", "notification_id": notification_id}
+
+
+@router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(
+    user_id: str = Query(default="casey", description="User identifier"),
+):
+    """Mark all notifications as read for a user."""
+    from src.services.notification_service import NotificationService
+    
+    async with async_session() as db:
+        service = NotificationService(db)
+        count = await service.mark_all_read(user_id)
+        
+        return {"status": "marked_read", "count": count, "user_id": user_id}
+
+
+# ============================================================================
+# Sprint 17: Voice Interface Endpoints
+# ============================================================================
+
+class VoiceTranscribeResponse(BaseModel):
+    """Response from voice transcription."""
+    text: str
+    wake_word_detected: bool = False
+    wake_word: Optional[str] = None
+    language: Optional[str] = None
+    duration_seconds: Optional[float] = None
+
+
+class VoiceSpeakRequest(BaseModel):
+    """Request for text-to-speech."""
+    text: str = Field(..., description="Text to speak")
+    voice: Optional[str] = Field(default="nova", description="Voice: alloy, echo, fable, onyx, nova, shimmer")
+    speed: Optional[float] = Field(default=1.0, ge=0.25, le=4.0, description="Speech speed")
+
+
+class VoiceSpeakResponse(BaseModel):
+    """Response from text-to-speech."""
+    audio_base64: str
+    format: str = "mp3"
+    voice: str
+    text_length: int
+
+
+class VoiceConversationRequest(BaseModel):
+    """Full voice conversation: audio in → Jarvis → audio out."""
+    user_id: Optional[str] = Field(default="casey", description="User identifier")
+    session_name: Optional[str] = Field(default="voice", description="Session name")
+    voice: Optional[str] = Field(default="nova", description="Response voice")
+
+
+class VoiceConversationResponse(BaseModel):
+    """Response from voice conversation."""
+    transcription: str
+    response_text: str
+    response_audio_base64: str
+    wake_word_detected: bool
+    session_id: Optional[str] = None
+
+
+@router.post("/voice/transcribe", response_model=VoiceTranscribeResponse)
+async def transcribe_audio(
+    audio: bytes = None,  # Will be handled by UploadFile
+):
+    """Transcribe audio to text using OpenAI Whisper.
+    
+    Send audio file as multipart/form-data or raw bytes.
+    Supports: mp3, wav, webm, m4a, ogg, flac
+    """
+    from fastapi import UploadFile, File
+    # This endpoint needs to be called differently - see voice_transcribe_file below
+    raise HTTPException(
+        status_code=400, 
+        detail="Use /voice/transcribe-file with multipart upload"
+    )
+
+
+@router.post("/voice/transcribe-file", response_model=VoiceTranscribeResponse)
+async def transcribe_audio_file(
+    file: UploadFile = File(...),
+    detect_wake_word: bool = Query(default=True, description="Check for wake word")
+):
+    """Transcribe uploaded audio file to text.
+    
+    Accepts multipart/form-data with audio file.
+    """
+    from src.services.voice_service import get_voice_service
+    
+    if file is None:
+        raise HTTPException(status_code=400, detail="No audio file provided")
+    
+    try:
+        audio_data = await file.read()
+        
+        voice_service = get_voice_service()
+        result = await voice_service.transcribe(
+            audio_data=audio_data,
+            detect_wake_word=detect_wake_word
+        )
+        
+        log_event("voice_transcribed", text_length=len(result.text), wake_word=result.wake_word_detected)
+        
+        return VoiceTranscribeResponse(
+            text=result.text,
+            wake_word_detected=result.wake_word_detected,
+            wake_word=result.wake_word,
+            language=result.language,
+            duration_seconds=result.duration_seconds
+        )
+        
+    except Exception as e:
+        logger.error(f"Transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+
+
+@router.post("/voice/speak", response_model=VoiceSpeakResponse)
+async def text_to_speech(request: VoiceSpeakRequest):
+    """Convert text to speech using OpenAI TTS.
+    
+    Returns base64-encoded MP3 audio.
+    """
+    from src.services.voice_service import get_voice_service, TTSVoice
+    
+    try:
+        voice_service = get_voice_service()
+        
+        # Parse voice name
+        try:
+            voice = TTSVoice(request.voice.lower()) if request.voice else TTSVoice.NOVA
+        except ValueError:
+            voice = TTSVoice.NOVA
+        
+        result = await voice_service.speak(
+            text=request.text,
+            voice=voice,
+            speed=request.speed or 1.0
+        )
+        
+        log_event("voice_spoken", text_length=len(request.text), voice=voice.value)
+        
+        return VoiceSpeakResponse(
+            audio_base64=result.audio_base64,
+            format=result.format,
+            voice=result.voice,
+            text_length=result.text_length
+        )
+        
+    except Exception as e:
+        logger.error(f"TTS failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Text-to-speech failed: {str(e)}")
+
+
+@router.post("/voice/conversation", response_model=VoiceConversationResponse)
+async def voice_conversation(
+    file: UploadFile = File(...),
+    user_id: str = Query(default="casey", description="User identifier"),
+    session_name: str = Query(default="voice", description="Session name"),
+    voice: str = Query(default="nova", description="Response voice")
+):
+    """Full voice conversation loop: audio in → Jarvis → audio out.
+    
+    1. Transcribes audio input
+    2. Sends query to Jarvis (with memory)
+    3. Synthesizes response to audio
+    4. Returns both text and audio
+    """
+    from src.services.voice_service import get_voice_service, TTSVoice
+    
+    try:
+        audio_data = await file.read()
+        voice_service = get_voice_service()
+        
+        # Step 1: Transcribe
+        transcription = await voice_service.transcribe(audio_data, detect_wake_word=True)
+        
+        # Strip wake word if present
+        query_text = voice_service.strip_wake_word(transcription.text) if transcription.wake_word_detected else transcription.text
+        
+        if not query_text.strip():
+            raise HTTPException(status_code=400, detail="No query detected after wake word")
+        
+        # Step 2: Query Jarvis
+        jarvis = get_jarvis()
+        if not jarvis._initialized:
+            await jarvis.initialize()
+        
+        response_text = await jarvis.ask(
+            query=query_text,
+            user_id=user_id,
+            session_name=session_name
+        )
+        
+        # Step 3: Synthesize response
+        try:
+            tts_voice = TTSVoice(voice.lower())
+        except ValueError:
+            tts_voice = TTSVoice.NOVA
+            
+        speech = await voice_service.speak(text=response_text, voice=tts_voice)
+        
+        log_event("voice_conversation", 
+                  query_length=len(query_text), 
+                  response_length=len(response_text),
+                  wake_word=transcription.wake_word_detected)
+        
+        return VoiceConversationResponse(
+            transcription=transcription.text,
+            response_text=response_text,
+            response_audio_base64=speech.audio_base64,
+            wake_word_detected=transcription.wake_word_detected
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Voice conversation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Voice conversation failed: {str(e)}")
+
+
+@router.get("/voice/voices")
+async def list_voices():
+    """List available TTS voices."""
+    from src.services.voice_service import TTSVoice
+    
+    return {
+        "voices": [
+            {"id": "alloy", "name": "Alloy", "description": "Neutral, balanced"},
+            {"id": "echo", "name": "Echo", "description": "Warm, conversational"},
+            {"id": "fable", "name": "Fable", "description": "Expressive, British"},
+            {"id": "onyx", "name": "Onyx", "description": "Deep, authoritative"},
+            {"id": "nova", "name": "Nova", "description": "Friendly, upbeat (default)"},
+            {"id": "shimmer", "name": "Shimmer", "description": "Clear, optimistic"},
+        ],
+        "default": "nova"
+    }
+
+
+# ============================================================================
+# Agent Registry & Discovery
+# ============================================================================
 
 @router.get("/agents")
 async def list_agents():

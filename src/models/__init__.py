@@ -22,6 +22,11 @@ from src.models.auto_approval import (
     RuleType,
     ApprovalDecision,
 )
+from src.models.memory import (
+    JarvisSession,
+    ConversationMemory,
+    MemorySummary,
+)
 
 __all__ = [
     "Prospect",
@@ -42,4 +47,8 @@ __all__ = [
     "AutoApprovalLog",
     "RuleType",
     "ApprovalDecision",
+    # Memory models for Jarvis persistence
+    "JarvisSession",
+    "ConversationMemory",
+    "MemorySummary",
 ]

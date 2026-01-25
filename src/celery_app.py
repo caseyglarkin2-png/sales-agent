@@ -64,6 +64,12 @@ celery_app.conf.beat_schedule = {
         'schedule': 600.0,  # Every 10 minutes
         'options': {'expires': 540}  # Expire if not run within 9 minutes
     },
+    # Sprint 16: Daemon Mode - Proactive signal monitoring
+    'daemon-monitor-signals': {
+        'task': 'src.tasks.monitor_signals.check_all_signals',
+        'schedule': 300.0,  # Every 5 minutes
+        'options': {'expires': 240}  # Expire if not run within 4 minutes
+    },
 }
 
 

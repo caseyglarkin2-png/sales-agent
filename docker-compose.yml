@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -50,6 +48,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       PYTHONUNBUFFERED: 1
+    env_file:
+      - path: .env.local
+        required: false
     ports:
       - "8000:8000"
     volumes:
@@ -62,6 +63,57 @@ services:
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - sales-agent
+
+  # Sprint 18: Celery Worker for background tasks
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sales-agent-celery-worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/sales_agent
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      PYTHONUNBUFFERED: 1
+    env_file:
+      - path: .env.local
+        required: false
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A src.celery_app worker --loglevel=info --concurrency=2
+    networks:
+      - sales-agent
+    restart: unless-stopped
+
+  # Sprint 18: Celery Beat for scheduled tasks (daemon mode)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sales-agent-celery-beat
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/sales_agent
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      PYTHONUNBUFFERED: 1
+    env_file:
+      - path: .env.local
+        required: false
+    volumes:
+      - .:/app
+    depends_on:
+      - celery-worker
+    command: celery -A src.celery_app beat --loglevel=info
+    networks:
+      - sales-agent
+    restart: unless-stopped
 
 volumes:
   postgres_data:

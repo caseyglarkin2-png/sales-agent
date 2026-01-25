@@ -5,6 +5,11 @@ It routes requests to the appropriate agent, aggregates responses, and maintains
 context across the entire GTM operation.
 
 Think of Jarvis as Casey's Chief of Staff who delegates to specialists.
+
+Henry-style Evolution (Sprint 15):
+- Persistent memory across sessions via MemoryService
+- Semantic search for relevant context
+- Automatic summarization of old conversations
 """
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type
@@ -12,6 +17,8 @@ from enum import Enum
 
 from src.agents.base import BaseAgent
 from src.logger import get_logger
+from src.db import async_session
+from src.services.memory_service import MemoryService
 
 logger = get_logger(__name__)
 
@@ -56,6 +63,10 @@ class JarvisAgent(BaseAgent):
         self._agent_registry: Dict[str, Dict[str, Any]] = {}
         self._conversation_context: Dict[str, Any] = {}
         self._initialized = False
+        
+        # Henry-style persistent memory
+        self._memory_enabled = True
+        self._default_user_id = "casey"  # Default user for sessions
 
     async def initialize(
         self,
@@ -363,17 +374,23 @@ class JarvisAgent(BaseAgent):
         self,
         query: str,
         context: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+        session_name: str = "default",
     ) -> Dict[str, Any]:
         """Ask Jarvis a question or request an action.
         
         Jarvis will:
-        1. Interpret the intent
-        2. Route to appropriate agent(s)
-        3. Aggregate and return results
+        1. Load relevant memory from persistent storage
+        2. Interpret the intent
+        3. Route to appropriate agent(s)
+        4. Save the interaction to memory
+        5. Aggregate and return results
         
         Args:
             query: Natural language query or command
             context: Additional context (deal_id, contact_email, etc.)
+            user_id: User identifier for persistent memory (default: "casey")
+            session_name: Named session for conversation grouping
             
         Returns:
             Aggregated response from relevant agents
@@ -382,10 +399,53 @@ class JarvisAgent(BaseAgent):
             await self.initialize()
         
         context = context or {}
+        user_id = user_id or self._default_user_id
         logger.info(f"Jarvis received query: {query[:100]}...")
+        
+        # ========================================
+        # Henry-style: Load persistent memory
+        # ========================================
+        memory_context = {}
+        if self._memory_enabled:
+            try:
+                async with async_session() as db:
+                    memory = MemoryService(db)
+                    
+                    # Get or create session
+                    session = await memory.get_or_create_session(user_id, session_name)
+                    
+                    # Recall recent conversation
+                    recent_messages = await memory.recall(str(session.id), limit=10)
+                    
+                    # Search for relevant context from past conversations
+                    relevant_context = await memory.search_similar(
+                        str(session.id), 
+                        query, 
+                        limit=3
+                    )
+                    
+                    # Remember the user's query
+                    await memory.remember(
+                        session_id=str(session.id),
+                        role="user",
+                        content=query,
+                        metadata={"context": context}
+                    )
+                    
+                    memory_context = {
+                        "session_id": str(session.id),
+                        "recent_messages": recent_messages,
+                        "relevant_context": relevant_context,
+                        "session_topic": session.last_topic,
+                    }
+                    logger.debug(f"Loaded {len(recent_messages)} recent messages, {len(relevant_context)} relevant")
+            except Exception as e:
+                logger.warning(f"Memory service unavailable: {e}")
+                memory_context = {"error": str(e)}
         
         # Update conversation context
         self._conversation_context.update(context)
+        self._conversation_context.update(memory_context)
         self._conversation_context["last_query"] = query
         self._conversation_context["timestamp"] = datetime.utcnow().isoformat()
         
@@ -424,13 +484,44 @@ class JarvisAgent(BaseAgent):
                         "error": str(e),
                     }
         
-        return {
+        response = {
             "status": "success",
             "query": query,
             "agents_invoked": list(results.keys()),
             "results": results,
             "timestamp": datetime.utcnow().isoformat(),
+            "memory": {"session_id": memory_context.get("session_id")} if memory_context else None,
         }
+        
+        # ========================================
+        # Henry-style: Save response to memory
+        # ========================================
+        if self._memory_enabled and memory_context.get("session_id"):
+            try:
+                async with async_session() as db:
+                    memory = MemoryService(db)
+                    
+                    # Create a summary of the response for memory
+                    response_summary = f"Invoked agents: {', '.join(results.keys())}. "
+                    for agent_name, result in results.items():
+                        if result.get("status") == "success":
+                            agent_result = result.get("result", {})
+                            if isinstance(agent_result, dict):
+                                response_summary += f"{agent_name}: {agent_result.get('message', 'completed')}. "
+                    
+                    await memory.remember(
+                        session_id=memory_context["session_id"],
+                        role="assistant",
+                        content=response_summary[:1000],  # Limit to 1000 chars
+                        metadata={
+                            "agents_invoked": list(results.keys()),
+                            "status": "success",
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to save response to memory: {e}")
+        
+        return response
 
     async def _route_query(
         self,
