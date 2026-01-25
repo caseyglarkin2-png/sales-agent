@@ -7,11 +7,25 @@ from sqlalchemy.orm import DeclarativeBase
 
 from src.config import get_settings
 from src.db.workflow_db import WorkflowDB, get_workflow_db, close_workflow_db
+from sqlalchemy import JSON, TypeDecorator
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 # Base class for SQLAlchemy models (used by Alembic)
 class Base(DeclarativeBase):
     pass
+
+
+class SafeJSON(TypeDecorator):
+    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
+    impl = JSON
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
+
 
 settings = get_settings()
 
@@ -46,4 +60,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 SessionLocal = _async_session_factory
 
 
-__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_session", "get_db", "Base", "SessionLocal"]
+__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_session", "get_db", "Base", "SessionLocal", "SafeJSON"]

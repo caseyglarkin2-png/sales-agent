@@ -10,10 +10,10 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from sqlalchemy import String, Float, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB
+# from sqlalchemy.dialects.postgresql import JSONB (Replaced by SafeJSON)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.db import Base
+from src.db import Base, SafeJSON
 
 
 class ActionType(str, Enum):
@@ -72,7 +72,7 @@ class ActionRecommendation(Base):
     effort_score: Mapped[float] = mapped_column(Float, default=0.0)
     strategic_score: Mapped[float] = mapped_column(Float, default=0.0)
 
-    recommendation_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    recommendation_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(SafeJSON, default=dict)
     generated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     
     # Relationship to queue items

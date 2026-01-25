@@ -73,7 +73,7 @@ class TestAllowRealSends:
             with patch("src.config.get_settings") as mock_get_settings:
                 mock_get_settings.return_value = mock_settings(allow_real_sends=True)
 
-                with patch("src.rate_limiter.get_rate_limiter") as mock_get_limiter:
+                with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
                     mock_limiter = AsyncMock()
                     mock_limiter.check_can_send.return_value = (True, "OK")
                     mock_limiter.record_send = AsyncMock()
@@ -96,7 +96,7 @@ class TestRateLimitEnforcement:
         """Should block send when daily rate limit exceeded"""
         draft_queue._cache[sample_draft["id"]] = sample_draft
 
-        with patch("src.rate_limiter.get_rate_limiter") as mock_get_limiter:
+with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
             mock_limiter = AsyncMock()
             mock_limiter.check_can_send.return_value = (False, "Daily limit (20) reached")
             mock_get_limiter.return_value = mock_limiter
@@ -121,7 +121,7 @@ class TestRateLimitEnforcement:
         """Should block send when contact weekly rate limit exceeded"""
         draft_queue._cache[sample_draft["id"]] = sample_draft
 
-        with patch("src.rate_limiter.get_rate_limiter") as mock_get_limiter:
+        with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
             mock_limiter = AsyncMock()
             mock_limiter.check_can_send.return_value = (
                 False,
@@ -153,7 +153,7 @@ class TestRateLimitEnforcement:
             mock_instance.send_email.return_value = {"id": "msg_123", "threadId": "thread_456"}
             MockGmail.return_value = mock_instance
 
-            with patch("src.rate_limiter.get_rate_limiter") as mock_get_limiter:
+            with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
                 mock_limiter = AsyncMock()
                 mock_limiter.check_can_send.return_value = (True, "OK")
                 mock_limiter.record_send = AsyncMock()
@@ -185,7 +185,7 @@ class TestMetadataPersistence:
             mock_instance.send_email.return_value = {"id": "msg_123", "threadId": "thread_456"}
             MockGmail.return_value = mock_instance
 
-            with patch("src.rate_limiter.get_rate_limiter") as mock_get_limiter:
+            with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
                 mock_limiter = AsyncMock()
                 mock_limiter.check_can_send.return_value = (True, "OK")
                 mock_limiter.record_send = AsyncMock()
@@ -225,7 +225,7 @@ class TestMetadataPersistence:
             mock_instance.send_email.return_value = {"id": "msg_xyz789", "threadId": "thread_abc123"}
             MockGmail.return_value = mock_instance
 
-            with patch("src.rate_limiter.get_rate_limiter") as mock_get_limiter:
+            with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
                 mock_limiter = AsyncMock()
                 mock_limiter.check_can_send.return_value = (True, "OK")
                 mock_limiter.record_send = AsyncMock()

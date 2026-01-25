@@ -10,9 +10,9 @@ from typing import Optional
 import uuid
 
 from sqlalchemy import Column, String, DateTime, Text, Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 
-from src.db import Base
+from src.db import Base, SafeJSON
 
 class ContentSourceType(str, Enum):
     """Supported content sources."""
@@ -43,8 +43,8 @@ class ContentMemory(Base):
     summary = Column(Text, nullable=True)             # Auto-generated summary
     
     # Metadata & Search
-    content_metadata = Column("metadata", JSONB, default=dict) # e.g. author, publish_date
-    embedding = Column(JSONB, nullable=True)          # Vector embedding
+    content_metadata = Column("metadata", SafeJSON, default=dict) # e.g. author, publish_date
+    embedding = Column(SafeJSON, nullable=True)          # Vector embedding
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
