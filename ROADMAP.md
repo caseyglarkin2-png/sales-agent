@@ -1,7 +1,7 @@
 # CaseyOS Master Roadmap - January 2026
 
 **Date:** January 25, 2026  
-**Status:** Sprints 0-20 Complete | Starting Sprint 21  
+**Status:** Sprints 0-21 Complete | Sprint 22 Next  
 **Production:** https://web-production-a6ccf.up.railway.app
 
 ---
@@ -15,8 +15,10 @@ CaseyOS has evolved from a basic sales-agent into a comprehensive GTM Command Ce
 - ✅ Daemon mode with proactive notifications
 - ✅ Voice interface (Whisper + TTS)
 - ✅ Local deployment support
+- ✅ MCP Server (Claude Desktop integration)
+- ✅ Documentation consolidated (ROADMAP → TRUTH → CHANGELOG)
 
-**Critical Gap:** None - all execution paths wired. Ready for MCP usage.
+**Critical Gap:** None - all execution paths wired. Ready for expanded integrations.
 
 ---
 
@@ -55,6 +57,11 @@ CaseyOS has evolved from a basic sales-agent into a comprehensive GTM Command Ce
 | Sprint 18 | ✅ Done | Local Deployment (Docker, CLI, Makefile) |
 | Sprint 19 | ✅ Done | Action Executor Wiring (real Gmail/HubSpot/Calendar) |
 | Sprint 20 | ✅ Done | MCP Server (8 tools, WebSocket + HTTP, Claude Desktop) |
+
+### Documentation & Infrastructure (Sprint 21)
+| Sprint | Status | Key Deliverable |
+|--------|--------|-----------------|
+| Sprint 21 | ✅ Done | Documentation Consolidation (TRUTH, CHANGELOG, archive) |
 
 ---
 
@@ -240,10 +247,10 @@ MCP server now exists at `src/mcp/`:
 |--------|----------------|--------|--------------|----------|
 | 19: Action Wiring | ✅ Complete | - | - | **DONE** |
 | 20: MCP Integration | ✅ Complete | - | - | **DONE** |
-| 21: Doc Consolidation | 🟢 Medium | Low | None | **NOW** |
-| 22: Slack | 🟡 High | Medium | None | After |
-| 23: Route Cleanup | 🟢 Low | Low | None | Parallel |
-| 24: Chrome Extension | 🟡 Medium | High | None | Future |
+| 21: Doc Consolidation | ✅ Complete | - | - | **DONE** |
+| 22: Slack Integration | 🟢 High | Medium | None | **NOW** |
+| 23: Route Cleanup | 🟡 Medium | Low | None | PARALLEL |
+| 24: Chrome Extension | 🟢 High | High | None | NEXT |
 
 ---
 
@@ -251,9 +258,21 @@ MCP server now exists at `src/mcp/`:
 
 1. ~~**Start Sprint 19** - Wire action executor to real APIs~~ ✅ **COMPLETE**
 2. ~~**Start Sprint 20** - MCP server integration~~ ✅ **COMPLETE**
-3. **Start Sprint 21** - Documentation consolidation
-4. **Update TRUTH.md** - Reflect current state
-5. **Archive old docs** - Reduce confusion
+3. ~~**Start Sprint 21** - Documentation consolidation~~ ✅ **COMPLETE**
+4. **Start Sprint 22** - Slack integration
+5. **Start Sprint 23** - Route cleanup (parallel)
+
+---
+
+## Documentation Structure
+
+Following Sprint 21 consolidation:
+
+- **ROADMAP.md** (this file) - Future plans, Sprints 21-30
+- **TRUTH.md** - Current production state (January 2026)
+- **CHANGELOG.md** - Complete history (Sprints 0-20)
+- **IMPLEMENTATION_INDEX.md** - Technical reference
+- **archive/old_docs/** - Historical sprint docs
 
 ---
 
