@@ -5,10 +5,9 @@ from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from sqlalchemy import Boolean, Float, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.db import Base
+from src.db import Base, SafeJSON
 
 
 class RuleType(str, Enum):
@@ -50,7 +49,7 @@ class AutoApprovalRule(Base):
 
     # Rule configuration
     conditions: Mapped[Dict[str, Any]] = mapped_column(
-        JSONB,
+        SafeJSON,
         nullable=False,
         default=dict,
         comment="Rule conditions as JSON (e.g., {'icp_score_min': 0.9, 'days_lookback': 90})",
@@ -170,7 +169,7 @@ class AutoApprovalLog(Base):
     )
     # Note: 'metadata' is reserved by SQLAlchemy, use 'decision_metadata' instead
     decision_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSONB, comment="Additional context (e.g., ICP score, reply history)"
+        SafeJSON, comment="Additional context (e.g., ICP score, reply history)"
     )
 
     # Audit

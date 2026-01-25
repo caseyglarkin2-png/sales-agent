@@ -18,7 +18,7 @@ import uuid
 from sqlalchemy import Column, String, DateTime, Text, Boolean, Integer, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-from src.db import Base
+from src.db import Base, SafeJSON
 
 
 class JarvisNotification(Base):
@@ -46,7 +46,7 @@ class JarvisNotification(Base):
     # Action configuration
     action_type = Column(String(100), nullable=True)  # view_forms, view_deals, etc.
     action_url = Column(String(500), nullable=True)   # Where to navigate
-    action_data = Column(JSONB, default=dict)         # Additional context
+    action_data = Column(SafeJSON, default=dict)         # Additional context
     
     # Status tracking
     is_read = Column(Boolean, default=False)
@@ -54,7 +54,7 @@ class JarvisNotification(Base):
     is_actioned = Column(Boolean, default=False)      # User took the action
     
     # Delivery tracking (for future: push, email, voice)
-    delivered_via = Column(JSONB, default=list)  # ["in_app", "push", "email"]
+    delivered_via = Column(SafeJSON, default=list)  # ["in_app", "push", "email"]
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -5,18 +5,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Index, String, UniqueConstr
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
-from src.db import Base
-
-
-class JSONType(TypeDecorator):
-    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
-    impl = JSON
-    cache_ok = True
-    
-    def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
-            return dialect.type_descriptor(JSONB())
-        return dialect.type_descriptor(JSON())
+from src.db import Base, SafeJSON
 
 
 class HubSpotCompany(Base):
@@ -29,7 +18,7 @@ class HubSpotCompany(Base):
     name = Column(String(512), nullable=False)
     domain = Column(String(255), nullable=True)
     industry = Column(String(255), nullable=True)
-    custom_properties = Column(JSONType, nullable=True)
+    custom_properties = Column(SafeJSON, nullable=True)
     synced_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -48,7 +37,7 @@ class HubSpotContact(Base):
     firstname = Column(String(255), nullable=True)
     lastname = Column(String(255), nullable=True)
     company_id = Column(UUID(as_uuid=True), ForeignKey("hubspot_companies.id"), nullable=True)
-    custom_properties = Column(JSONType, nullable=True)
+    custom_properties = Column(SafeJSON, nullable=True)
     synced_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -82,7 +71,7 @@ class HubSpotFormSubmission(Base):
     form_id = Column(String(255), nullable=False, index=True)
     contact_id = Column(UUID(as_uuid=True), ForeignKey("hubspot_contacts.id"), nullable=True)
     company_id = Column(UUID(as_uuid=True), ForeignKey("hubspot_companies.id"), nullable=True)
-    fields = Column(JSONType, nullable=True)
+    fields = Column(SafeJSON, nullable=True)
     submitted_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

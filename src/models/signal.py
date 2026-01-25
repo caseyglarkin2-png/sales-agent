@@ -10,7 +10,7 @@ from sqlalchemy import String, DateTime, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.db import Base
+from src.db import Base, SafeJSON
 
 
 class SignalSource(str, Enum):
@@ -65,7 +65,7 @@ class Signal(Base):
     )
     
     payload: Mapped[Dict[str, Any]] = mapped_column(
-        JSONB,
+        SafeJSON,
         nullable=False,
         default=dict,
         comment="Raw event data from the source"

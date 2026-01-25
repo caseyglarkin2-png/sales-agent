@@ -19,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
-from src.db import Base
+from src.db import Base, SafeJSON
 
 
 class JarvisSession(Base):
@@ -36,10 +36,10 @@ class JarvisSession(Base):
     session_name = Column(String(255), default="default")
     
     # Active context - the current "working memory"
-    active_context = Column(JSONB, default=dict)
+    active_context = Column(SafeJSON, default=dict)
     
     # User preferences for this session
-    preferences = Column(JSONB, default=dict)
+    preferences = Column(SafeJSON, default=dict)
     # Example: {"voice_enabled": True, "notification_level": "urgent_only"}
     
     # Last topic for resume capability
@@ -103,10 +103,10 @@ class ConversationMemory(Base):
     
     # Embedding for semantic search (stored as JSONB array for now, can upgrade to pgvector)
     # Format: list of floats from OpenAI embeddings
-    embedding = Column(JSONB, nullable=True)
+    embedding = Column(SafeJSON, nullable=True)
     
     # Metadata about the message (renamed from 'metadata' which is reserved)
-    message_metadata = Column("metadata", JSONB, default=dict)
+    message_metadata = Column("metadata", SafeJSON, default=dict)
     # Examples: {"agent_used": "prospecting", "action_taken": "draft_created", "entities": ["Acme Corp"]}
     
     # For threading multi-turn conversations
@@ -164,7 +164,7 @@ class MemorySummary(Base):
     summary = Column(Text, nullable=False)
     
     # Key facts extracted (for quick lookup)
-    key_facts = Column(JSONB, default=list)
+    key_facts = Column(SafeJSON, default=list)
     # Example: ["User prefers morning meetings", "Working on Acme Corp deal", "Renewal due March 15"]
     
     # Time range covered
@@ -175,7 +175,7 @@ class MemorySummary(Base):
     message_count = Column(Integer, default=0)
     
     # Embedding for semantic search
-    embedding = Column(JSONB, nullable=True)
+    embedding = Column(SafeJSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

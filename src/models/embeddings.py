@@ -5,18 +5,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Index, String, Text, Unique
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.types import ARRAY
 
-from src.db import Base
-
-
-class JSONType(TypeDecorator):
-    """JSON type that works with both PostgreSQL (JSONB) and SQLite (JSON)."""
-    impl = JSON
-    cache_ok = True
-    
-    def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
-            return dialect.type_descriptor(JSONB())
-        return dialect.type_descriptor(JSON())
+from src.db import Base, SafeJSON
 
 
 class ArrayType(TypeDecorator):
@@ -56,7 +45,7 @@ class DocumentEmbedding(Base):
     chunk_index = Column(String(50), nullable=False)
     chunk_text = Column(Text, nullable=False)
     embedding = Column(ArrayType, nullable=False)  # VECTOR(1536)
-    metadata = Column(JSONType, nullable=True)
+    metadata_ = Column("metadata", SafeJSON, nullable=True) # avoiding overlapping with Base.metadata
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
