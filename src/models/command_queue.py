@@ -112,7 +112,7 @@ class CommandQueueItem(Base):
     
     # Explainability - WHY this action matters
     reasoning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # "Opened email 3x this week"
-    drivers: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)  # {"urgency": 8, "revenue": 9}
+    drivers: Mapped[Optional[Dict[str, Any]]] = mapped_column(SafeJSON, default=dict)  # {"urgency": 8, "revenue": 9}
     
     # HubSpot references for context
     contact_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
@@ -130,7 +130,7 @@ class CommandQueueItem(Base):
     executed_at: Mapped[Optional[datetime]] = mapped_column(default=None)  # When action was taken
     
     # Outcome tracking
-    outcome: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=None)
+    outcome: Mapped[Optional[Dict[str, Any]]] = mapped_column(SafeJSON, default=None)
     
     # Link to recommendation that generated this
     recommendation_id: Mapped[Optional[str]] = mapped_column(
