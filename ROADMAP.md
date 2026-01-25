@@ -46,13 +46,14 @@ CaseyOS has evolved from a basic sales-agent into a comprehensive GTM Command Ce
 | Sprint 13 | ✅ Done | Twitter/Grok integration |
 | Sprint 14 | ✅ Done | Mobile PWA support |
 
-### Henry Evolution (Sprints 15-18)
+### Henry Evolution (Sprints 15-19)
 | Sprint | Status | Key Deliverable |
 |--------|--------|-----------------|
 | Sprint 15 | ✅ Done | Persistent Memory (MemoryService, 557 lines) |
 | Sprint 16 | ✅ Done | Daemon Mode (background monitor, notifications) |
 | Sprint 17 | ✅ Done | Voice Interface (Whisper + OpenAI TTS) |
 | Sprint 18 | ✅ Done | Local Deployment (Docker, CLI, Makefile) |
+| Sprint 19 | ✅ Done | Action Executor Wiring (real Gmail/HubSpot/Calendar) |
 
 ---
 
@@ -120,24 +121,19 @@ Key endpoint groups:
 
 ## Critical Gaps
 
-### 🔴 Priority 1: Action Executor TODOs
+### ✅ RESOLVED: Action Executor (Sprint 19)
 
-**File:** `src/actions/executor.py`
+The action executor is now fully wired to real APIs:
+- `_execute_send_email` → Gmail `send_email()`
+- `_execute_create_draft` → Gmail `create_draft()`
+- `_execute_create_task` → HubSpot `create_task()`
+- `_execute_update_task` → HubSpot `update_task()`
+- `_execute_book_meeting` → Calendar `create_event()`
+- `_execute_update_deal` → HubSpot `update_deal()`
 
-| Line | TODO | Impact |
-|------|------|--------|
-| 335 | `_execute_send_email` | Can't actually send emails |
-| 364 | `_execute_create_draft` | Can't create Gmail drafts |
-| 393 | `_execute_create_task` | Can't create HubSpot tasks |
-| 423 | `_execute_update_task` | Can't update tasks |
-| 439 | `_execute_book_meeting` | Can't book calendar events |
-| 473 | `_execute_update_deal` | Can't update HubSpot deals |
-| 237 | Rollback: Gmail draft deletion | Can't rollback drafts |
-| 243 | Rollback: HubSpot task deletion | Can't rollback tasks |
+Rollback support: `delete_draft()`, `delete_task()`
 
-**Impact:** "Execute" button in CaseyOS dashboard does nothing real.
-
-### 🟡 Priority 2: MCP Integration (Not Started)
+### 🟡 Priority 1: MCP Integration (Not Started)
 
 Per `docs/CASEYOS_HENRY_EVOLUTION.md` Sprint 19-20:
 - No `src/mcp/` directory exists
@@ -158,37 +154,7 @@ Per `docs/CASEYOS_HENRY_EVOLUTION.md` Sprint 19-20:
 
 ---
 
-## Roadmap: Sprints 19-24
-
-### Sprint 19: Action Executor Wiring (5 days)
-**Goal:** "Execute" button performs real actions
-
-**Tasks:**
-1. Wire `_execute_send_email` to `gmail.py` `send_message()`
-2. Wire `_execute_create_draft` to `gmail.py` `create_draft()`
-3. Wire `_execute_create_task` to `hubspot.py` task creation
-4. Wire `_execute_update_task` to `hubspot.py` task update
-5. Wire `_execute_book_meeting` to `calendar_connector.py` event creation
-6. Wire `_execute_update_deal` to `hubspot.py` deal update
-7. Implement rollback handlers (draft deletion, task deletion)
-8. Add execution audit to database (persistent log)
-9. E2E test: Execute → verify action in external system
-
-**Validation:**
-```bash
-# Create test queue item, execute, verify in Gmail/HubSpot
-curl -X POST .../api/actions/execute?action_id=xxx
-# Verify email appears in Gmail Sent folder
-```
-
-**Acceptance:**
-- [ ] Send email action creates real Gmail message
-- [ ] Create task action creates real HubSpot task
-- [ ] Book meeting action creates real Calendar event
-- [ ] Rollback reverses actions
-- [ ] Audit trail persists to database
-
----
+## Roadmap: Sprints 20-24
 
 ### Sprint 20: MCP Server Integration (5 days)
 **Goal:** CaseyOS usable as Claude MCP tool server
@@ -304,21 +270,22 @@ npx @anthropics/mcp-inspector http://localhost:8000/mcp
 
 | Sprint | Business Impact | Effort | Dependencies | Priority |
 |--------|----------------|--------|--------------|----------|
-| 19: Action Wiring | 🔴 Critical | Medium | None | **NOW** |
-| 20: MCP Integration | 🟡 High | Medium | Sprint 19 | Next |
+| 19: Action Wiring | ✅ Complete | - | - | **DONE** |
+| 20: MCP Integration | 🟡 High | Medium | None | **NOW** |
 | 21: Doc Consolidation | 🟢 Medium | Low | None | Parallel |
-| 22: Slack | 🟡 High | Medium | Sprint 19 | After |
+| 22: Slack | 🟡 High | Medium | None | After |
 | 23: Route Cleanup | 🟢 Low | Low | None | Parallel |
-| 24: Chrome Extension | 🟡 Medium | High | Sprint 19 | Future |
+| 24: Chrome Extension | 🟡 Medium | High | None | Future |
 
 ---
 
 ## Immediate Actions
 
-1. **Start Sprint 19** - Wire action executor to real APIs
-2. **Update TRUTH.md** - Reflect current state
-3. **Archive old docs** - Reduce confusion
-4. **Verify production** - Test new voice endpoints
+1. ~~**Start Sprint 19** - Wire action executor to real APIs~~ ✅ **COMPLETE**
+2. **Start Sprint 20** - MCP server integration
+3. **Update TRUTH.md** - Reflect current state
+4. **Archive old docs** - Reduce confusion
+5. **Verify production** - Test new voice endpoints
 
 ---
 
