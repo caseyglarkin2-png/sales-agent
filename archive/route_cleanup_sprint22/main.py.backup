@@ -62,200 +62,121 @@ from src.routes import exports as exports_routes
 from src.routes import api_keys as api_keys_routes
 from src.routes import users as users_routes
 from src.routes import settings_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import quotes_routes
+from src.routes import quotes_routes
 from src.routes import products_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import forecasts_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import territories_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import competitors_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import commissions_routes
+from src.routes import forecasts_routes
+from src.routes import territories_routes
+from src.routes import competitors_routes
+from src.routes import commissions_routes
 from src.routes import contracts_routes
 from src.routes import approvals_routes
 from src.routes import subscriptions_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import playbooks_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import learning_routes
+from src.routes import playbooks_routes
+from src.routes import learning_routes
 from src.routes import integrations_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import invoices_routes
+from src.routes import invoices_routes
 from src.routes import documents_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import events_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import calls_routes
+from src.routes import events_routes
+from src.routes import calls_routes
 from src.routes import email_tracking_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import roles_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import teams_routes
+from src.routes import roles_routes
+from src.routes import teams_routes
 from src.routes import queue as queue_routes
 from src.routes import custom_fields_routes
 from src.routes import tags_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import automation_routes
+from src.routes import automation_routes
 from src.routes import notification_prefs_routes
 from src.routes import data_sync_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import gamification_routes
+from src.routes import gamification_routes
 from src.routes import search_routes
 from src.routes import recommendations_routes
 from src.routes import webhook_subscriptions_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import activity_feed_routes
+from src.routes import activity_feed_routes
 from src.routes import quota_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import social_selling_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import scheduling_routes
+from src.routes import social_selling_routes
+from src.routes import scheduling_routes
 from src.routes import connectors_routes
 from src.routes import outreach_routes
 from src.routes import queue_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import reporting_routes
+from src.routes import reporting_routes
 from src.routes import auth_routes
 from src.routes import commands_routes
 from src.routes import gdpr
 from src.routes import circuit_breakers
 from src.routes import health
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import partner_portal_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import meeting_intelligence_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import revenue_intelligence_routes
+from src.routes import partner_portal_routes
+from src.routes import meeting_intelligence_routes
+from src.routes import revenue_intelligence_routes
 from src.routes import admin_flags
 from src.routes import dashboard_api
 from src.routes import customer_success_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import email_templates_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import cpq_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_enablement_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import lead_scoring_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import abm_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import conversation_intelligence_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_coaching_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import buyer_intent_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import data_quality_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import contact_enrichment_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import competitive_intelligence_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import territories_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import deal_room_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import subscriptions_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import revops_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import gamification_v2_routes
+from src.routes import email_templates_v2_routes
+from src.routes import cpq_routes
+from src.routes import sales_enablement_routes
+from src.routes import lead_scoring_v2_routes
+from src.routes import abm_routes
+from src.routes import conversation_intelligence_routes
+from src.routes import sales_coaching_routes
+from src.routes import buyer_intent_routes
+from src.routes import data_quality_routes
+from src.routes import contact_enrichment_routes
+from src.routes import competitive_intelligence_routes
+from src.routes import territories_v2_routes
+from src.routes import deal_room_routes
+from src.routes import subscriptions_v2_routes
+from src.routes import revops_routes
+from src.routes import gamification_v2_routes
 from src.routes import document_generation_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import customer_360_routes
+from src.routes import customer_360_routes
 from src.routes import multi_channel_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import workflows_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import activity_capture_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import ai_assistant_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import mobile_sync_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import forecasting_v2_routes
+from src.routes import workflows_v2_routes
+from src.routes import activity_capture_routes
+from src.routes import ai_assistant_routes
+from src.routes import mobile_sync_routes
+from src.routes import forecasting_v2_routes
 from src.routes import calendar_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import pipeline_analytics_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import deliverability_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import proposals_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import integration_hub_routes
+from src.routes import pipeline_analytics_routes
+from src.routes import deliverability_v2_routes
+from src.routes import proposals_v2_routes
+from src.routes import integration_hub_routes
 from src.routes import deal_scoring_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import product_analytics_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import revenue_attribution_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import lead_routing_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import account_planning_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import customer_health_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import playbooks_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import team_performance_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import email_analytics_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_metrics_routes
+from src.routes import product_analytics_routes
+from src.routes import revenue_attribution_routes
+from src.routes import lead_routing_routes
+from src.routes import account_planning_routes
+from src.routes import customer_health_v2_routes
+from src.routes import playbooks_v2_routes
+from src.routes import team_performance_routes
+from src.routes import email_analytics_routes
+from src.routes import sales_metrics_routes
 from src.routes import notifications_routes as notifications_v2_routes
 from src.routes import webhooks_routes as webhooks_v2_routes
 from src.routes import sequences_routes as sequences_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import content_library_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import email_warmup_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import referral_tracking_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import task_automation_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import partner_management_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import meeting_scheduler_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import roi_calculator_routes
+from src.routes import content_library_routes
+from src.routes import email_warmup_routes
+from src.routes import referral_tracking_routes
+from src.routes import task_automation_routes
+from src.routes import partner_management_routes
+from src.routes import meeting_scheduler_v2_routes
+from src.routes import roi_calculator_routes
 from src.routes import contact_queue
 from src.routes import forms as forms_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import proposal_templates_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_objections_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_contests_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import commission_calculator_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import territory_mapping_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import lead_enrichment_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_forecasting_ai_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import deal_insights_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import customer_journey_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import engagement_scoring_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import deal_velocity_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_playbook_ai_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import revops_v2_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import win_loss_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import sales_coaching_ai_routes
-# REMOVED Sprint 22 Task 5 - Unused route
-# from src.routes import quote_management_routes
+from src.routes import proposal_templates_routes
+from src.routes import sales_objections_routes
+from src.routes import sales_contests_routes
+from src.routes import commission_calculator_routes
+from src.routes import territory_mapping_routes
+from src.routes import lead_enrichment_v2_routes
+from src.routes import sales_forecasting_ai_routes
+from src.routes import deal_insights_routes
+from src.routes import customer_journey_routes
+from src.routes import engagement_scoring_routes
+from src.routes import deal_velocity_routes
+from src.routes import sales_playbook_ai_routes
+from src.routes import revops_v2_routes
+from src.routes import win_loss_routes
+from src.routes import sales_coaching_ai_routes
+from src.routes import quote_management_routes
 from src.routes import contract_lifecycle_routes
 from src.routes import churn_prediction_routes
 from src.routes import sales_compensation_routes
@@ -385,60 +306,42 @@ app.include_router(exports_routes.router)
 app.include_router(api_keys_routes.router)
 app.include_router(users_routes.router)
 app.include_router(settings_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(quotes_routes.router)
+app.include_router(quotes_routes.router)
 app.include_router(products_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(forecasts_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(territories_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(competitors_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(commissions_routes.router)
+app.include_router(forecasts_routes.router)
+app.include_router(territories_routes.router)
+app.include_router(competitors_routes.router)
+app.include_router(commissions_routes.router)
 app.include_router(contracts_routes.router)
 app.include_router(approvals_routes.router)
 app.include_router(subscriptions_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(playbooks_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(learning_routes.router)
+app.include_router(playbooks_routes.router)
+app.include_router(learning_routes.router)
 app.include_router(integrations_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(invoices_routes.router)
+app.include_router(invoices_routes.router)
 app.include_router(documents_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(events_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(calls_routes.router)
+app.include_router(events_routes.router)
+app.include_router(calls_routes.router)
 app.include_router(email_tracking_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(roles_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(teams_routes.router)
+app.include_router(roles_routes.router)
+app.include_router(teams_routes.router)
 app.include_router(custom_fields_routes.router)
 app.include_router(tags_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(automation_routes.router)
+app.include_router(automation_routes.router)
 app.include_router(notification_prefs_routes.router)
 app.include_router(data_sync_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(gamification_routes.router)
+app.include_router(gamification_routes.router)
 app.include_router(search_routes.router)
 app.include_router(recommendations_routes.router)
 app.include_router(webhook_subscriptions_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(activity_feed_routes.router)
+app.include_router(activity_feed_routes.router)
 app.include_router(quota_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(social_selling_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(scheduling_routes.router)
+app.include_router(social_selling_routes.router)
+app.include_router(scheduling_routes.router)
 app.include_router(connectors_routes.router)
 app.include_router(outreach_routes.router)
 app.include_router(queue_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(reporting_routes.router)
+app.include_router(reporting_routes.router)
 app.include_router(voice_training_api.router)  # Voice training enhancement
 app.include_router(pii_safety_api.router)  # PII detection & safety validation
 app.include_router(quota_api.router)  # Rate limiting & quota management
@@ -447,133 +350,72 @@ app.include_router(debug_api.router)  # Debug database utilities
 app.include_router(integrations_api.router)  # Integration marketplace (Ship Ship Ship!)
 app.include_router(auth_routes.router)
 app.include_router(commands_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(partner_portal_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(meeting_intelligence_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(revenue_intelligence_routes.router)
+app.include_router(partner_portal_routes.router)
+app.include_router(meeting_intelligence_routes.router)
+app.include_router(revenue_intelligence_routes.router)
 app.include_router(customer_success_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(email_templates_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(cpq_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_enablement_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(lead_scoring_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(abm_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(conversation_intelligence_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_coaching_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(buyer_intent_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(data_quality_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(contact_enrichment_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(competitive_intelligence_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(territories_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(deal_room_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(subscriptions_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(revops_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(gamification_v2_routes.router)
+app.include_router(email_templates_v2_routes.router)
+app.include_router(cpq_routes.router)
+app.include_router(sales_enablement_routes.router)
+app.include_router(lead_scoring_v2_routes.router)
+app.include_router(abm_routes.router)
+app.include_router(conversation_intelligence_routes.router)
+app.include_router(sales_coaching_routes.router)
+app.include_router(buyer_intent_routes.router)
+app.include_router(data_quality_routes.router)
+app.include_router(contact_enrichment_routes.router)
+app.include_router(competitive_intelligence_routes.router)
+app.include_router(territories_v2_routes.router)
+app.include_router(deal_room_routes.router)
+app.include_router(subscriptions_v2_routes.router)
+app.include_router(revops_routes.router)
+app.include_router(gamification_v2_routes.router)
 app.include_router(document_generation_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(customer_360_routes.router)
+app.include_router(customer_360_routes.router)
 app.include_router(multi_channel_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(workflows_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(activity_capture_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(ai_assistant_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(mobile_sync_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(forecasting_v2_routes.router)
+app.include_router(workflows_v2_routes.router)
+app.include_router(activity_capture_routes.router)
+app.include_router(ai_assistant_routes.router)
+app.include_router(mobile_sync_routes.router)
+app.include_router(forecasting_v2_routes.router)
 app.include_router(calendar_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(pipeline_analytics_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(deliverability_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(proposals_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(integration_hub_routes.router)
+app.include_router(pipeline_analytics_routes.router)
+app.include_router(deliverability_v2_routes.router)
+app.include_router(proposals_v2_routes.router)
+app.include_router(integration_hub_routes.router)
 app.include_router(deal_scoring_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(product_analytics_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(revenue_attribution_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(lead_routing_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(account_planning_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(customer_health_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(playbooks_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(team_performance_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(email_analytics_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_metrics_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(content_library_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(email_warmup_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(referral_tracking_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(task_automation_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(partner_management_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(meeting_scheduler_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(roi_calculator_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(proposal_templates_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_objections_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_contests_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(commission_calculator_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(territory_mapping_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(lead_enrichment_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_forecasting_ai_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(deal_insights_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(customer_journey_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(engagement_scoring_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(deal_velocity_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_playbook_ai_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(revops_v2_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(win_loss_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(sales_coaching_ai_routes.router)
-    # REMOVED Sprint 22 Task 5 - Unused route
-    # app.include_router(quote_management_routes.router)
+app.include_router(product_analytics_routes.router)
+app.include_router(revenue_attribution_routes.router)
+app.include_router(lead_routing_routes.router)
+app.include_router(account_planning_routes.router)
+app.include_router(customer_health_v2_routes.router)
+app.include_router(playbooks_v2_routes.router)
+app.include_router(team_performance_routes.router)
+app.include_router(email_analytics_routes.router)
+app.include_router(sales_metrics_routes.router)
+app.include_router(content_library_routes.router)
+app.include_router(email_warmup_routes.router)
+app.include_router(referral_tracking_routes.router)
+app.include_router(task_automation_routes.router)
+app.include_router(partner_management_routes.router)
+app.include_router(meeting_scheduler_v2_routes.router)
+app.include_router(roi_calculator_routes.router)
+app.include_router(proposal_templates_routes.router)
+app.include_router(sales_objections_routes.router)
+app.include_router(sales_contests_routes.router)
+app.include_router(commission_calculator_routes.router)
+app.include_router(territory_mapping_routes.router)
+app.include_router(lead_enrichment_v2_routes.router)
+app.include_router(sales_forecasting_ai_routes.router)
+app.include_router(deal_insights_routes.router)
+app.include_router(customer_journey_routes.router)
+app.include_router(engagement_scoring_routes.router)
+app.include_router(deal_velocity_routes.router)
+app.include_router(sales_playbook_ai_routes.router)
+app.include_router(revops_v2_routes.router)
+app.include_router(win_loss_routes.router)
+app.include_router(sales_coaching_ai_routes.router)
+app.include_router(quote_management_routes.router)
 app.include_router(voice_approval_routes.router)
 
 # Mount static files for dashboard
