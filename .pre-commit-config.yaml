@@ -32,6 +32,19 @@ repos:
 
   - repo: local
     hooks:
+      # Database Session Anti-Pattern Prevention (Sprint 22)
+      - id: check-async-session-usage
+        name: Check for async_session() anti-pattern
+        entry: bash -c 'if grep -rn "async with async_session()" --include="*.py" --exclude-dir=src/db src/ 2>/dev/null; then echo "ERROR: Found async_session() usage outside src/db/. Use get_session() instead."; exit 1; fi'
+        language: system
+        pass_filenames: false
+        
+      - id: check-async-session-import
+        name: Check for wrong async_session import
+        entry: bash -c 'if grep -rn "from src.db import async_session" --include="*.py" --exclude-dir=src/db src/ 2>/dev/null | grep -v "as get_session"; then echo "ERROR: Found direct async_session import outside src/db/. Use get_session instead."; exit 1; fi'
+        language: system
+        pass_filenames: false
+        
       - id: pytest-core
         name: pytest core
         entry: pytest tests/unit -v

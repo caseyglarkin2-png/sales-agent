@@ -112,7 +112,7 @@ def check_all_signals() -> Dict[str, Any]:
 
 async def _run_all_checks() -> Dict[str, Any]:
     """Run all async signal checks."""
-    from src.db import async_session
+    from src.db import get_session
     
     results = {
         "signals_detected": 0,
@@ -120,7 +120,7 @@ async def _run_all_checks() -> Dict[str, Any]:
         "checks": {},
     }
     
-    async with async_session() as db:
+    async with get_session() as db:
         # Check HubSpot forms
         if MONITOR_CONFIG["hubspot_forms"]["enabled"]:
             form_results = await _check_hubspot_forms(db)

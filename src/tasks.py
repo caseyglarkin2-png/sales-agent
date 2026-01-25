@@ -53,7 +53,7 @@ def process_workflow_task(self, form_submission_id: str) -> dict:
     from src.models.form_submission import FormSubmission
     from src.models.workflow import Workflow, WorkflowStatus, WorkflowMode
     from src.formlead_orchestrator import create_formlead_orchestrator
-    from src.db import async_session
+    from src.db import get_session
     from sqlalchemy import select
     
     logger.info(
@@ -64,7 +64,7 @@ def process_workflow_task(self, form_submission_id: str) -> dict:
     try:
         # Get form submission from database
         async def get_submission():
-            async with async_session() as session:
+            async with get_session() as session:
                 result = await session.execute(
                     select(FormSubmission).where(FormSubmission.id == UUID(form_submission_id))
                 )
@@ -90,7 +90,7 @@ def process_workflow_task(self, form_submission_id: str) -> dict:
         
         # Create workflow record
         async def create_workflow():
-            async with async_session() as session:
+            async with get_session() as session:
                 workflow = Workflow(
                     form_submission_id=UUID(form_submission_id),
                     status=WorkflowStatus.PROCESSING,
@@ -129,7 +129,7 @@ def process_workflow_task(self, form_submission_id: str) -> dict:
             
             # Update workflow status
             async def update_workflow_success():
-                async with async_session() as session:
+                async with get_session() as session:
                     workflow_update = await session.get(Workflow, workflow.id)
                     workflow_update.status = WorkflowStatus.COMPLETED
                     workflow_update.completed_at = datetime.utcnow()
@@ -165,7 +165,7 @@ def process_workflow_task(self, form_submission_id: str) -> dict:
             
             # Update workflow status to failed
             async def update_workflow_failed():
-                async with async_session() as session:
+                async with get_session() as session:
                     from src.models.workflow import WorkflowError
                     
                     workflow_update = await session.get(Workflow, workflow.id)

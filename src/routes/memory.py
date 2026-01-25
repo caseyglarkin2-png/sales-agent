@@ -17,7 +17,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src.db import async_session
+from src.db import get_session
 from src.services.memory_service import MemoryService
 from src.logger import get_logger
 from src.security.csrf import verify_csrf_token
@@ -81,7 +81,7 @@ async def list_sessions(
     Returns:
         List of session info objects
     """
-    async with async_session() as db:
+    async with get_session() as db:
         memory = MemoryService(db)
         sessions = await memory.list_sessions(user_id, include_inactive)
         
@@ -114,7 +114,7 @@ async def get_session_memory(
     Returns:
         Recent messages from the session
     """
-    async with async_session() as db:
+    async with get_session() as db:
         memory = MemoryService(db)
         messages = await memory.recall(session_id, limit=limit)
         
@@ -153,7 +153,7 @@ async def search_memory(request: MemorySearchRequest):
     Returns:
         List of relevant messages with similarity scores
     """
-    async with async_session() as db:
+    async with get_session() as db:
         memory = MemoryService(db)
         results = await memory.search_similar(
             request.session_id,
@@ -191,7 +191,7 @@ async def manually_remember(request: RememberRequest):
     Returns:
         Created memory record
     """
-    async with async_session() as db:
+    async with get_session() as db:
         memory = MemoryService(db)
         
         # Verify session exists
@@ -235,7 +235,7 @@ async def clear_session_memory(session_id: str):
     Returns:
         Confirmation of deletion
     """
-    async with async_session() as db:
+    async with get_session() as db:
         memory = MemoryService(db)
         
         # Use forget method (GDPR-compliant deletion)
@@ -264,7 +264,7 @@ async def create_session(
     Returns:
         Created session info
     """
-    async with async_session() as db:
+    async with get_session() as db:
         memory = MemoryService(db)
         session = await memory.get_or_create_session(user_id, session_name)
         
@@ -289,7 +289,7 @@ async def get_memory_stats(
     Returns:
         Total sessions, messages, summaries, etc.
     """
-    async with async_session() as db:
+    async with get_session() as db:
         from sqlalchemy import select, func
         from src.models.memory import JarvisSession, ConversationMemory, MemorySummary
         

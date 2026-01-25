@@ -129,8 +129,10 @@ The app deploys via Dockerfile. Key files:
 
 ## Key Conventions
 
-### Async Database Pattern
+### Async Database Pattern (CRITICAL - Sprint 22 Enforcement)
+
 All database operations use SQLAlchemy async. **Always use context managers**:
+
 ```python
 from src.db import get_session
 
@@ -139,6 +141,45 @@ async def my_route():
         result = await session.execute(select(Model))
         # session auto-closes
 ```
+
+**CRITICAL RULES:**
+1. **✅ CORRECT:** Use `from src.db import get_session` + `async with get_session()`
+2. **❌ WRONG:** Use `from src.db import async_session` + `async with async_session()`
+3. **Exception:** Only `src/db/` module may use `async_session()` directly
+
+**Pre-commit Hook Enforces This:**
+- Blocks commits with `async with async_session()` outside `src/db/`
+- Blocks direct `async_session` imports outside `src/db/`
+
+**3 Approved Session Patterns:**
+```python
+# Pattern 1: Route handlers (most common)
+from src.db import get_session
+
+async def my_route():
+    async with get_session() as session:
+        result = await session.execute(select(Model))
+        return result.scalars().all()
+
+# Pattern 2: FastAPI dependency injection
+from src.db import get_db
+from fastapi import Depends
+
+@router.get("/items")
+async def list_items(session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(Item))
+    return result.scalars().all()
+
+# Pattern 3: Background tasks (Celery)
+from src.db import get_session
+
+@celery_app.task
+async def process_task(item_id: str):
+    async with get_session() as session:
+        item = await session.get(Item, item_id)
+        # process item
+```
+
 **NEVER** store sessions globally or pass them between requests.
 
 ### Agent Pattern

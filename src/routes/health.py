@@ -47,8 +47,8 @@ async def readiness_check(response: Response) -> Dict[str, Any]:
     
     # Check database connection (truthful readiness)
     try:
-        from src.db import async_session
-        async with async_session() as session:
+        from src.db import get_session
+        async with get_session() as session:
             await session.execute(text("SELECT 1"))
         checks["database"] = "ready"
     except Exception as e:

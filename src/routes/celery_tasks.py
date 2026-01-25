@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import async_session
+from src.db import get_session
 from src.logger import get_logger
 from src.models.task import FailedTask
 from src.celery_app import celery_app
@@ -88,7 +88,7 @@ async def list_failed_tasks(
     Example:
         GET /api/async/failed-tasks?limit=10&status=failed
     """
-    async with async_session() as session:
+    async with get_session() as session:
         query = select(FailedTask)
 
         if status_filter:
@@ -157,7 +157,7 @@ async def retry_failed_task(failed_task_id: str) -> Dict[str, Any]:
         POST /api/async/failed-tasks/abc123/retry
         -> Returns new task_id for monitoring
     """
-    async with async_session() as session:
+    async with get_session() as session:
         # Get the failed task
         result = await session.execute(
             select(FailedTask).where(FailedTask.id == failed_task_id)
@@ -238,7 +238,7 @@ async def resolve_failed_task(
     Example:
         POST /api/async/failed-tasks/abc123/resolve?notes=Form+invalid&resolved_by=operator
     """
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(FailedTask).where(FailedTask.id == failed_task_id)
         )

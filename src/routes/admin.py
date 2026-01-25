@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auto_approval import seed_default_rules
 from src.config import get_settings
-from src.db import async_session
+from src.db import get_session
 from src.logger import get_logger
 from src.models.auto_approval import ApprovedRecipient, AutoApprovalRule
 from src.security.auth import require_admin_role
@@ -162,7 +162,7 @@ async def list_rules() -> Dict[str, Any]:
     Returns:
         List of rules with configuration
     """
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(AutoApprovalRule).order_by(AutoApprovalRule.priority.asc())
         )
@@ -198,7 +198,7 @@ async def enable_rule(rule_id: str) -> Dict[str, Any]:
     Returns:
         Updated rule status
     """
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(AutoApprovalRule).where(AutoApprovalRule.id == rule_id)
         )
@@ -229,7 +229,7 @@ async def disable_rule(rule_id: str) -> Dict[str, Any]:
     Returns:
         Updated rule status
     """
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(AutoApprovalRule).where(AutoApprovalRule.id == rule_id)
         )
@@ -259,7 +259,7 @@ async def seed_rules() -> Dict[str, Any]:
     Returns:
         Seed operation status
     """
-    async with async_session() as session:
+    async with get_session() as session:
         await seed_default_rules(session)
 
         return {"status": "success", "message": "Default rules seeded (if none existed)"}
@@ -282,7 +282,7 @@ async def list_approved_recipients(
     Returns:
         Paginated list of approved recipients
     """
-    async with async_session() as session:
+    async with get_session() as session:
         # Get total count
         count_result = await session.execute(select(func.count(ApprovedRecipient.id)))
         total_count = count_result.scalar() or 0
@@ -327,7 +327,7 @@ async def remove_approved_recipient(recipient_id: str) -> Dict[str, Any]:
     Returns:
         Removal status
     """
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(ApprovedRecipient).where(ApprovedRecipient.id == recipient_id)
         )

@@ -263,7 +263,7 @@ async def handle_read_command_queue(
     status_filter: str = "pending"
 ) -> Dict[str, Any]:
     """Fetch command queue items."""
-    from src.db import async_session as get_session
+    from src.db import get_session
     from src.models.command_queue import CommandQueueItem
     from sqlalchemy import select
     
@@ -302,7 +302,7 @@ async def handle_execute_action(
 ) -> Dict[str, Any]:
     """Execute a command queue action."""
     from src.actions.executor import get_executor
-    from src.db import async_session as get_session
+    from src.db import get_session
     from src.models.command_queue import CommandQueueItem
     from sqlalchemy import select
     
@@ -407,7 +407,7 @@ async def handle_get_notifications(
     since_hours: int = 24
 ) -> Dict[str, Any]:
     """Get proactive notifications."""
-    from src.db import async_session as get_session
+    from src.db import get_session
     from src.models.signal import Signal
     from src.models.command_queue import CommandQueueItem
     from sqlalchemy import select, and_
@@ -475,7 +475,7 @@ async def handle_record_outcome(
     notes: Optional[str] = None
 ) -> Dict[str, Any]:
     """Record an outcome for a queue item."""
-    from src.db import async_session as get_session
+    from src.db import get_session
     from src.models.outcome import OutcomeRecord
     from src.models.command_queue import CommandQueueItem
     from sqlalchemy import select
@@ -586,7 +586,7 @@ async def handle_schedule_followup(
     context: Optional[str] = None
 ) -> Dict[str, Any]:
     """Schedule a follow-up action."""
-    from src.db import async_session as get_session
+    from src.db import get_session
     from src.models.command_queue import CommandQueueItem
     from datetime import datetime, timedelta
     import uuid

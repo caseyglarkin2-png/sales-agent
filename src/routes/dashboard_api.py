@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
-from src.db import async_session
+from src.db import get_session
 from src.logger import get_logger
 from src.models.workflow import Workflow, WorkflowStatus
 from src.models.form_submission import FormSubmission
@@ -82,7 +82,7 @@ async def get_dashboard_stats():
     Returns:
         Current workflow counts and metrics
     """
-    async with async_session() as session:
+    async with get_session() as session:
         # Count workflows by status
         total_result = await session.execute(select(func.count(Workflow.id)))
         total_workflows = total_result.scalar() or 0
@@ -137,7 +137,7 @@ async def list_workflows(
     Returns:
         Paginated list of workflows
     """
-    async with async_session() as session:
+    async with get_session() as session:
         # Build query
         query = (
             select(Workflow, FormSubmission)
@@ -204,7 +204,7 @@ async def get_workflow_detail(workflow_id: str):
     Raises:
         404: If workflow not found
     """
-    async with async_session() as session:
+    async with get_session() as session:
         query = (
             select(Workflow, FormSubmission)
             .join(FormSubmission, Workflow.form_submission_id == FormSubmission.id)

@@ -125,7 +125,7 @@ def cmd_shell():
     from src.main import app
     from src.config import get_settings
     from src.agents.jarvis import get_jarvis
-    from src.db import async_session
+    from src.db import get_session
     
     settings = get_settings()
     jarvis = get_jarvis()

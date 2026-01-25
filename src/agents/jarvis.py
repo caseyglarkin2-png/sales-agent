@@ -17,7 +17,7 @@ from enum import Enum
 
 from src.agents.base import BaseAgent
 from src.logger import get_logger
-from src.db import async_session
+from src.db import get_session
 from src.services.memory_service import MemoryService
 
 logger = get_logger(__name__)
@@ -408,7 +408,7 @@ class JarvisAgent(BaseAgent):
         memory_context = {}
         if self._memory_enabled:
             try:
-                async with async_session() as db:
+                async with get_session() as db:
                     memory = MemoryService(db)
                     
                     # Get or create session
@@ -498,7 +498,7 @@ class JarvisAgent(BaseAgent):
         # ========================================
         if self._memory_enabled and memory_context.get("session_id"):
             try:
-                async with async_session() as db:
+                async with get_session() as db:
                     memory = MemoryService(db)
                     
                     # Create a summary of the response for memory

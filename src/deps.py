@@ -4,12 +4,12 @@ from fastapi import Header
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import async_session
+from src.db import get_session
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """Provide database session for dependency injection."""
-    async with async_session() as session:
+    async with get_session() as session:
         try:
             yield session
         finally:

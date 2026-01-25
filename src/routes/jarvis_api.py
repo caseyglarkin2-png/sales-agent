@@ -18,7 +18,7 @@ from src.connectors.llm import get_llm
 from src.connectors.gemini import get_gemini
 from src.config import get_settings
 from src.deps import get_db_session
-from src.db import async_session
+from src.db import get_session
 from src.logger import get_logger
 from src.telemetry import log_event
 
@@ -115,7 +115,7 @@ async def whats_up(
     """
     from src.services.notification_service import NotificationService
     
-    async with async_session() as db:
+    async with get_session() as db:
         notifications = NotificationService(db)
         result = await notifications.get_whats_up(user_id)
         
@@ -133,7 +133,7 @@ async def get_notifications(
     """Get notifications for a user."""
     from src.services.notification_service import NotificationService
     
-    async with async_session() as db:
+    async with get_session() as db:
         service = NotificationService(db)
         notifications = await service.get_recent(user_id, limit, include_read)
         
@@ -149,7 +149,7 @@ async def mark_notification_read(notification_id: str):
     """Mark a notification as read."""
     from src.services.notification_service import NotificationService
     
-    async with async_session() as db:
+    async with get_session() as db:
         service = NotificationService(db)
         success = await service.mark_read(notification_id)
         
@@ -164,7 +164,7 @@ async def acknowledge_notification(notification_id: str):
     """Acknowledge (dismiss) a notification."""
     from src.services.notification_service import NotificationService
     
-    async with async_session() as db:
+    async with get_session() as db:
         service = NotificationService(db)
         success = await service.mark_acknowledged(notification_id)
         
@@ -179,7 +179,7 @@ async def notification_actioned(notification_id: str):
     """Mark that the user took the suggested action."""
     from src.services.notification_service import NotificationService
     
-    async with async_session() as db:
+    async with get_session() as db:
         service = NotificationService(db)
         success = await service.mark_actioned(notification_id)
         
@@ -198,7 +198,7 @@ async def mark_all_notifications_read(
     """Mark all notifications as read for a user."""
     from src.services.notification_service import NotificationService
     
-    async with async_session() as db:
+    async with get_session() as db:
         service = NotificationService(db)
         count = await service.mark_all_read(user_id)
         
