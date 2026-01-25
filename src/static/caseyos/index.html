@@ -42,19 +42,19 @@
             </nav>
         </div>
         <div class="header-right">
-            <a href="/static/agent-hub.html" class="btn-icon" title="Agent Hub" style="text-decoration:none;">🤖</a>
-            <a href="/static/jarvis.html" class="btn-icon" title="Jarvis Voice" style="text-decoration:none;">🎤</a>
-            <div class="health-indicator" id="health-status">
-                <span class="health-dot"></span>
+            <a href="/static/agent-hub.html" class="btn-icon" title="Agent Hub" aria-label="Open Agent Hub" style="text-decoration:none;">🤖</a>
+            <a href="/static/jarvis.html" class="btn-icon" title="Jarvis Voice" aria-label="Open Jarvis Voice Assistant" style="text-decoration:none;">🎤</a>
+            <div class="health-indicator" id="health-status" role="status" aria-live="polite">
+                <span class="health-dot" aria-hidden="true"></span>
                 <span class="health-text">Connecting...</span>
             </div>
-            <div class="keyboard-hint">
+            <div class="keyboard-hint" aria-hidden="true">
                 <kbd>A</kbd> Accept
                 <kbd>D</kbd> Dismiss
                 <kbd>E</kbd> Execute
                 <kbd>R</kbd> Refresh
             </div>
-            <button class="btn-icon" id="dark-mode-toggle" title="Toggle dark mode">🌙</button>
+            <button class="btn-icon" id="dark-mode-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
         </div>
     </header>
 
@@ -182,32 +182,32 @@
     </main>
 
     <!-- Mobile Bottom Navigation -->
-    <nav class="mobile-nav" id="mobile-nav">
-        <a href="/caseyos" class="mobile-nav-item active">
-            <span class="mobile-nav-icon">📋</span>
+    <nav class="mobile-nav" id="mobile-nav" aria-label="Main navigation">
+        <a href="/caseyos" class="mobile-nav-item active" aria-label="Command Queue">
+            <span class="mobile-nav-icon" aria-hidden="true">📋</span>
             <span class="mobile-nav-label">Queue</span>
         </a>
-        <a href="/static/jarvis.html" class="mobile-nav-item">
-            <span class="mobile-nav-icon">🎤</span>
+        <a href="/static/jarvis.html" class="mobile-nav-item" aria-label="Jarvis Voice Assistant">
+            <span class="mobile-nav-icon" aria-hidden="true">🎤</span>
             <span class="mobile-nav-label">Jarvis</span>
         </a>
-        <a href="/static/agent-hub.html" class="mobile-nav-item">
-            <span class="mobile-nav-icon">🤖</span>
+        <a href="/static/agent-hub.html" class="mobile-nav-item" aria-label="AI Agents Hub">
+            <span class="mobile-nav-icon" aria-hidden="true">🤖</span>
             <span class="mobile-nav-label">Agents</span>
         </a>
-        <a href="/static/integrations.html" class="mobile-nav-item">
-            <span class="mobile-nav-icon">⚙️</span>
+        <a href="/static/integrations.html" class="mobile-nav-item" aria-label="Settings and Integrations">
+            <span class="mobile-nav-icon" aria-hidden="true">⚙️</span>
             <span class="mobile-nav-label">Settings</span>
         </a>
     </nav>
 
     <!-- Offline Banner -->
-    <div class="offline-banner" id="offline-banner" style="display: none;">
+    <div class="offline-banner" id="offline-banner" style="display: none;" role="alert" aria-live="assertive">
         <span>📴 You're offline. Showing cached data.</span>
     </div>
 
     <!-- Toast Notifications -->
-    <div class="toast-container" id="toast-container"></div>
+    <div class="toast-container" id="toast-container" role="region" aria-live="polite" aria-label="Notifications"></div>
 
     <!-- Execute Modal -->
     <div class="modal" id="execute-modal">
@@ -260,9 +260,11 @@
         window.addEventListener('online', () => {
             document.getElementById('offline-banner').style.display = 'none';
             showToast('Back online!', 'success');
-            // Trigger sync
-            if ('sync' in window.registration) {
-                window.registration.sync.register('sync-actions');
+            // Trigger sync when back online
+            if ('serviceWorker' in navigator && 'sync' in window.SyncManager) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.sync.register('sync-actions');
+                }).catch(err => console.log('[CaseyOS] Sync registration failed:', err));
             }
         });
         

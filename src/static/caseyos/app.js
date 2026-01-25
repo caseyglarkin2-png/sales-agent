@@ -17,6 +17,9 @@ const CONFIG = {
     }
 };
 
+// CSRF Token (fetched from server response header)
+let csrfToken = null;
+
 // State
 let state = {
     moves: [],
@@ -37,11 +40,56 @@ const elements = {};
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', init);
 
+// Fetch CSRF token on page load
+async function fetchCsrfToken() {
+    try {
+        const response = await fetch('/health');
+        csrfToken = response.headers.get('X-CSRF-Token');
+        console.log('[CaseyOS] CSRF token loaded');
+    } catch (err) {
+        console.error('[CaseyOS] Failed to fetch CSRF token:', err);
+    }
+}
+
+// Helper for POST/PUT/DELETE requests with CSRF
+async function apiCall(endpoint, method = 'GET', body = null) {
+    const options = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    };
+    
+    // Add CSRF token for state-changing requests
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
+        if (csrfToken) {
+            options.headers['X-CSRF-Token'] = csrfToken;
+        }
+    }
+    
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
+    
+    const response = await fetch(endpoint, options);
+    
+    // Update CSRF token from response if present
+    const newToken = response.headers.get('X-CSRF-Token');
+    if (newToken) {
+        csrfToken = newToken;
+    }
+    
+    return response;
+}
+
 async function init() {
     cacheElements();
     setupEventListeners();
     setupKeyboardShortcuts();
     loadTheme();
+    
+    // Fetch CSRF token first
+    await fetchCsrfToken();
 
     // Initial data fetch
     await Promise.all([
@@ -72,7 +120,8 @@ function cacheElements() {
     elements.modalTitle = document.querySelector('.modal-header h3');
     elements.modalBody = document.querySelector('.modal-body');
     elements.toastContainer = document.getElementById('toast-container');
-    elements.themeToggle = document.getElementById('theme-toggle');
+    elements.themeToggle = document.getElementById('dark-mode-toggle');
+    elements.refreshBtn = document.getElementById('btn-refresh');
 
     // Stats
     elements.statPending = document.getElementById('stat-pending');
@@ -93,6 +142,9 @@ function setupEventListeners() {
 
     // Theme toggle
     elements.themeToggle?.addEventListener('click', toggleTheme);
+
+    // Refresh button
+    elements.refreshBtn?.addEventListener('click', loadMoves);
 
     // Modal close
     document.querySelector('.modal-backdrop')?.addEventListener('click', closeModal);
@@ -245,12 +297,10 @@ async function fetchExecutionHistory() {
     }
 }
 
-async function acceptMove(id) {
+async function acceptMove(id, buttonElement = null) {
+    setButtonLoading(buttonElement, true);
     try {
-        const res = await fetch(`${CONFIG.ENDPOINTS.COMMAND_QUEUE}/${id}/accept`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        });
+        const res = await apiCall(`${CONFIG.ENDPOINTS.COMMAND_QUEUE}/${id}/accept`, 'POST');
         if (!res.ok) throw new Error('Failed to accept');
 
         showToast('Move accepted', 'success');
@@ -258,15 +308,14 @@ async function acceptMove(id) {
     } catch (err) {
         console.error('Failed to accept move:', err);
         showToast('Failed to accept', 'error');
+        setButtonLoading(buttonElement, false);
     }
 }
 
-async function dismissMove(id) {
+async function dismissMove(id, buttonElement = null) {
+    setButtonLoading(buttonElement, true);
     try {
-        const res = await fetch(`${CONFIG.ENDPOINTS.COMMAND_QUEUE}/${id}/dismiss`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        });
+        const res = await apiCall(`${CONFIG.ENDPOINTS.COMMAND_QUEUE}/${id}/dismiss`, 'POST');
         if (!res.ok) throw new Error('Failed to dismiss');
 
         showToast('Move dismissed', 'warning');
@@ -274,24 +323,23 @@ async function dismissMove(id) {
     } catch (err) {
         console.error('Failed to dismiss move:', err);
         showToast('Failed to dismiss', 'error');
+        setButtonLoading(buttonElement, false);
     }
 }
 
-async function executeMove(id, dryRun = false) {
+async function executeMove(id, dryRun = false, buttonElement = null) {
+    setButtonLoading(buttonElement, true);
     try {
-        const res = await fetch(CONFIG.ENDPOINTS.ACTIONS, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                queue_item_id: id,
-                dry_run: dryRun,
-            }),
+        const res = await apiCall(CONFIG.ENDPOINTS.ACTIONS, 'POST', {
+            queue_item_id: id,
+            dry_run: dryRun,
         });
 
         const data = await res.json();
 
         if (dryRun) {
             // Show preview
+            setButtonLoading(buttonElement, false);
             showPreview(data);
         } else {
             if (!res.ok) throw new Error(data.detail || 'Execution failed');
@@ -301,6 +349,7 @@ async function executeMove(id, dryRun = false) {
     } catch (err) {
         console.error('Failed to execute:', err);
         showToast(err.message || 'Execution failed', 'error');
+        setButtonLoading(buttonElement, false);
     }
 }
 
@@ -669,6 +718,22 @@ function refreshAll() {
 }
 
 // === Utility Functions ===
+
+// Loading state helper for buttons
+function setButtonLoading(buttonElement, isLoading, originalText = null) {
+    if (!buttonElement) return;
+    
+    if (isLoading) {
+        buttonElement.dataset.originalText = buttonElement.textContent;
+        buttonElement.textContent = 'Loading...';
+        buttonElement.disabled = true;
+        buttonElement.classList.add('loading');
+    } else {
+        buttonElement.textContent = originalText || buttonElement.dataset.originalText || 'Done';
+        buttonElement.disabled = false;
+        buttonElement.classList.remove('loading');
+    }
+}
 
 function escapeHtml(str) {
     if (!str) return '';
