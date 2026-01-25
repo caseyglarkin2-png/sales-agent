@@ -1,226 +1,273 @@
-# Sales Agent Implementation Documentation Index
+# CaseyOS Implementation Documentation Index
 
-**Last Updated:** January 23, 2026  
-**Current Status:** Sprint 1, 2, 4 Complete | Sprint 6 Next
+**Last Updated:** January 25, 2026  
+**Current Status:** Sprints 0-20 Complete | Sprint 21 In Progress
 
 ---
 
 ## 📚 Main Documentation
 
 ### Strategic Planning
-- **[STRATEGIC_ROADMAP.md](STRATEGIC_ROADMAP.md)** - Source of truth for all sprint planning and implementation roadmap
-  - Sprint 0: Foundation Cleanup (deferred)
-  - Sprint 1: Email Send Capability ✅ COMPLETE
-  - Sprint 2: Async Task Processing ✅ COMPLETE
-  - Sprint 4: Auto-Approval Rules ✅ COMPLETE
-  - Sprint 6: Production Hardening (next)
+- **[ROADMAP.md](ROADMAP.md)** - Master roadmap (Sprints 0-24 planned)
+  - Sprints 0-20: ✅ COMPLETE
+  - Sprint 21: Documentation Consolidation (in progress)
+  - Sprint 22: Slack Integration (planned)
+  - Sprint 23: Route Cleanup (planned)
+  - Sprint 24: Chrome Extension (planned)
 
-### Implementation Records
-- **[SPRINT_1_IMPLEMENTATION_COMPLETE.md](SPRINT_1_IMPLEMENTATION_COMPLETE.md)** - Sprint 1: Email Send Capability
-  - Feature flag: ALLOW_REAL_SENDS
-  - Rate limiting: Daily/weekly/contact quotas
-  - Send status: Database persistence
-  - Code: operator_mode.py, config.py, rate_limiter.py, workflow_db.py
-  
-- **[SPRINT_2_IMPLEMENTATION_COMPLETE.md](SPRINT_2_IMPLEMENTATION_COMPLETE.md)** - Sprint 2: Async Task Processing
-  - Webhook optimization: <500ms response time
-  - Celery tasks: Background workflow processing
-  - Dead letter queue: Failed task recovery
-  - Task status API: Real-time progress tracking
-  - Code: tasks/formlead_task.py, routes/celery_tasks.py, models/task.py
+### Current State
+- **[TRUTH.md](TRUTH.md)** - What actually works in production (January 2026)
+- **[CHANGELOG.md](CHANGELOG.md)** - Complete history of all sprints 0-20
+- **[API_ENDPOINTS.md](API_ENDPOINTS.md)** - API reference with curl examples
 
-- **[SPRINT_4_IMPLEMENTATION_COMPLETE.md](SPRINT_4_IMPLEMENTATION_COMPLETE.md)** - Sprint 4: Auto-Approval Rules Engine
-  - Rule-based evaluation: 3 simple rules (no ML)
-  - Auto-send: 20-40% workload reduction target
-  - Emergency kill switch: Password-protected admin controls
-  - Audit trail: Full decision logging
-  - Code: auto_approval.py, models/auto_approval.py, routes/admin.py, formlead_orchestrator.py
+### Sprint Completion Records (Archived)
+- **Sprint 0-6** - See `archive/old_docs/SPRINT_*_COMPLETE.md`
+- **Sprint 7-10** - See `CHANGELOG.md` (Core Platform)
+- **Sprint 11-14** - See `CHANGELOG.md` (GTM Expansion)
+- **Sprint 15-20** - See `CHANGELOG.md` (Henry Evolution)
 
 ---
 
 ## 🏗️ Technical Architecture
 
-### Core Systems
+### Major Features (Sprints 15-20)
 
-#### 1. Email Send Capability (Sprint 1)
-**Purpose:** Enable real email sends with safety gates
-
+#### Persistent Memory (Sprint 15)
 **Files:**
-- [src/operator_mode.py](src/operator_mode.py) - Draft approval queue + send orchestration
-- [src/config.py](src/config.py) - ALLOW_REAL_SENDS feature flag
-- [src/rate_limiter.py](src/rate_limiter.py) - Rate limiting enforcement
-- [src/db/workflow_db.py](src/db/workflow_db.py) - Send metadata persistence
+- [src/models/memory.py](src/models/memory.py) - JarvisSession, ConversationMemory, MemorySummary
+- [src/services/memory_service.py](src/services/memory_service.py) - 557 lines, semantic search
+- [src/routes/memory.py](src/routes/memory.py) - Memory API
 
-**Key Features:**
-- Feature flag gating (ALLOW_REAL_SENDS=False by default)
-- Rate limiting (20/day, 2/week globally, 2/week per contact)
-- SENT status tracking with database persistence
-- Safety check integration (PII scanning, prohibited content)
-
-**API Endpoints:**
-- POST `/api/operator/drafts/{id}/approve` - Approve draft for sending
-- POST `/api/operator/drafts/{id}/send` - Send approved draft
-
-**Exit Criteria:** ✅ 8/8 complete
-
----
-
-#### 2. Async Task Processing (Sprint 2)
-**Purpose:** Prevent webhook timeouts, enable background processing
-
+#### Daemon Mode (Sprint 16)
 **Files:**
-- [src/tasks/formlead_task.py](src/tasks/formlead_task.py) - Celery task for form lead processing
-- [src/routes/celery_tasks.py](src/routes/celery_tasks.py) - Task status API endpoints
-- [src/models/task.py](src/models/task.py) - FailedTask model for DLQ
-- [src/routes/webhooks.py](src/routes/webhooks.py) - Webhook task queueing
+- [src/tasks/monitor_signals.py](src/tasks/monitor_signals.py) - Background monitor (every 5min)
+- [src/services/notification_service.py](src/services/notification_service.py) - Proactive alerts
+- [src/models/notification.py](src/models/notification.py) - JarvisNotification
 
-**Key Features:**
-- Webhook response time: <500ms (previously 30-60s)
-- Celery task: `process_formlead_async` with retry logic
-- Exponential backoff: 60s → 120s → 240s
-- Dead letter queue: Failed task storage + manual retry
-- Task status tracking: Real-time progress polling
-
-**API Endpoints:**
-- GET `/api/async/tasks/{task_id}/status` - Poll task execution status
-- GET `/api/async/failed-tasks` - List dead letter queue
-- POST `/api/async/failed-tasks/{id}/retry` - Manual retry failed task
-- POST `/api/async/failed-tasks/{id}/resolve` - Mark task resolved
-
-**Exit Criteria:** ✅ 6/6 complete
-
----
-
-#### 3. Auto-Approval Rules Engine (Sprint 4)
-**Purpose:** Automatically approve high-confidence drafts to reduce manual workload
-
+#### Voice Interface (Sprint 17)
 **Files:**
-- [src/auto_approval.py](src/auto_approval.py) - AutoApprovalEngine rule evaluation
-- [src/models/auto_approval.py](src/models/auto_approval.py) - Database models (AutoApprovalRule, ApprovedRecipient, AutoApprovalLog)
-- [src/routes/admin.py](src/routes/admin.py) - Emergency controls + rule management
-- [src/formlead_orchestrator.py](src/formlead_orchestrator.py) - Step 10.5 integration
+- [src/services/voice_service.py](src/services/voice_service.py) - 287 lines, Whisper + TTS
+- Voices: alloy, echo, fable, onyx, nova, shimmer
 
-**Key Features:**
-- 3 rule types: replied_before (0.95), known_good_recipient (0.90), high_icp_score (0.85)
-- Priority-based evaluation (lower priority evaluated first)
-- Emergency kill switch (password-protected)
-- Auto-send when: AUTO_APPROVE_ENABLED=True + ALLOW_REAL_SENDS=True
-- Full audit trail with reasoning
+#### Local Deployment (Sprint 18)
+**Files:**
+- [docker-compose.yml](docker-compose.yml) - 5 services (postgres, redis, api, celery-worker, celery-beat)
+- [src/__main__.py](src/__main__.py) - CLI entrypoint
+- [Makefile](Makefile) - local-up, local-down, local-logs
 
-**API Endpoints:**
-- POST `/api/admin/emergency-stop` - Activate kill switch
-- POST `/api/admin/emergency-resume` - Deactivate kill switch
-- GET `/api/admin/emergency-status` - Check kill switch status
-- GET `/api/admin/rules` - List all rules
-- POST `/api/admin/rules/{id}/enable` - Enable rule
-- POST `/api/admin/rules/{id}/disable` - Disable rule
-- POST `/api/admin/rules/seed` - Seed default rules
-- GET `/api/admin/approved-recipients` - List whitelist
-- DELETE `/api/admin/approved-recipients/{id}` - Remove from whitelist
+#### Action Executor Wiring (Sprint 19)
+**Files:**
+- [src/actions/executor.py](src/actions/executor.py) - Wired to real APIs (Gmail, HubSpot, Calendar)
+- [src/connectors/gmail.py](src/connectors/gmail.py) - send_email(), delete_draft()
+- [src/connectors/hubspot.py](src/connectors/hubspot.py) - update_task(), delete_task(), update_deal()
 
-**Exit Criteria:** ✅ 7/7 complete
+#### MCP Server (Sprint 20)
+**Files:**
+- [src/mcp/server.py](src/mcp/server.py) - JSON-RPC 2.0 protocol
+- [src/mcp/tools.py](src/mcp/tools.py) - 8 tools for Claude Desktop
+- [src/routes/mcp_routes.py](src/routes/mcp_routes.py) - WebSocket + HTTP endpoints
+- [docs/MCP_INTEGRATION.md](docs/MCP_INTEGRATION.md) - Claude Desktop setup
 
 ---
 
-## 📊 Sprint Progress
+## 🏗️ Core Systems (Sprints 7-10)
 
-| Sprint | Status | Exit Criteria | Implementation Doc |
-|--------|--------|---------------|-------------------|
-| Sprint 0 | DEFERRED | 0/4 | - |
-| Sprint 1 | ✅ COMPLETE | 8/8 ✅ | [SPRINT_1_IMPLEMENTATION_COMPLETE.md](SPRINT_1_IMPLEMENTATION_COMPLETE.md) |
-| Sprint 2 | ✅ COMPLETE | 6/6 ✅ | [SPRINT_2_IMPLEMENTATION_COMPLETE.md](SPRINT_2_IMPLEMENTATION_COMPLETE.md) |
-| Sprint 4 | ✅ COMPLETE | 7/7 ✅ | [SPRINT_4_IMPLEMENTATION_COMPLETE.md](SPRINT_4_IMPLEMENTATION_COMPLETE.md) |
-| Sprint 6 | PLANNED | 0/10 | - |
+## 🏗️ Core Systems (Sprints 7-10)
 
----
+#### Command Queue + APS Scoring (Sprint 7)
+**Files:**
+- [src/models/command_queue.py](src/models/command_queue.py) - CommandQueueItem
+- [src/services/aps_calculator.py](src/services/aps_calculator.py) - 40% revenue, 25% urgency, 15% effort, 20% strategic
+- [src/routes/command_queue.py](src/routes/command_queue.py) - Today's Moves API
+- [static/command-queue.html](static/command-queue.html) - Dashboard UI
 
-## 🗂️ File Structure Reference
+#### Signal Framework (Sprint 8)
+**Files:**
+- [src/models/signal.py](src/models/signal.py) - 5 sources (form, hubspot, gmail, calendar, manual)
+- [src/services/signal_processor.py](src/services/signal_processor.py) - Signal → CommandQueue conversion
+- [src/routes/signals.py](src/routes/signals.py) - Signal API
 
-### Source Code Organization
+#### Action Execution (Sprint 9)
+**Files:**
+- [src/actions/executor.py](src/actions/executor.py) - Dry-run, rate limiting, kill switch, rollback
+- [src/routes/actions.py](src/routes/actions.py) - Execution API
 
-```
-src/
-├── config.py                    # Settings + feature flags (ALLOW_REAL_SENDS, AUTO_APPROVE_ENABLED)
-├── operator_mode.py             # Draft approval + send orchestration
-├── rate_limiter.py              # Rate limiting enforcement
-├── tasks.py                     # Celery app configuration
-├── auto_approval.py             # AutoApprovalEngine rule evaluation
-├── formlead_orchestrator.py     # Workflow orchestration (Step 10.5 auto-approval)
-├── db/
-│   └── workflow_db.py           # Database persistence layer
-├── models/
-│   ├── task.py                  # FailedTask model for DLQ
-│   ├── workflow.py              # Workflow execution tracking
-│   └── auto_approval.py         # AutoApprovalRule, ApprovedRecipient, AutoApprovalLog
-├── routes/
-│   ├── webhooks.py              # HubSpot form webhook handler
-│   ├── celery_tasks.py          # Task status API endpoints
-│   └── admin.py                 # Emergency controls + rule management
-└── tasks/
-    └── formlead_task.py         # Async form lead processing task
-```
-
-### Documentation Organization
-
-```
-/workspaces/sales-agent/
-├── STRATEGIC_ROADMAP.md                      # Source of truth for sprint planning
-├── SPRINT_1_IMPLEMENTATION_COMPLETE.md       # Sprint 1: Email send capability
-├── SPRINT_2_IMPLEMENTATION_COMPLETE.md       # Sprint 2: Async task processing
-├── SPRINT_4_IMPLEMENTATION_COMPLETE.md       # Sprint 4: Auto-approval rules engine
-├── IMPLEMENTATION_INDEX.md                   # This file - documentation index
-└── README.md                                 # Project overview + quick start
-```
+#### Outcome Tracking (Sprint 10)
+**Files:**
+- [src/models/outcome.py](src/models/outcome.py) - OutcomeRecord with impact scores (-5 to +10)
+- [src/routes/outcomes.py](src/routes/outcomes.py) - 18 outcome types across 5 categories
+- Auto-detection: Gmail replies, HubSpot deal changes, meetings
 
 ---
 
-## 🔗 Quick Navigation
+## 🤖 AI Agents (36 Total)
 
-### For Developers
-1. **Starting a new sprint:** Check [STRATEGIC_ROADMAP.md](STRATEGIC_ROADMAP.md) for task breakdown
-2. **Reviewing completed work:** See `SPRINT_*_IMPLEMENTATION_COMPLETE.md` files
-3. **Understanding architecture:** Review Technical Architecture section above
-4. **API reference:** See individual route files in `src/routes/`
+### Sales Domain (8 agents)
+- ProspectingAgent, NurturingAgent, ResearchAgent
+- ValidationAgent, PersonaRouter, AccountAnalyzer
+- AgendaGenerator, OutcomeReporter
 
-### For Operators
-1. **Email send controls:** [SPRINT_1_IMPLEMENTATION_COMPLETE.md](SPRINT_1_IMPLEMENTATION_COMPLETE.md)
-2. **Task monitoring:** [SPRINT_2_IMPLEMENTATION_COMPLETE.md](SPRINT_2_IMPLEMENTATION_COMPLETE.md)
-3. **Auto-approval controls:** [SPRINT_4_IMPLEMENTATION_COMPLETE.md](SPRINT_4_IMPLEMENTATION_COMPLETE.md)
-4. **Feature flags:** [src/config.py](src/config.py) - Environment variables
+### Content Domain (2 agents)
+- ContentRepurposeAgent, SocialSchedulerAgent
 
-### For Product/Management
-1. **Sprint status:** See Sprint Progress table above
-2. **Business impact:** Read "Business Impact Summary" in each implementation doc
-3. **Roadmap:** [STRATEGIC_ROADMAP.md](STRATEGIC_ROADMAP.md) - Overall plan + timeline
+### Fulfillment Domain (3 agents)
+- DeliverableTrackerAgent, ApprovalGatewayAgent, ClientHealthAgent
+
+### Contracts Domain (3 agents)
+- ProposalGeneratorAgent, ContractReviewAgent, PricingCalculatorAgent
+
+### Operations Domain (3 agents)
+- CompetitorWatchAgent, RevenueOpsAgent, PartnerCoordinatorAgent
+
+### Data Hygiene Domain (5 agents)
+- SyncHealthAgent, ContactValidationAgent, EnrichmentOrchestrator
+- DataDecayAgent, DuplicateWatcherAgent
+
+### Master Orchestrator
+- **Jarvis** [src/agents/jarvis.py](src/agents/jarvis.py) - Routes to all domain agents
 
 ---
 
-## 🎯 Next Steps
+## 🔌 External Integrations (11 connectors)
 
-**Current Focus:** Sprint 6 - Production Hardening
+| Connector | File | Status | Capabilities |
+|-----------|------|--------|--------------|
+| Gmail | [src/connectors/gmail.py](src/connectors/gmail.py) | ✅ Working | Read, search, create drafts, send |
+| HubSpot | [src/connectors/hubspot.py](src/connectors/hubspot.py) | ✅ Working | Contacts, companies, deals, tasks |
+| Calendar | [src/connectors/calendar_connector.py](src/connectors/calendar_connector.py) | ✅ Working | Freebusy, event creation |
+| Drive | [src/connectors/drive.py](src/connectors/drive.py) | ✅ Working | File search, asset hunting |
+| OpenAI | [src/connectors/llm.py](src/connectors/llm.py) | ✅ Working | GPT-4, Whisper, TTS, embeddings |
+| Gemini | [src/connectors/gemini.py](src/connectors/gemini.py) | ✅ Working | Alternative LLM |
+| Grok | [src/connectors/grok.py](src/connectors/grok.py) | ✅ Working | Twitter AI |
+| Twitter | [src/connectors/twitter.py](src/connectors/twitter.py) | ✅ Working | Social posting |
+| Google Docs | [src/connectors/google_docs.py](src/connectors/google_docs.py) | ⚠️ Partial | Read-only |
+| Slack | - | ❌ Not started | Planned Sprint 22 |
+| MCP | [src/mcp/server.py](src/mcp/server.py) | ✅ Working | Claude Desktop integration |
 
-**Completed Sprints:**
-- ✅ Sprint 1: Email Send Capability (8/8 exit criteria)
-- ✅ Sprint 2: Async Task Processing (6/6 exit criteria)
-- ✅ Sprint 4: Auto-Approval Rules Engine (7/7 exit criteria)
+---
 
-**Sprint 6 Objective:** System runs reliably in production with security
+## 📊 Database Schema
 
-**Tasks:**
-1. Security audit & fixes (8 hours)
-2. Data retention & GDPR (6 hours)
-3. Disaster recovery plan (6 hours)
-4. Error tracking & APM (3 hours)
-5. Circuit breaker for external APIs (4 hours)
-6. Health check endpoints (2 hours)
-7. Graceful shutdown (3 hours)
-8. Database connection pooling (2 hours)
-9. Monitoring dashboards (6 hours)
-10. Emergency rollback procedure (4 hours)
+### Key Models
 
-**Expected Duration:** 5 days (40 hours)
+| Model | File | Purpose |
+|-------|------|---------|
+| Workflow | [src/models/workflow.py](src/models/workflow.py) | End-to-end tracking |
+| DraftEmail | [src/models/draft_email.py](src/models/draft_email.py) | Email storage |
+| CommandQueueItem | [src/models/command_queue.py](src/models/command_queue.py) | Prioritized actions |
+| Signal | [src/models/signal.py](src/models/signal.py) | Event ingestion |
+| OutcomeRecord | [src/models/outcome.py](src/models/outcome.py) | Closed-loop tracking |
+| JarvisSession | [src/models/memory.py](src/models/memory.py) | Persistent sessions |
+| ConversationMemory | [src/models/memory.py](src/models/memory.py) | Message history + embeddings |
+| JarvisNotification | [src/models/notification.py](src/models/notification.py) | Proactive alerts |
 
-**Exit Criteria:** 10 tasks, production-ready system with monitoring
+### Migrations
+- Total: 13 migrations
+- Location: [infra/migrations/versions/](infra/migrations/versions/)
+- Tool: Alembic
+- Run: `python run_migrations.py`
+
+---
+
+## 🚀 Production Deployment
+
+**Platform:** Railway  
+**URL:** https://web-production-a6ccf.up.railway.app  
+**Build:** Dockerfile  
+**Auto-deploy:** main branch
+
+### Key Files
+- [Dockerfile](Dockerfile) - Python 3.12 slim
+- [start.sh](start.sh) - Migrations + uvicorn
+- [railway.json](railway.json) - Railway config
+- [requirements.txt](requirements.txt) - Dependencies
+
+---
+
+## 📖 Documentation Reference
+
+### Core Documents
+- [ROADMAP.md](ROADMAP.md) - Master sprint plan (Sprints 0-30)
+- [TRUTH.md](TRUTH.md) - Production state (January 2026)
+- [CHANGELOG.md](CHANGELOG.md) - Complete history (Sprints 0-20)
+- [IMPLEMENTATION_INDEX.md](IMPLEMENTATION_INDEX.md) - This file
+- [PROJECT_BUILD_PHILOSOPHY.md](PROJECT_BUILD_PHILOSOPHY.md) - Execution principles
+- [API_ENDPOINTS.md](API_ENDPOINTS.md) - API reference with curl examples
+
+### Sprint Completion Logs (Archive)
+See [archive/old_docs/](archive/old_docs/) for:
+- SPRINT_*_COMPLETE.md files (Sprints 0,1,2,4,6,11-12)
+- CASEYOS_TRANSFORMATION.md
+- PRODUCTION_BUGFIXES.md
+- STRATEGIC_ROADMAP.md (superseded by ROADMAP.md)
+
+### Domain-Specific
+- [docs/CASEYOS_PHILOSOPHY.md](docs/CASEYOS_PHILOSOPHY.md) - Vision & principles
+- [docs/CASEYOS_ARCHITECTURE_AUDIT.md](docs/CASEYOS_ARCHITECTURE_AUDIT.md) - Architecture deep dive
+- [docs/API_COMMAND_QUEUE.md](docs/API_COMMAND_QUEUE.md) - Command queue design
+- [docs/SIGNALS.md](docs/SIGNALS.md) - Signal framework
+- [docs/DR_RUNBOOK.md](docs/DR_RUNBOOK.md) - Disaster recovery
+
+---
+
+## ⚡ Quick Reference
+
+### Health Checks
+```bash
+# Basic health
+curl https://web-production-a6ccf.up.railway.app/health
+
+# MCP server
+curl https://web-production-a6ccf.up.railway.app/mcp/info
+
+# Today's Moves
+curl https://web-production-a6ccf.up.railway.app/api/command-queue/today
+
+# Jarvis proactive
+curl https://web-production-a6ccf.up.railway.app/api/jarvis/whats-up
+```
+
+### Local Development
+```bash
+# Start infrastructure
+make docker-up
+
+# Run migrations
+python run_migrations.py
+
+# Run tests
+make test
+
+# Format code
+make format
+
+# Check secrets
+make secrets-check
+```
+
+### Agent Usage
+```python
+# Via Jarvis (recommended)
+from src.agents.jarvis import get_jarvis
+jarvis = get_jarvis()
+result = await jarvis.ask("What's the pipeline health?")
+
+# Direct domain
+from src.agents.ops.revenue_ops import RevenueOpsAgent
+agent = RevenueOpsAgent(hubspot_connector=hubspot)
+result = await agent.execute({"action": "pipeline_health"})
+```
+
+---
+
+## 🎯 Current Status
+
+**Sprints 0-20:** ✅ Complete  
+**Sprint 21:** ⏳ In Progress (Documentation Consolidation)  
+**Sprint 22:** 🔜 Ready (Slack Integration)  
+**Production:** https://web-production-a6ccf.up.railway.app
+
+See [ROADMAP.md](ROADMAP.md) for detailed sprint plans and [TRUTH.md](TRUTH.md) for what's deployed.
 
 ---
 
