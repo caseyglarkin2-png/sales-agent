@@ -32,6 +32,10 @@ async def async_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+# Alias for better naming (Sprint 22 standard)
+get_session = async_session
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for database sessions."""
     async with async_session() as session:
@@ -42,4 +46,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 SessionLocal = _async_session_factory
 
 
-__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_db", "Base", "SessionLocal"]
+__all__ = ["WorkflowDB", "get_workflow_db", "close_workflow_db", "async_session", "get_session", "get_db", "Base", "SessionLocal"]

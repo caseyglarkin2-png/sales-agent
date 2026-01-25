@@ -83,14 +83,34 @@ async def verify_csrf_token(request: Request) -> None:
 
 
 def exclude_path(path: str) -> bool:
-    """Check if path should skip CSRF validation."""
+    """
+    Check if path should skip CSRF validation.
+    
+    Excluded paths:
+    - /api/webhooks/* - External webhooks with signature validation
+    - /mcp/* - MCP server (Claude Desktop integration)
+    - /health, /healthz, /ready - Health checks
+    - /auth/* - OAuth callbacks
+    - /docs, /redoc, /openapi.json - API documentation
+    """
     # Webhook endpoints (have signature validation)
     if path.startswith("/api/webhooks"):
         return True
 
-    # Health checks
-    if path.startswith("/health"):
+    # MCP server (Claude Desktop integration)
+    if path.startswith("/mcp"):
         return True
 
-    # GET requests (no state change)
+    # Health checks
+    if path in ["/health", "/healthz", "/ready"]:
+        return True
+
+    # OAuth callbacks (state validation via OAuth protocol)
+    if path.startswith("/auth/"):
+        return True
+
+    # API documentation
+    if path in ["/docs", "/redoc", "/openapi.json"]:
+        return True
+
     return False
