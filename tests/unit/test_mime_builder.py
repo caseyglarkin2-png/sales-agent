@@ -2,7 +2,7 @@
 import pytest
 from email import message_from_string
 
-from src.email.mime_builder import build_mime_message, validate_mime_message
+from src.email_utils.mime_builder import build_mime_message, validate_mime_message
 
 
 def test_build_simple_text_message():

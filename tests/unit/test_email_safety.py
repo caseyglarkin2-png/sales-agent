@@ -3,7 +3,7 @@ Tests for Email Safety Checks Module
 """
 
 import pytest
-from src.email.email_safety import (
+from src.email_utils.email_safety import (
     check_email_safety,
     SafetyViolationType,
     SafetyCheckResult,
