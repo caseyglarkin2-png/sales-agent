@@ -54,6 +54,6 @@ We will leverage the "treasure trove" of internal data (Drive, Slack, YouTube) t
 4. **Slack** (Unlocks the internal context)
 
 ## Definition of Done
-- [ ] capable of answering specific questions about Pesti/Yardflow contracts from Drive.
-- [ ] capable of drafting a newsletter from a provided YouTube URL.
-- [ ] Slack history searchable via Jarvis.
+- [x] capable of answering specific questions about Pesti/Yardflow contracts from Drive.
+- [x] capable of drafting a newsletter from a provided YouTube URL.
+- [x] Slack history searchable via Jarvis. (Slack ingestion route added, DeepResearchAgent wires ContentMemory)

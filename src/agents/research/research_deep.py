@@ -1,19 +1,22 @@
 from typing import Dict, Any, List
+from sqlalchemy import select, or_
 
 from src.agents.base import BaseAgent
 from src.connectors.drive import DriveConnector
 from src.connectors.gemini import GeminiConnector
 from src.logger import get_logger
+from src.db import get_session
+from src.models.content import ContentMemory
 
 logger = get_logger(__name__)
 
 class DeepResearchAgent(BaseAgent):
     """
-    Agent for deep research using Google Drive 'treasure troves' and Gemini 1.5 Pro.
+    Agent for deep research using Google Drive 'treasure troves', Internal DB, and Gemini 1.5 Pro.
     
     Capabilities:
     1. Search specific Drive folders (Pesti, Yardflow, Dude).
-    2. Extract content from Docs/Text files.
+    2. Search internal ContentMemory (Slack history, YouTube transcripts).
     3. Analyze massive context logic with Gemini 1.5 Pro.
     """
     
@@ -45,34 +48,53 @@ class DeepResearchAgent(BaseAgent):
         elif folder_alias in ["yardflow", "freightroll"]:
             company_filter = "yardflow" # Might need to add this to DriveConnector config later if not present
             
-        # 2. Search Assets
+        # 2. Search Drive Assets
         assets = await self.drive.search_assets(
             query=query, # Use the query key terms as search
             company_name=company_filter, # This maps to filtering inside connector if logic exists
             max_results=max_files
         )
-        
-        if not assets:
-            return {
-                "result": "No relevant documents found in Drive.",
-                "sources": []
-            }
             
-        # 3. Extract Content
+        # 3. Build Knowledge Context
         knowledge_block = []
         sources = []
         
-        for asset in assets:
-            file_id = asset["id"]
-            name = asset["name"]
-            link = asset["link"]
-            
-            content = await self.drive.get_file_content(file_id)
-            if content and not content.startswith("["): # Skip binary/errors
-                knowledge_block.append(f"--- DOCUMENT: {name} ---\n{content}\n")
-                sources.append({"name": name, "link": link})
-            else:
-                 logger.warning(f"Skipped file {name} (no text content)")
+        # 3a. From Drive
+        if assets:
+            for asset in assets:
+                file_id = asset["id"]
+                name = asset["name"]
+                link = asset["link"]
+                
+                content = await self.drive.get_file_content(file_id)
+                if content and not content.startswith("["): # Skip binary/errors
+                    knowledge_block.append(f"--- DOCUMENT: {name} ---\n{content}\n")
+                    sources.append({"name": name, "link": link})
+                else:
+                    logger.warning(f"Skipped file {name} (no text content)")
+        
+        # 3b. From ContentMemory (Slack/YouTube)
+        try:
+            async with get_session() as session:
+                # Simple keyword search on content or title
+                stmt = select(ContentMemory).where(
+                    or_(
+                        ContentMemory.content.ilike(f"%{query}%"),
+                        ContentMemory.title.ilike(f"%{query}%")
+                    )
+                ).limit(5)
+                
+                result = await session.execute(stmt)
+                db_items = result.scalars().all()
+                
+                if db_items:
+                    logger.info(f"Found {len(db_items)} items in ContentMemory matching '{query}'")
+                    for item in db_items:
+                        snippet = item.content[:25000] # Limit char count per item
+                        knowledge_block.append(f"--- INTERNAL MEMORY ({item.source_type.upper()}): {item.title} ---\n{snippet}\n")
+                        sources.append({"name": f"[{item.source_type}] {item.title}", "link": item.source_url})
+        except Exception as e:
+            logger.error(f"Error searching ContentMemory: {e}")
                  
         if not knowledge_block:
              return {
