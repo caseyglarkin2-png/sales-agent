@@ -96,6 +96,7 @@ from src.routes import email_tracking_routes
 from src.routes import queue as queue_routes
 from src.routes import custom_fields_routes
 from src.routes import tags_routes
+from src.routes import content_ingest as content_ingest_routes
 # REMOVED Sprint 22 Task 5 - Unused route
 # from src.routes import automation_routes
 from src.routes import notification_prefs_routes
@@ -575,6 +576,7 @@ app.include_router(deal_scoring_routes.router)
     # REMOVED Sprint 22 Task 5 - Unused route
     # app.include_router(quote_management_routes.router)
 app.include_router(voice_approval_routes.router)
+app.include_router(content_ingest_routes.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")

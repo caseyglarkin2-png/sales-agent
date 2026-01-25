@@ -209,6 +209,51 @@ class GeminiConnector:
         except Exception as e:
             logger.error(f"Gemini generation failed: {e}")
             raise
+
+    async def analyze_context(
+        self,
+        context_text: str,
+        query: str,
+        model: Optional[GeminiModel] = GeminiModel.PRO_1_5,
+    ) -> str:
+        """
+        Analyze a large context (documents) and answer a query.
+        
+        Args:
+            context_text: The massive text block from documents.
+            query: The user's question.
+            model: Defaults to PRO_1_5 (1M context).
+            
+        Returns:
+            The analysis result.
+        """
+        # Truncate if insanely large (safety check), though 1M is huge.
+        # 1 token ~= 4 chars. 1M tokens ~= 4MB text.
+        max_chars = 10 * 1024 * 1024  # Cap at 10MB approx
+        if len(context_text) > max_chars:
+            logger.warning("Context truncated to 10MB characters")
+            context_text = context_text[:max_chars]
+
+        prompt = f"""
+        You are a Deep Research expert. You have access to the following Internal Knowledge Block.
+        Answer the query based ONLY on this context. 
+        If the answer is not in the context, state that clearly.
+        
+        === INTERNAL KNOWLEDGE BLOCK START ===
+        {context_text}
+        === INTERNAL KNOWLEDGE BLOCK END ===
+        
+        QUERY: {query}
+        """
+        
+        response = await self.generate(
+            prompt=prompt,
+            model=model,
+            max_tokens=8192,
+            temperature=0.3,  # More factual
+        )
+        
+        return response.text
     
     async def generate_with_context(
         self,

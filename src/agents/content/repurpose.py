@@ -8,9 +8,12 @@ Takes a single source (case study, blog post, webinar) and generates:
 """
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from sqlalchemy import select
 
 from src.agents.base import BaseAgent
 from src.logger import get_logger
+from src.db import get_session
+from src.models.content import ContentMemory
 
 logger = get_logger(__name__)
 
@@ -71,7 +74,8 @@ class ContentRepurposeAgent(BaseAgent):
         return (
             "source_doc_id" in context or 
             "source_text" in context or
-            "source_url" in context
+            "source_url" in context or
+            "source_content_memory_id" in context
         )
 
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -132,6 +136,21 @@ class ContentRepurposeAgent(BaseAgent):
         # Direct text
         if "source_text" in context:
             return context["source_text"]
+            
+        # From Content Memory (DB)
+        if "source_content_memory_id" in context:
+            try:
+                cm_id = context["source_content_memory_id"]
+                async with get_session() as session:
+                    result = await session.execute(
+                        select(ContentMemory).where(ContentMemory.id == cm_id)
+                    )
+                    record = result.scalars().first()
+                    if record and record.content:
+                        return record.content
+                    logger.warning(f"ContentMemory record not found or empty: {cm_id}")
+            except Exception as e:
+                logger.error(f"Error fetching from ContentMemory: {e}")
         
         # From Drive
         if "source_doc_id" in context and self.drive_connector:

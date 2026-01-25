@@ -105,6 +105,10 @@ class Settings(BaseSettings):
     twitter_consumer_key: str = Field(default="", alias="TWITTER_CONSUMER_KEY", description="Twitter/X Consumer Key (API Key) for OAuth 1.0a")
     twitter_consumer_secret: str = Field(default="", alias="TWITTER_CONSUMER_SECRET", description="Twitter/X Consumer Secret (API Secret) for OAuth 1.0a")
 
+    # Slack (The Comms Trove)
+    slack_bot_token: str = Field(default="", alias="SLACK_BOT_TOKEN", description="Slack Bot Token (xoxb-...)")
+    slack_signing_secret: str = Field(default="", alias="SLACK_SIGNING_SECRET", description="Slack Signing Secret")
+
     # Feature Flags
     feature_cold_start_demo: bool = Field(default=True, alias="FEATURE_COLD_START_DEMO", description="Enable cold-start demo")
     feature_validation_agent: bool = Field(default=False, alias="FEATURE_VALIDATION_AGENT", description="Enable validation agent")

@@ -587,7 +587,8 @@
       }
 
       .nav-links {
-        display: none; /* Hide on mobile - use hamburger menu pattern */
+        display: none;
+        /* Hide on mobile - use hamburger menu pattern */
       }
 
       .nav-brand {
@@ -778,7 +779,9 @@
         color: var(--gray-900);
       }
 
-      .nav, .queue-list, .stat-card {
+      .nav,
+      .queue-list,
+      .stat-card {
         background: var(--gray-100);
         border-color: var(--gray-200);
       }
@@ -878,8 +881,8 @@
 
   <div class="toast" id="toast"></div>
 
-      <script src="/static/csrf-helper.js"></script>
-    <script>
+  <script src="/static/csrf-helper.js"></script>
+  <script>
     const API_BASE = '/api/command-queue';
     let items = [];
 
@@ -1198,15 +1201,15 @@
             priority_score: 50
           })
         })
-        .then(res => {
-          if (res.ok) {
-            showToast('Task added!', 'success');
-            loadQueue();
-          } else {
-            showToast('Failed to add task', 'error');
-          }
-        })
-        .catch(() => showToast('Failed to add task', 'error'));
+          .then(res => {
+            if (res.ok) {
+              showToast('Task added!', 'success');
+              loadQueue();
+            } else {
+              showToast('Failed to add task', 'error');
+            }
+          })
+          .catch(() => showToast('Failed to add task', 'error'));
       }
     }
 
@@ -1241,7 +1244,7 @@
     loadCompletedCount();
     loadOutcomeStats();
   </script>
-  
+
   <!-- Mobile Floating Action Button -->
   <button class="fab" onclick="showQuickAdd()" title="Quick add task">+</button>
 </body>

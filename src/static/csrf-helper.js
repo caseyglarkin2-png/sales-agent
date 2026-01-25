@@ -9,7 +9,7 @@
  *   await fetch('/api/endpoint', { method: 'POST', body: ... });
  */
 
-(function() {
+(function () {
     'use strict';
 
     // Global CSRF token storage
@@ -59,7 +59,7 @@
      * Wrap native fetch to automatically inject CSRF tokens
      */
     const originalFetch = window.fetch;
-    window.fetch = async function(url, options = {}) {
+    window.fetch = async function (url, options = {}) {
         // Only inject CSRF for state-changing methods
         const method = (options.method || 'GET').toUpperCase();
         const needsCSRF = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);

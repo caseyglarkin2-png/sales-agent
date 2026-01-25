@@ -163,42 +163,52 @@ MCP server now exists at `src/mcp/`:
 
 ---
 
-## Roadmap: Sprints 21-24
+## Roadmap: Business Activation (Sprints 23-25)
 
-### Sprint 21: Documentation Consolidation (3 days)
-**Goal:** Single source of truth
+The "Henry" architecture is complete. Now we activate the business logic for "Dude What's The Bid?! LLC".
+
+### Sprint 23: Deep Research & Content Engine (The "Brain")
+**Goal:** Ingest the "treasure trove" (Drive, Slack, YouTube) and automate content creation.
 
 **Tasks:**
-1. Update `TRUTH.md` with January 2026 reality
-2. Archive outdated docs to `archive/old_docs/`
-3. Create single `ROADMAP.md` (consolidate 5+ roadmap files)
-4. Update `IMPLEMENTATION_INDEX.md` to Sprint 18+
-5. Delete redundant sprint completion docs
-6. Create `CHANGELOG.md` with all sprints
+1. **Deep Research Agent:**
+   - Integrate `Gemini 1.5 Pro` (1M+ context) for massive document analysis
+   - Connect to Google Drive (Pesti/Yardflow shared folders)
+   - Ingest "Dude What's The Bid?!" transcripts
+2. **Content Workflow:**
+   - Automation: YouTube Livestream → Transcript → LinkedIn Post + Newsletter
+   - Template: "The Freight Marketer" newsletter format
+   - Agent: `ContentRepurposeAgent` upgrades
+3. **Slack Connector:**
+   - Ingest history/context from private channels
+   - Enable "Context Search" across Email + Slack + Drive
 
-**Deliverable:**
-- `TRUTH.md` - What works NOW
-- `ROADMAP.md` - Future plans
-- `CHANGELOG.md` - History
-- `archive/` - Old documentation
+### Sprint 24: Proactive Command Center (The "Voice")
+**Goal:** Make Jarvis proactive via text/mobile.
+
+**Tasks:**
+1. **Twilio Integration:**
+   - Enable SMS send/receive (`src/connectors/twilio.py`)
+   - "Text Jarvis" capability (SMS → MCP/Jarvis)
+2. **Morning Briefing V2:**
+   - Push "Today's Moves" summary to SMS at 8 AM
+   - "Reply 'Y' to auto-approve drafts" via SMS
+3. **Mobile PWA Polish:**
+   - Ensure `command-queue.html` is mobile-perfect
+
+### Sprint 25: Client Operations (The "Hands")
+**Goal:** Deep integration with Pesti & Yardflow workflows.
+
+**Tasks:**
+1. **Client-Specific Agents:**
+   - `PestiOpsAgent`: Specialized outreach/booking logic
+   - `YardflowOpsAgent`: Integration with freighttech platforms (Genlogs, etc.)
+2. **Deep Research reporting:**
+   - Automated weekly reports based on Drive activity
 
 ---
 
-### Sprint 22: Emergency Stabilization (3 days) 🔴 CRITICAL
-**Goal:** Fix P0 bugs, establish foundation health metrics
-
-**Background:**
-Production audit (January 25, 2026) revealed critical issues:
-- 🔴 Jarvis `/whats-up` 500 error (proactive notifications broken)
-- 🔴 Database session anti-pattern (only 5 `async with` for 35 `session.execute` calls)
-- 🔴 CSRF coverage 1.4% (17/1,196 state-changing endpoints protected)
-- 🔴 Route explosion (2,719 decorators across 197 files)
-- ⚠️ Test coverage unknown (373 tests for 519 files = 0.72 tests/file)
-
-**Rationale:** Fix foundation BEFORE adding features (Slack deferred to Sprint 24)
-
-**Tasks:**
-1. ✅ **Fix Jarvis `/whats-up` 500 error** (4h) - COMPLETE
+## Completed Sprints Inventory
    - Fixed async session issue in `src/routes/jarvis_api.py`
    - Replaced `async_session()` with `get_session()` (6 violations)
    - Added comprehensive error handling

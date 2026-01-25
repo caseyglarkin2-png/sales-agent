@@ -111,6 +111,9 @@ class JarvisAgent(BaseAgent):
         # Initialize Ops agents
         await self._init_ops_agents()
         
+        # Initialize Research agents
+        await self._init_research_agents()
+        
         self._initialized = True
         logger.info(f"Jarvis initialized with {len(self._agents)} agents")
 
@@ -206,6 +209,7 @@ class JarvisAgent(BaseAgent):
     async def _init_content_agents(self) -> None:
         """Initialize content domain agents."""
         from src.agents.content.repurpose import ContentRepurposeAgent
+        from src.agents.content.repurpose_v2 import ContentRepurposeAgentV2
         from src.agents.content.social_scheduler import SocialSchedulerAgent
         from src.agents.content.graphics_request import GraphicsRequestAgent
         
@@ -217,6 +221,15 @@ class JarvisAgent(BaseAgent):
             ),
             domain=AgentDomain.CONTENT,
             capabilities=["repurpose_content", "generate_posts", "create_threads"]
+        )
+        
+        self._register_agent(
+            "content_repurpose_v2",
+            ContentRepurposeAgentV2(
+                llm_connector=self._connectors.get("llm"),
+            ),
+            domain=AgentDomain.CONTENT,
+            capabilities=["repurpose_transcript", "generate_linkedin_viral", "generate_newsletter_deep"]
         )
         
         self._register_agent(
@@ -332,6 +345,17 @@ class JarvisAgent(BaseAgent):
             ),
             domain=AgentDomain.OPS,
             capabilities=["track_referrals", "cosell_opportunities", "partner_comms"]
+        )
+
+    async def _init_research_agents(self) -> None:
+        """Initialize research domain agents."""
+        from src.agents.research.research_deep import DeepResearchAgent
+        
+        self._register_agent(
+            "deep_research",
+            DeepResearchAgent(),
+            domain=AgentDomain.RESEARCH,
+            capabilities=["deep_dive_drive", "analyze_large_docs", "treasure_trove_search"]
         )
 
     def _register_agent(
@@ -578,6 +602,10 @@ class JarvisAgent(BaseAgent):
         # Research is often needed as context
         if any(word in query_lower for word in ["research", "intel", "background", "info about"]):
             agents.append("research")
+
+        # Deep Research
+        if any(word in query_lower for word in ["drive", "deep dive", "treasure trove", "contract", "files", "pesti", "yardflow"]):
+            agents.append("deep_research") 
         
         return list(set(agents))  # Dedupe
 

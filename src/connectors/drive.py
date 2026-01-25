@@ -5,10 +5,12 @@ case studies, reports) to include in outbound emails.
 """
 import json
 import os
+import io
 from typing import Any, Dict, List, Optional
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 
 from src.logger import get_logger
 
@@ -198,6 +200,59 @@ class DriveConnector:
         
         if not self.service:
             return None
+            
+        return None
+
+    async def get_file_content(self, file_id: str, mime_type: Optional[str] = None) -> str:
+        """Download file content (text only)."""
+        if not self.service:
+            self._build_service()
+            
+        if not self.service:
+            return ""
+
+        try:
+            # If mime_type not provided, fetch it
+            if not mime_type:
+                file = self.service.files().get(fileId=file_id, fields="mimeType").execute()
+                mime_type = file.get("mimeType")
+
+            content = ""
+            
+            # Case 1: Google Doc -> Export to plain text
+            if mime_type == "application/vnd.google-apps.document":
+                request = self.service.files().export_media(
+                    fileId=file_id, mimeType="text/plain"
+                )
+                fh = io.BytesIO()
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while done is False:
+                    status, done = downloader.next_chunk()
+                content = fh.getvalue().decode("utf-8")
+                
+            # Case 2: Plain Text / Unknown -> Try direct download
+            else:
+                # Basic text download attempt
+                request = self.service.files().get_media(fileId=file_id)
+                fh = io.BytesIO()
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while done is False:
+                    status, done = downloader.next_chunk()
+                
+                # Try decoding as text, skip if binary
+                try:
+                    content = fh.getvalue().decode("utf-8")
+                except UnicodeDecodeError:
+                    return "[Binary Content - Skipped]"
+
+            return content
+
+        except Exception as e:
+            logger.error(f"Error downloading file {file_id}: {e}")
+            return f"[Error downloading: {str(e)}]"
+
         
         try:
             file = self.service.files().get(
