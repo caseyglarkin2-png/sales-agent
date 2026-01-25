@@ -1,7 +1,7 @@
 # CaseyOS Master Roadmap - January 2026
 
 **Date:** January 25, 2026  
-**Status:** Sprints 0-18 Complete | Starting Sprint 19  
+**Status:** Sprints 0-20 Complete | Starting Sprint 21  
 **Production:** https://web-production-a6ccf.up.railway.app
 
 ---
@@ -16,7 +16,7 @@ CaseyOS has evolved from a basic sales-agent into a comprehensive GTM Command Ce
 - ✅ Voice interface (Whisper + TTS)
 - ✅ Local deployment support
 
-**Critical Gap:** Action executor has 8 TODOs - "Execute" button doesn't perform real actions.
+**Critical Gap:** None - all execution paths wired. Ready for MCP usage.
 
 ---
 
@@ -46,7 +46,7 @@ CaseyOS has evolved from a basic sales-agent into a comprehensive GTM Command Ce
 | Sprint 13 | ✅ Done | Twitter/Grok integration |
 | Sprint 14 | ✅ Done | Mobile PWA support |
 
-### Henry Evolution (Sprints 15-19)
+### Henry Evolution (Sprints 15-20)
 | Sprint | Status | Key Deliverable |
 |--------|--------|-----------------|
 | Sprint 15 | ✅ Done | Persistent Memory (MemoryService, 557 lines) |
@@ -54,6 +54,7 @@ CaseyOS has evolved from a basic sales-agent into a comprehensive GTM Command Ce
 | Sprint 17 | ✅ Done | Voice Interface (Whisper + OpenAI TTS) |
 | Sprint 18 | ✅ Done | Local Deployment (Docker, CLI, Makefile) |
 | Sprint 19 | ✅ Done | Action Executor Wiring (real Gmail/HubSpot/Calendar) |
+| Sprint 20 | ✅ Done | MCP Server (8 tools, WebSocket + HTTP, Claude Desktop) |
 
 ---
 
@@ -133,12 +134,13 @@ The action executor is now fully wired to real APIs:
 
 Rollback support: `delete_draft()`, `delete_task()`
 
-### 🟡 Priority 1: MCP Integration (Not Started)
+### ✅ RESOLVED: MCP Integration (Sprint 20)
 
-Per `docs/CASEYOS_HENRY_EVOLUTION.md` Sprint 19-20:
-- No `src/mcp/` directory exists
-- CaseyOS can't be used as Claude MCP server
-- Blocks desktop AI assistant use case
+MCP server now exists at `src/mcp/`:
+- `server.py` - JSON-RPC 2.0 protocol handler
+- `tools.py` - 8 CaseyOS tools for AI assistants
+- Routes: `/mcp/ws` (WebSocket), `/mcp/message` (HTTP), `/mcp/tools/{name}`
+- Docs: `docs/MCP_INTEGRATION.md` with Claude Desktop setup
 
 ### 🟡 Priority 3: Documentation Outdated
 
@@ -154,41 +156,7 @@ Per `docs/CASEYOS_HENRY_EVOLUTION.md` Sprint 19-20:
 
 ---
 
-## Roadmap: Sprints 20-24
-
-### Sprint 20: MCP Server Integration (5 days)
-**Goal:** CaseyOS usable as Claude MCP tool server
-
-**Tasks:**
-1. Create `src/mcp/__init__.py`
-2. Create `src/mcp/server.py` - MCP protocol handler
-3. Create `src/mcp/tools.py` - Tool definitions
-4. Expose tools:
-   - `read_queue` - Get Today's Moves
-   - `execute_action` - Perform action
-   - `search_contacts` - Find HubSpot contacts
-   - `create_draft` - Create email draft
-   - `get_notifications` - Get proactive alerts
-5. Add MCP endpoint to FastAPI (`/mcp`)
-6. Test with MCP Inspector
-7. Document Claude Desktop setup
-
-**Validation:**
-```bash
-# Start MCP server
-python -m src.mcp.server
-
-# Use MCP Inspector to test
-npx @anthropics/mcp-inspector http://localhost:8000/mcp
-```
-
-**Acceptance:**
-- [ ] MCP server starts without errors
-- [ ] Claude Desktop can connect
-- [ ] Tools execute correctly
-- [ ] Responses follow MCP protocol
-
----
+## Roadmap: Sprints 21-24
 
 ### Sprint 21: Documentation Consolidation (3 days)
 **Goal:** Single source of truth
@@ -271,8 +239,8 @@ npx @anthropics/mcp-inspector http://localhost:8000/mcp
 | Sprint | Business Impact | Effort | Dependencies | Priority |
 |--------|----------------|--------|--------------|----------|
 | 19: Action Wiring | ✅ Complete | - | - | **DONE** |
-| 20: MCP Integration | 🟡 High | Medium | None | **NOW** |
-| 21: Doc Consolidation | 🟢 Medium | Low | None | Parallel |
+| 20: MCP Integration | ✅ Complete | - | - | **DONE** |
+| 21: Doc Consolidation | 🟢 Medium | Low | None | **NOW** |
 | 22: Slack | 🟡 High | Medium | None | After |
 | 23: Route Cleanup | 🟢 Low | Low | None | Parallel |
 | 24: Chrome Extension | 🟡 Medium | High | None | Future |
@@ -282,10 +250,10 @@ npx @anthropics/mcp-inspector http://localhost:8000/mcp
 ## Immediate Actions
 
 1. ~~**Start Sprint 19** - Wire action executor to real APIs~~ ✅ **COMPLETE**
-2. **Start Sprint 20** - MCP server integration
-3. **Update TRUTH.md** - Reflect current state
-4. **Archive old docs** - Reduce confusion
-5. **Verify production** - Test new voice endpoints
+2. ~~**Start Sprint 20** - MCP server integration~~ ✅ **COMPLETE**
+3. **Start Sprint 21** - Documentation consolidation
+4. **Update TRUTH.md** - Reflect current state
+5. **Archive old docs** - Reduce confusion
 
 ---
 
@@ -295,13 +263,19 @@ npx @anthropics/mcp-inspector http://localhost:8000/mcp
 # Production health
 curl https://web-production-a6ccf.up.railway.app/health
 
-# Jarvis voice endpoints (new)
+# MCP server info (new)
+curl https://web-production-a6ccf.up.railway.app/mcp/info
+
+# MCP tools list (new)
+curl https://web-production-a6ccf.up.railway.app/mcp/tools
+
+# Jarvis voice endpoints
 curl https://web-production-a6ccf.up.railway.app/api/jarvis/voice/voices
 
-# Memory endpoints (new)
+# Memory endpoints
 curl https://web-production-a6ccf.up.railway.app/api/jarvis/sessions
 
-# Notifications (new)
+# Notifications
 curl https://web-production-a6ccf.up.railway.app/api/jarvis/whats-up
 
 # Today's Moves
@@ -314,13 +288,14 @@ curl https://web-production-a6ccf.up.railway.app/api/command-queue/today
 
 | Metric | Count |
 |--------|-------|
-| Route files | 196 |
+| Route files | 197 |
 | Agent files | 36 |
 | Connector files | 11 |
 | Service files | 15+ |
+| MCP tools | 8 |
 | Total Python files | 300+ |
-| Lines of code | 50,000+ (estimate) |
+| Lines of code | 51,000+ (estimate) |
 
 ---
 
-**Next Step:** Execute Sprint 19 Task 1 - Wire `_execute_send_email` to Gmail API.
+**Next Step:** Execute Sprint 21 - Documentation consolidation.
