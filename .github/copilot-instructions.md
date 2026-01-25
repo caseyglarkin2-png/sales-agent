@@ -326,11 +326,65 @@ Run specific tests: `pytest tests/test_rate_limiting.py -v -s`
 1. **Email Sending**: `send_email()` implemented with MIME, threading, retries. Controlled by feature flags.
 2. **Auto-Approval**: Rules engine evaluates drafts; high-confidence auto-sends, borderline goes to review
 3. **Rate Limiting**: 2/week, 20/day per contact via [src/rate_limiter.py](src/rate_limiter.py)
-3. **Webhook Security**: HMAC-SHA256 validation in [src/webhook.py](src/webhook.py)
-4. **CSRF Protection**: All state-changing endpoints require CSRF token
-5. **Admin Auth**: Sensitive endpoints require `X-Admin-Token` header
-6. **Audit Trail**: All actions logged via [src/audit_trail.py](src/audit_trail.py)
-7. **Kill Switch**: Emergency stop at `/api/admin/emergency-stop`
+4. **Webhook Security**: HMAC-SHA256 validation in [src/webhook.py](src/webhook.py)
+5. **CSRF Protection**: 99.6% coverage (1,177/1,182 endpoints) - see CSRF section below
+6. **Admin Auth**: Sensitive endpoints require `X-Admin-Token` header
+7. **Audit Trail**: All actions logged via [src/audit_trail.py](src/audit_trail.py)
+8. **Kill Switch**: Emergency stop at `/api/admin/emergency-stop`
+
+---
+
+## CSRF Protection (Sprint 22 - 99.6% Coverage)
+
+### Auto-Injection Pattern
+
+All HTML files include `csrf-helper.js` which automatically:
+- Fetches CSRF tokens from `/health` endpoint
+- Wraps native `fetch()` to inject `X-CSRF-Token` header
+- Auto-refreshes tokens on 403 errors
+- **Zero code changes required** in application JavaScript
+
+```html
+<!-- All HTML files include this -->
+<script src="/static/csrf-helper.js"></script>
+```
+
+### Whitelist Pattern
+
+CSRF validation is **skipped** for:
+- `/api/webhooks/*` - External webhooks with HMAC-SHA256 signature validation
+- `/mcp/*` - MCP server (trusted Claude Desktop integration)
+- `/health`, `/healthz`, `/ready` - Health checks (monitoring)
+- `/auth/*` - OAuth callbacks (state validation via OAuth protocol)
+- `/docs`, `/redoc`, `/openapi.json` - API documentation (read-only)
+
+**File:** `src/security/csrf.py` - `exclude_path()` function
+
+### Manual CSRF Testing
+
+```bash
+# 1. Get token from any endpoint
+curl -I https://web-production-a6ccf.up.railway.app/health | grep X-CSRF-Token
+
+# 2. Test POST without token (should fail 403)
+curl -X POST $BASE/api/command-queue/test/accept
+# Expected: {"detail":"CSRF token missing"}
+
+# 3. Test POST with token (should pass CSRF check)
+curl -X POST $BASE/api/command-queue/test/accept \
+  -H "X-CSRF-Token: <token>"
+# Expected: NOT 403 CSRF error (may fail for other reasons)
+
+# 4. Validate with script
+python validate_csrf.py
+```
+
+### Coverage Achieved
+
+- **Before Sprint 22:** 1.4% (17/1,196 endpoints)
+- **After Sprint 22:** 99.6% (1,177/1,182 endpoints)
+- **Files Updated:** 16 files (11 HTML + csrf-helper.js + config)
+- **Validation:** `validate_csrf.py` - 6 automated checks
 
 ---
 
@@ -340,8 +394,9 @@ Run specific tests: `pytest tests/test_rate_limiting.py -v -s`
 - **OAuth Tokens**: Currently stored in memory only; tokens expire after 1hr
 - **Route Imports**: New routes must be registered in [src/main.py](src/main.py) explicitly
 - **Migrations**: Run via `python run_migrations.py`, not raw alembic commands
-- **CSRF**: State-changing endpoints need CSRF token from response headers
+- **CSRF**: Automatically handled by `csrf-helper.js` - just include the script in HTML
 - **Admin endpoints**: Require both `X-Admin-Token` AND CSRF token
+- **Pre-commit hooks**: Database session patterns enforced automatically
 
 ---
 
@@ -681,6 +736,39 @@ pytest tests/test_signal_to_recommendation.py -v
 make coverage
 ```
 
+### Validation Scripts (Sprint 22 Pattern)
+
+For quick validation without network dependencies, create Python validation scripts:
+
+```python
+#!/usr/bin/env python3
+"""Validation script pattern - no network, fast feedback."""
+from pathlib import Path
+
+def check_pattern():
+    """Check that code follows expected pattern."""
+    file = Path("src/security/csrf.py")
+    content = file.read_text()
+    
+    required_items = ["/api/webhooks", "/mcp", "/health"]
+    for item in required_items:
+        if item in content:
+            print(f"✓ {item}")
+        else:
+            print(f"❌ Missing: {item}")
+            return False
+    return True
+
+if __name__ == "__main__":
+    exit(0 if check_pattern() else 1)
+```
+
+**Examples:**
+- `validate_csrf.py` - CSRF protection validation (6 checks)
+- `python validate_csrf.py` - Run before deployment
+- Faster than pytest for structural checks
+- Good for CI/CD pre-checks
+
 ### Key Test Files
 - `test_formlead_orchestration.py` - Full 11-step workflow integration
 - `test_signal_to_recommendation.py` - Signal → recommendation conversion
@@ -829,6 +917,62 @@ curl https://web-production-a6ccf.up.railway.app/api/command-queue/today
 
 ---
 
+## Bulk Refactoring Best Practices (Sprint 22 Lessons)
+
+### Mechanical String Replacement Pattern
+
+For systematic code changes (imports, patterns, etc.), use `sed` scripts:
+
+```bash
+#!/bin/bash
+# Bulk fix pattern - mechanical, fast, auditable
+
+echo "=== Fixing Pattern Violations ==="
+
+for file in src/routes/*.py; do
+  echo "Fixing $file..."
+  # Replace import
+  sed -i 's/from src\.db import async_session/from src.db import get_session/g' "$file"
+  # Replace usage
+  sed -i 's/async with async_session()/async with get_session()/g' "$file"
+  echo "  ✓ Fixed"
+done
+
+echo "Files fixed: $(ls src/routes/*.py | wc -l)"
+```
+
+**Benefits:**
+- **Fast:** Processes 100+ files in seconds
+- **Auditable:** `git diff` shows exactly what changed
+- **Reversible:** `git revert` undoes entire batch
+- **Testable:** Run validation script after
+
+**Sprint 22 Example:**
+- Fixed 15 files with database session anti-patterns
+- Created 2 bash scripts for P0 and remaining files
+- Validated with `grep` to confirm zero violations
+- Added pre-commit hooks to prevent regression
+
+### Pre-commit Hook Pattern
+
+Enforce patterns automatically:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: check-async-session-usage
+        name: Check for async_session() anti-pattern
+        entry: bash -c 'if grep -rn "async with async_session()" src/; then exit 1; fi'
+        language: system
+        pass_filenames: false
+```
+
+**Result:** Impossible to commit anti-patterns
+
+---
+
 ## Reference Files
 
 - [TRUTH.md](../TRUTH.md) - What actually works vs. known gaps
@@ -837,3 +981,5 @@ curl https://web-production-a6ccf.up.railway.app/api/command-queue/today
 - [docs/CASEYOS_PHILOSOPHY.md](../docs/CASEYOS_PHILOSOPHY.md) - CaseyOS vision and principles
 - [docs/CASEYOS_SPRINT_ROADMAP.md](../docs/CASEYOS_SPRINT_ROADMAP.md) - Sprint plans and tasks
 - [docs/CASEYOS_ARCHITECTURE_AUDIT.md](../docs/CASEYOS_ARCHITECTURE_AUDIT.md) - Detailed architecture analysis
+- [SPRINT_22_TASK_2_COMPLETION_REPORT.md](../SPRINT_22_TASK_2_COMPLETION_REPORT.md) - Database session cleanup
+- [SPRINT_22_TASK_3_COMPLETION_REPORT.md](../SPRINT_22_TASK_3_COMPLETION_REPORT.md) - CSRF expansion (99.6%)
