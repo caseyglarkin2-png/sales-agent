@@ -1,8 +1,8 @@
 # Sprint 14: Mobile-First PWA
 
-**Status:** 🟡 READY TO START  
+**Status:** ✅ COMPLETE  
 **Started:** January 25, 2026  
-**Target Completion:** January 30, 2026
+**Completed:** January 25, 2026
 
 ---
 
@@ -17,6 +17,43 @@
 - [x] CaseyOS web dashboard working
 - [x] Command queue API functional
 - [x] All pages have viewport meta tag (after quick fixes)
+
+---
+
+## Completed Tasks
+
+### ✅ Task 14.1: Add PWA Manifest
+- Created `src/static/manifest.json` with full app metadata
+- Added 8 icon sizes (72, 96, 128, 144, 152, 192, 384, 512)
+- Configured theme color (#4f46e5), standalone display
+- Added app shortcuts for Queue and Jarvis
+
+### ✅ Task 14.2: Add Service Worker
+- Created `src/static/sw.js` with offline caching
+- Network-first strategy for API calls
+- Cache-first strategy for static assets
+- IndexedDB for offline action queuing
+- Push notification support scaffolded
+- Background sync for offline actions
+
+### ✅ Task 14.3: Mobile Bottom Navigation
+- Added 4-item bottom nav (Queue, Jarvis, Agents, Settings)
+- Touch-friendly 64px height
+- Responsive - hidden on desktop
+
+### ✅ Task 14.4: Mobile-Responsive CSS
+- Added safe area insets for notched devices
+- Touch targets minimum 44px (WCAG 2.5.5)
+- Responsive breakpoints (1200px, 768px, 480px)
+- Dark mode support maintained
+
+### ✅ Bug Fixes from UI/UX Audit
+- Fixed theme toggle ID mismatch
+- Fixed offline sync registration
+- Added CSRF tokens to all API calls
+- Added aria-labels for accessibility
+- Added loading states to buttons
+- Wired refresh button handler
 
 ---
 

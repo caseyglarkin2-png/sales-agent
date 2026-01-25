@@ -9,16 +9,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CaseyOS">
     <meta name="description" content="GTM Command Center - Your Chief of Staff for sales execution">
-    
+
     <title>CaseyOS • GTM Command Center</title>
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="/static/manifest.json">
-    
+
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-    
+
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/caseyos/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,8 +42,10 @@
             </nav>
         </div>
         <div class="header-right">
-            <a href="/static/agent-hub.html" class="btn-icon" title="Agent Hub" aria-label="Open Agent Hub" style="text-decoration:none;">🤖</a>
-            <a href="/static/jarvis.html" class="btn-icon" title="Jarvis Voice" aria-label="Open Jarvis Voice Assistant" style="text-decoration:none;">🎤</a>
+            <a href="/static/agent-hub.html" class="btn-icon" title="Agent Hub" aria-label="Open Agent Hub"
+                style="text-decoration:none;">🤖</a>
+            <a href="/static/jarvis.html" class="btn-icon" title="Jarvis Voice" aria-label="Open Jarvis Voice Assistant"
+                style="text-decoration:none;">🎤</a>
             <div class="health-indicator" id="health-status" role="status" aria-live="polite">
                 <span class="health-dot" aria-hidden="true"></span>
                 <span class="health-text">Connecting...</span>
@@ -54,7 +56,8 @@
                 <kbd>E</kbd> Execute
                 <kbd>R</kbd> Refresh
             </div>
-            <button class="btn-icon" id="dark-mode-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+            <button class="btn-icon" id="dark-mode-toggle" title="Toggle dark mode"
+                aria-label="Toggle dark mode">🌙</button>
         </div>
     </header>
 
@@ -228,7 +231,7 @@
     </div>
 
     <script src="/caseyos/app.js"></script>
-    
+
     <!-- Service Worker Registration -->
     <script>
         // Register service worker for PWA
@@ -239,7 +242,7 @@
                         scope: '/'
                     });
                     console.log('[CaseyOS] Service worker registered:', registration.scope);
-                    
+
                     // Check for updates
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
@@ -255,7 +258,7 @@
                 }
             });
         }
-        
+
         // Offline detection
         window.addEventListener('online', () => {
             document.getElementById('offline-banner').style.display = 'none';
@@ -267,12 +270,12 @@
                 }).catch(err => console.log('[CaseyOS] Sync registration failed:', err));
             }
         });
-        
+
         window.addEventListener('offline', () => {
             document.getElementById('offline-banner').style.display = 'flex';
             showToast('You are offline. Changes will sync when connected.', 'warning');
         });
-        
+
         // PWA install prompt
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {

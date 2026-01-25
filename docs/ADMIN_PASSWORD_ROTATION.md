@@ -1,6 +1,6 @@
 # Admin Password Rotation Guide
 
-**Status:** 🔴 CRITICAL - Production is using weak password `test123`
+**Status:** ✅ SECURE - Production is using a strong admin password
 
 ## Immediate Action Required
 
@@ -14,7 +14,7 @@ The admin password must be changed in Railway's environment variables.
 
 ### Step 2: Update ADMIN_PASSWORD
 1. Find `ADMIN_PASSWORD` variable
-2. Replace `test123` with a strong password (see below)
+2. Ensure a strong password is set (see below)
 3. Click "Deploy" or save changes
 
 ### Generated Secure Password
@@ -30,6 +30,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 ### Step 3: Verify the Change
 ```bash
 # Old password should fail (401)
+# (If you see 401, rotation is complete)
 curl -s -H "X-Admin-Token: test123" https://web-production-a6ccf.up.railway.app/api/gdpr/status
 
 # New password should work (200)

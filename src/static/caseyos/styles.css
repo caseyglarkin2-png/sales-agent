@@ -906,33 +906,34 @@ kbd {
 }
 
 @media (max-width: 768px) {
+
     /* Show mobile nav */
     .mobile-nav {
         display: flex;
     }
-    
+
     /* Add padding for mobile nav */
     main.dashboard {
         padding-bottom: 80px;
     }
-    
+
     /* Hide desktop header elements */
     .header-right .keyboard-hint {
         display: none;
     }
-    
+
     .header {
         padding: 0.5rem 1rem;
     }
-    
+
     .logo-text {
         font-size: 1rem;
     }
-    
+
     .nav-tabs {
         display: none;
     }
-    
+
     /* Stack stats */
     .stats-row {
         grid-template-columns: repeat(2, 1fr);
@@ -946,18 +947,18 @@ kbd {
     .keyboard-hint {
         display: none;
     }
-    
+
     /* Queue items mobile */
     .queue-item {
         padding: 0.75rem;
     }
-    
+
     .queue-item-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
     }
-    
+
     .queue-item-actions {
         width: 100%;
         display: flex;
@@ -965,20 +966,21 @@ kbd {
         gap: 0.5rem;
         margin-top: 0.5rem;
     }
-    
+
     .queue-item-actions .btn {
         flex: 1;
-        min-height: 44px; /* Touch target */
+        min-height: 44px;
+        /* Touch target */
         font-size: 0.875rem;
     }
-    
+
     /* Priority badge larger */
     .priority-badge {
         width: 48px;
         height: 48px;
         font-size: 1.25rem;
     }
-    
+
     /* Modal full screen on mobile */
     .modal-content {
         width: 100%;
@@ -994,28 +996,28 @@ kbd {
     .stats-row {
         grid-template-columns: 1fr 1fr;
     }
-    
+
     .stat-card {
         padding: 0.75rem;
     }
-    
+
     .stat-value {
         font-size: 1.25rem;
     }
-    
+
     .stat-label {
         font-size: 0.625rem;
     }
-    
+
     /* Ultra compact header */
     .header {
         padding: 0.5rem;
     }
-    
+
     .header-left {
         gap: 0.5rem;
     }
-    
+
     .logo-icon {
         font-size: 1.25rem;
     }
@@ -1023,6 +1025,7 @@ kbd {
 
 /* Touch-friendly interactions */
 @media (hover: none) and (pointer: coarse) {
+
     /* Minimum touch targets (44px as per WCAG 2.5.5) */
     .btn,
     .btn-sm,
@@ -1032,30 +1035,30 @@ kbd {
         min-height: 44px;
         min-width: 44px;
     }
-    
+
     .btn-sm {
         padding: 0.625rem 1rem;
         font-size: 0.875rem;
     }
-    
+
     /* Disable hover states on touch devices */
     .queue-item:hover {
         transform: none;
         box-shadow: var(--shadow);
     }
-    
+
     /* Active states for touch */
     .queue-item:active {
         transform: scale(0.98);
         background: var(--gray-50);
     }
-    
+
     .btn:active,
     .btn-sm:active,
     .btn-action:active {
         transform: scale(0.95);
     }
-    
+
     /* Larger tap areas for links */
     .mobile-nav-item {
         min-height: 64px;
@@ -1068,7 +1071,7 @@ kbd {
     .mobile-nav {
         padding-bottom: env(safe-area-inset-bottom);
     }
-    
+
     main.dashboard {
         padding-bottom: calc(80px + env(safe-area-inset-bottom));
     }

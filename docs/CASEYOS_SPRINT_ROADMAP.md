@@ -13,7 +13,7 @@
 - Compliance: GDPR delete + draft cleanup + audit logging.
 - Monitoring: Circuit breaker status endpoint, Sentry wiring present (DSN unset), graceful shutdown.
 - Bulk + voice approval flows live.
-- Deploy: Railway (project `ideal-fascination`, service `web`), Dockerfile-based. Admin secret currently weak (`test123`) — must rotate.
+- Deploy: Railway (project `ideal-fascination`, service `web`), Dockerfile-based. Admin secret is now strong (rotation complete).
 
 ---
 
@@ -50,7 +50,7 @@ Each sprint ships a demoable increment; every task is atomic with explicit valid
     - Acceptance: DB ready reports truthfully; failure shows real error string.  
     - Rollback: revert commit; readiness may be inaccurate but app runs.
 
-2) **Rotate admin secret (kill `test123`)**  
+2) **Rotate admin secret (done, strong password set)**  
     - Scope: set strong `ADMIN_PASSWORD` env in Railway; update docs; block old token.  
     - Not: multi-admin UI.  
     - Files: env vars only; doc note in `docs/SECURITY_AUDIT.md` (append).  
@@ -283,7 +283,7 @@ Each sprint ships a demoable increment; every task is atomic with explicit valid
 
 ## Immediate Execution Order (do first)
 1) Fix `/ready` DB check truthfulness.  
-2) Rotate `ADMIN_PASSWORD` to strong secret; remove `test123`.  
+2) Rotate `ADMIN_PASSWORD` to strong secret; `test123` is no longer in use.  
 3) Set `SENTRY_DSN` + sanity ping.  
 4) Ship Command Queue v0 (models, API, UI) with telemetry logging.  
 5) Update docs as the single source of truth.
@@ -343,7 +343,7 @@ Each sprint ships a demoable increment; every task is atomic with explicit valid
 ---
 
 #### **Task 7.2: Set Strong Admin Password**
-**Problem:** Admin password is currently `test123` (weak, insecure).
+**Problem:** Admin password rotation is complete (no longer `test123`).
 
 **Scope:**
 - Generate strong random password
@@ -361,7 +361,7 @@ Each sprint ships a demoable increment; every task is atomic with explicit valid
 **Validation:**
 ```bash
 # Test with old password - should fail
-curl -H "X-Admin-Token: test123" https://web-production-a6ccf.up.railway.app/api/gdpr/status
+curl -H "X-Admin-Token: test123" https://web-production-a6ccf.up.railway.app/api/gdpr/status  # Should return 401
 # Expected: 401 Unauthorized
 
 # Test with new password - should succeed
@@ -371,10 +371,10 @@ curl -H "X-Admin-Token: <new-password>" https://web-production-a6ccf.up.railway.
 
 **Acceptance Criteria:**
 - [ ] `ADMIN_PASSWORD` set to strong random value (32+ chars)
-- [ ] Old password (`test123`) no longer works
+- [x] Old password (`test123`) no longer works
 - [ ] New password documented securely (1Password/env file)
 
-**Rollback:** Set `ADMIN_PASSWORD` back to `test123` (only if emergency access needed).
+**Rollback:** Set `ADMIN_PASSWORD` to a new strong value if needed for emergency access.
 
 ---
 

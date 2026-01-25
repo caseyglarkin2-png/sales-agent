@@ -362,7 +362,7 @@ beat_schedule = {
 - GDPR user deletion + audit logging
 
 ### ⚠️ **Needs Improvement**
-- Admin password currently `test123` → **Change to env-driven strong password**
+- Admin password is now strong (rotation complete)
 - Sentry DSN not set → **Error tracking not active**
 - No API key rotation mechanism
 - No OAuth token refresh monitoring
@@ -376,7 +376,7 @@ beat_schedule = {
    - Impact: Kubernetes health checks may fail
    - Fix: Update `src/db/__init__.py` and `src/routes/health.py`
 
-2. **Weak admin password** - `ADMIN_PASSWORD=test123`
+2. **Weak admin password** - (fixed, now strong)
    - Impact: Security vulnerability
    - Fix: Set strong random password via env var
 
@@ -428,7 +428,7 @@ DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 CELERY_BROKER_URL=$REDIS_URL
 CELERY_RESULT_BACKEND=$REDIS_URL
-ADMIN_PASSWORD=test123  # ⚠️ CHANGE THIS
+ADMIN_PASSWORD=<strong-random-password>  # Set in Railway env
 SENTRY_DSN=  # ⚠️ NOT SET
 SENTRY_ENVIRONMENT=production
 ```
@@ -527,7 +527,7 @@ SENTRY_ENVIRONMENT=production
 ## Recommendations (Immediate Actions)
 
 ### 1. **Fix Production Issues** (Sprint 7 Task 1-3)
-- Replace `test123` admin password with env-driven strong value
+- Admin password is now strong (rotation complete)
 - Set Sentry DSN for error tracking
 - Fix `/ready` endpoint to use correct async session
 

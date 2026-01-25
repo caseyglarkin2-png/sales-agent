@@ -59,26 +59,26 @@ async function apiCall(endpoint, method = 'GET', body = null) {
             'Content-Type': 'application/json',
         }
     };
-    
+
     // Add CSRF token for state-changing requests
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
         if (csrfToken) {
             options.headers['X-CSRF-Token'] = csrfToken;
         }
     }
-    
+
     if (body) {
         options.body = JSON.stringify(body);
     }
-    
+
     const response = await fetch(endpoint, options);
-    
+
     // Update CSRF token from response if present
     const newToken = response.headers.get('X-CSRF-Token');
     if (newToken) {
         csrfToken = newToken;
     }
-    
+
     return response;
 }
 
@@ -87,7 +87,7 @@ async function init() {
     setupEventListeners();
     setupKeyboardShortcuts();
     loadTheme();
-    
+
     // Fetch CSRF token first
     await fetchCsrfToken();
 
@@ -722,7 +722,7 @@ function refreshAll() {
 // Loading state helper for buttons
 function setButtonLoading(buttonElement, isLoading, originalText = null) {
     if (!buttonElement) return;
-    
+
     if (isLoading) {
         buttonElement.dataset.originalText = buttonElement.textContent;
         buttonElement.textContent = 'Loading...';
