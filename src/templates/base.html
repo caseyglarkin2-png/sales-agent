@@ -21,7 +21,34 @@
 
     <!-- Interactions: HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="/static/csrf-helper.js"></script> <!-- Ensure CSRF token is sent with HTMX -->
+    
+    <!-- Cleanup Legacy Service Workers -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    // Legacy service worker was named 'caseyos-v1' or 'sw.js'
+                    console.log('Unregistering legacy service worker:', registration);
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
+    
+    <!-- HTMX Config with CSRF -->
+    <script>
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            // Try to find the token in metadata first (if we adding it there), else check cookie helper if present
+            // For now, looking for meta tag or assuming cookie handling by browser
+            evt.detail.headers['X-CSRF-Token'] = getCookie('csrf_token') || '{{ csrf_token }}'; 
+        });
+        
+        function getCookie(name) {
+            let value = "; " + document.cookie;
+            let parts = value.split("; " + name + "=");
+            if (parts.length == 2) return parts.pop().split(";").shift();
+        }
+    </script>
 
     {% block head %}{% endblock %}
 </head>
