@@ -129,6 +129,7 @@ tests/
 - [src/config.py](src/config.py): All settings via `get_settings()` (Pydantic)
 - [src/celery_app.py](src/celery_app.py): Celery config + beat schedule
 - [src/main.py](src/main.py): FastAPI app + all route registrations
+- [SPRINT_ROADMAP_V2.md](SPRINT_ROADMAP_V2.md): Master sprint plan (supersedes all others)
 
 ## Authentication Patterns
 
@@ -208,26 +209,37 @@ def _run_async(coro):
 
 ## Testing Patterns
 
-### Test Structure
+### Test Structure - Use Inline Mocks
 ```python
-# Unit tests use inline mocks (no shared conftest.py fixtures)
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-@pytest.mark.asyncio
-async def test_connector():
-    connector = HubSpotConnector("test-api-key")
-    connector.service = MagicMock()
-    connector.service.get.return_value = {"data": []}
-    # ...
+@pytest.fixture
+def mock_rate_limiter():
+    """Mock rate limiter that allows sends."""
+    mock_limiter = AsyncMock()
+    mock_limiter.check_can_send.return_value = (True, "OK")
+    mock_limiter.record_send = AsyncMock()
+    return mock_limiter
 
-# Mock agents by subclassing BaseAgent
-class MockAgent(BaseAgent):
-    async def execute(self, context):
-        return {"result": "success"}
-    async def validate_input(self, context):
-        return True
+@pytest.mark.asyncio
+async def test_send_draft(draft_queue, sample_draft, mock_rate_limiter):
+    with patch("src.operator_mode.get_rate_limiter", return_value=mock_rate_limiter):
+        with patch("src.config.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                allow_real_sends=True,  # CRITICAL: Must include this!
+                google_client_id="test_id",
+                google_client_secret="test_secret",
+            )
+            result = await draft_queue.send_draft(...)
 ```
+
+### Common Test Gotchas
+1. **Mock paths must match import location**: Use `src.operator_mode.get_rate_limiter`, not `src.rate_limiter.get_rate_limiter`
+2. **Always include `allow_real_sends=True`** when mocking settings for send tests
+3. **Use `checkfirst=True`** in `create_all()` to avoid duplicate table errors
+4. **Enum comparisons**: Use `.value` when comparing with strings (`status == DraftStatus.SENT.value`)
+5. **Body length validation**: Email bodies must be 50+ characters
 
 ### Running Tests
 ```bash
@@ -239,5 +251,27 @@ make coverage           # Check coverage (baseline: 40%)
 ## Deprecations & Warnings
 
 - **DEPRECATED**: `src/routes/ui_command_queue.py`, `caseyos_ui.py` → Use `src/routes/ui.py`
+- **DEPRECATED**: Legacy SPA files in `src/static/*.html` → Use Jinja2 templates
 - **REMOVED (Sprint 22)**: quotes_routes, forecasts_routes, territories_routes, competitors_routes
 - **Coverage baseline**: 40% - Do not decrease
+- **Sprint plans**: Use `SPRINT_ROADMAP_V2.md` only (supersedes all previous)
+
+## SQLAlchemy Index Gotcha
+
+When defining indexes, use EITHER `index=True` on the column OR an explicit `Index()` in `__table_args__`, never both:
+
+```python
+# WRONG - Causes "duplicate index" errors
+class Message(Base):
+    gmail_thread_id: Mapped[str] = mapped_column(String, index=True)  # ❌
+    __table_args__ = (Index("ix_message_gmail_thread_id", "gmail_thread_id"),)
+
+# CORRECT - Use only one approach
+class Message(Base):
+    gmail_thread_id: Mapped[str] = mapped_column(String)  # No index=True
+    __table_args__ = (Index("ix_message_gmail_thread_id", "gmail_thread_id"),)
+```
+
+## CSRF Token Handling
+
+CSRF tokens are injected via `htmx:configRequest` in `base.html`. All HTMX POST/PUT/DELETE requests automatically include the token from cookies. The legacy service worker is automatically unregistered on page load.

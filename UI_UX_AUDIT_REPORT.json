@@ -1,0 +1,330 @@
+{
+    "audit_date": "2026-01-26",
+    "project": "CaseyOS Sales Agent",
+    "auditor": "GitHub Copilot",
+    "ui_issues": [
+        {
+            "file": "src/static/caseyos/index.html",
+            "issue": "Broken link to /static/jarvis.html - file does not exist",
+            "severity": "high",
+            "fix": "Create jarvis.html or update link to point to /caseyos (new Jinja2 dashboard)"
+        },
+        {
+            "file": "src/static/caseyos/index.html",
+            "issue": "Missing icon file /static/icons/icon-192.png (references .png but only .svg exists)",
+            "severity": "medium",
+            "fix": "Update reference to use icon-192x192.svg or create PNG version"
+        },
+        {
+            "file": "src/static/queue-item-detail.html",
+            "issue": "Broken link to /todays-moves route - links to non-existent static page",
+            "severity": "high",
+            "fix": "Update links to point to /caseyos/queue (new Jinja2 template)"
+        },
+        {
+            "file": "src/static/queue-item-detail.html",
+            "issue": "Breadcrumb links to /dashboard which shows inline HTML, not Jinja2 template",
+            "severity": "medium",
+            "fix": "Update to link to /caseyos"
+        },
+        {
+            "file": "src/templates/base.html",
+            "issue": "No ARIA landmarks, roles, or accessibility attributes",
+            "severity": "medium",
+            "fix": "Add role='navigation', role='main', aria-label attributes to nav and main elements"
+        },
+        {
+            "file": "src/templates/dashboard.html",
+            "issue": "No ARIA attributes for interactive elements (voice button, quick commands)",
+            "severity": "medium",
+            "fix": "Add aria-label, aria-pressed, aria-live for dynamic content updates"
+        },
+        {
+            "file": "src/templates/queue.html",
+            "issue": "No skip-to-content link for keyboard navigation",
+            "severity": "low",
+            "fix": "Add skip link at start of body for accessibility"
+        },
+        {
+            "file": "src/templates/base.html",
+            "issue": "Mobile navigation only shows 2 links (Dashboard, Command Queue) - missing other pages",
+            "severity": "medium",
+            "fix": "Add hamburger menu with links to Agent Hub, Voice, Admin, Settings"
+        },
+        {
+            "file": "src/static/index.html",
+            "issue": "Legacy SPA dashboard references routes that serve legacy static files instead of new templates",
+            "severity": "high",
+            "fix": "Redirect / to /caseyos or update index.html nav to point to new Jinja2 routes"
+        },
+        {
+            "file": "src/routes/web_auth.py",
+            "issue": "Dashboard at /dashboard renders inline HTML string (400+ lines) instead of Jinja2 template",
+            "severity": "high",
+            "fix": "Migrate inline HTML to src/templates/today-moves.html and use TemplateResponse"
+        },
+        {
+            "file": "src/routes/caseyos_ui.py",
+            "issue": "Route conflicts: /caseyos defined in both caseyos_ui.py and ui.py",
+            "severity": "medium",
+            "fix": "caseyos_ui.py is deprecated (commented out in main.py) - delete file"
+        },
+        {
+            "file": "src/static/manifest.json",
+            "issue": "PWA shortcut references /static/jarvis.html which doesn't exist",
+            "severity": "medium",
+            "fix": "Update shortcut URL to /caseyos or remove shortcut"
+        }
+    ],
+    "legacy_files_to_remove": [
+        {
+            "file": "src/static/index.html",
+            "reason": "Legacy SPA dashboard (1545 lines) - replaced by /caseyos Jinja2 templates",
+            "action": "Redirect / route to /caseyos, then delete file"
+        },
+        {
+            "file": "src/static/admin.html",
+            "reason": "Legacy admin panel (448 lines) - should be Jinja2 template for SSR pattern",
+            "action": "Migrate to src/templates/admin.html, update /admin route"
+        },
+        {
+            "file": "src/static/agents.html",
+            "reason": "Legacy agent activity page (478 lines) - should be Jinja2 template",
+            "action": "Migrate to src/templates/agents.html"
+        },
+        {
+            "file": "src/static/voice-profiles.html",
+            "reason": "Legacy voice profiles (538 lines) - should be Jinja2 template",
+            "action": "Migrate to src/templates/voice-profiles.html"
+        },
+        {
+            "file": "src/static/voice-training.html",
+            "reason": "Legacy voice training (655 lines) - should be Jinja2 template",
+            "action": "Migrate to src/templates/voice-training.html"
+        },
+        {
+            "file": "src/static/operator-dashboard.html",
+            "reason": "Legacy operator dashboard (364 lines) - unused, superseded by /caseyos",
+            "action": "Delete after verifying no references"
+        },
+        {
+            "file": "src/static/queue-item-detail.html",
+            "reason": "Legacy queue item detail (572 lines) - should be Jinja2 partial",
+            "action": "Migrate to Jinja2 template or HTMX partial"
+        },
+        {
+            "file": "src/static/integrations.html",
+            "reason": "Legacy integrations page (593 lines) - should be Jinja2 template",
+            "action": "Migrate to src/templates/integrations.html"
+        },
+        {
+            "file": "src/static/agent-hub.html",
+            "reason": "Legacy agent hub (706 lines) - should be Jinja2 template",
+            "action": "Migrate to src/templates/agent-hub.html"
+        },
+        {
+            "file": "src/static/caseyos/",
+            "reason": "Entire legacy SPA folder (index.html, app.js, styles.css) - 1081+ lines",
+            "action": "Delete after full migration to Jinja2 templates"
+        },
+        {
+            "file": "src/routes/ui_command_queue.py",
+            "reason": "Deprecated in Sprint 24 - file only contains commented code",
+            "action": "Delete file"
+        },
+        {
+            "file": "src/routes/caseyos_ui.py",
+            "reason": "Deprecated in Sprint 24 - router not included in main.py",
+            "action": "Delete file"
+        },
+        {
+            "file": "src/static/sw.js",
+            "reason": "Service worker self-unregisters - legacy PWA artifact",
+            "action": "Delete after removing manifest.json reference"
+        },
+        {
+            "file": "src/static/manifest.json",
+            "reason": "PWA manifest references non-existent files and deprecated patterns",
+            "action": "Delete or update if PWA still desired"
+        },
+        {
+            "file": "src/static/screenshots/",
+            "reason": "Empty folder - no PWA screenshots",
+            "action": "Delete empty directory"
+        }
+    ],
+    "missing_features": [
+        "No Settings page template (referenced in navigation but no Jinja2 template exists)",
+        "No Agent Hub Jinja2 template (/caseyos/agents route missing)",
+        "No Voice interface Jinja2 template (/caseyos/voice route missing)",
+        "No Admin panel Jinja2 template (/caseyos/admin route missing)",
+        "No Integrations Jinja2 template (/caseyos/integrations route missing)",
+        "No queue item detail Jinja2 template (/caseyos/queue/{id} route missing)",
+        "No user profile/settings page in Jinja2 templates",
+        "HTMX partials missing - queue items load via JavaScript, not SSR",
+        "No toast/notification system in base.html (container exists but no implementation)",
+        "No dark mode toggle in Jinja2 templates (exists in legacy static files)",
+        "No keyboard shortcuts documented in new templates (exist in legacy CaseyOS SPA)"
+    ],
+    "test_gaps": [
+        {
+            "area": "UI Routes",
+            "description": "No tests for /caseyos or /caseyos/queue routes",
+            "files_missing": [
+                "tests/unit/test_ui_routes.py"
+            ],
+            "priority": "high"
+        },
+        {
+            "area": "UI Routes",
+            "description": "test_root_endpoint_returns_dashboard tests / route, not new /caseyos routes",
+            "files_missing": [],
+            "priority": "medium"
+        },
+        {
+            "area": "Template Rendering",
+            "description": "No tests verifying Jinja2 templates render correctly",
+            "files_missing": [
+                "tests/unit/test_templates.py"
+            ],
+            "priority": "medium"
+        },
+        {
+            "area": "Web Auth",
+            "description": "/todays-moves route not tested",
+            "files_missing": [],
+            "priority": "medium"
+        },
+        {
+            "area": "Static File Serving",
+            "description": "No tests for /static file serving",
+            "files_missing": [],
+            "priority": "low"
+        },
+        {
+            "area": "OAuth Flow",
+            "description": "OAuth callback and session management need integration tests",
+            "files_missing": [
+                "tests/integration/test_oauth.py"
+            ],
+            "priority": "high"
+        },
+        {
+            "area": "CSRF Protection",
+            "description": "CSRF tests exist but don't test new Jinja2 templates with HTMX",
+            "files_missing": [],
+            "priority": "medium"
+        }
+    ],
+    "architecture_improvements": [
+        {
+            "area": "Route Consolidation",
+            "description": "Multiple overlapping dashboard routes: /, /dashboard, /caseyos, /todays-moves",
+            "recommendation": "Consolidate to single canonical route /caseyos, redirect others"
+        },
+        {
+            "area": "Template Architecture",
+            "description": "Only 2 Jinja2 templates (dashboard.html, queue.html) vs 10+ static HTML files",
+            "recommendation": "Complete migration: create templates for admin, agents, voice, integrations, settings"
+        },
+        {
+            "area": "HTMX Integration",
+            "description": "HTMX loaded but not used for queue updates - still uses JavaScript fetch()",
+            "recommendation": "Refactor queue.html to use hx-get, hx-trigger for SSR updates"
+        },
+        {
+            "area": "Service Worker",
+            "description": "Service worker exists only to unregister itself (cleanup code)",
+            "recommendation": "Remove sw.js and manifest.json if PWA not required"
+        },
+        {
+            "area": "CSS Architecture",
+            "description": "Inline Tailwind config + custom CSS in templates, no shared CSS file",
+            "recommendation": "Extract shared styles to src/static/styles/main.css"
+        },
+        {
+            "area": "JavaScript Architecture",
+            "description": "Large inline <script> blocks in templates (300+ lines in dashboard.html)",
+            "recommendation": "Extract to src/static/js/dashboard.js or convert to HTMX"
+        },
+        {
+            "area": "Navigation",
+            "description": "base.html nav only has 2 items vs legacy static files having 5+ nav items",
+            "recommendation": "Add full navigation to base.html matching feature set"
+        },
+        {
+            "area": "Error Handling",
+            "description": "No 404/500 error page templates",
+            "recommendation": "Create src/templates/errors/404.html and 500.html"
+        },
+        {
+            "area": "Mobile Responsiveness",
+            "description": "base.html uses hidden sm:flex for nav but no mobile hamburger menu",
+            "recommendation": "Add mobile nav drawer component"
+        },
+        {
+            "area": "CSRF Token Handling",
+            "description": "Jinja2 templates reference {{ csrf_token }} but not passed from routes",
+            "recommendation": "Pass csrf_token in template context or use cookie-based approach consistently"
+        }
+    ],
+    "integration_points_needing_work": [
+        {
+            "api_endpoint": "POST /api/command-queue/{id}/accept",
+            "ui_status": "JavaScript only in legacy SPA",
+            "recommendation": "Add HTMX button in queue.html template"
+        },
+        {
+            "api_endpoint": "POST /api/command-queue/{id}/dismiss",
+            "ui_status": "JavaScript only in legacy SPA",
+            "recommendation": "Add HTMX button in queue.html template"
+        },
+        {
+            "api_endpoint": "POST /api/jarvis/execute",
+            "ui_status": "Legacy jarvis.html (deleted/missing) and dashboard.html voice panel",
+            "recommendation": "Test and fix voice command integration in dashboard.html"
+        },
+        {
+            "api_endpoint": "GET /api/jarvis/agents",
+            "ui_status": "Only in legacy agent-hub.html",
+            "recommendation": "Create /caseyos/agents Jinja2 template"
+        },
+        {
+            "api_endpoint": "POST /api/voice-training/*",
+            "ui_status": "Only in legacy voice-training.html",
+            "recommendation": "Create /caseyos/voice-training Jinja2 template"
+        },
+        {
+            "webhook_endpoint": "POST /api/webhooks/hubspot-form",
+            "ui_status": "No UI for viewing webhook logs",
+            "recommendation": "Add webhook activity view to admin panel"
+        },
+        {
+            "api_endpoint": "GET /api/signals",
+            "ui_status": "API exists, no Jinja2 UI",
+            "recommendation": "Create /caseyos/signals template"
+        }
+    ],
+    "summary": {
+        "critical_issues": 4,
+        "high_severity_issues": 5,
+        "medium_severity_issues": 7,
+        "low_severity_issues": 1,
+        "legacy_files_to_remove": 15,
+        "missing_templates": 7,
+        "test_gaps": 7,
+        "architecture_improvements": 10
+    },
+    "recommended_sprint_priorities": [
+        "1. Delete deprecated files (ui_command_queue.py, caseyos_ui.py)",
+        "2. Fix broken jarvis.html link → point to /caseyos",
+        "3. Fix /todays-moves links → point to /caseyos/queue",
+        "4. Add UI route tests for /caseyos and /caseyos/queue",
+        "5. Migrate inline HTML from web_auth.py /dashboard to Jinja2 template",
+        "6. Add mobile hamburger menu to base.html",
+        "7. Add ARIA accessibility attributes to templates",
+        "8. Create remaining Jinja2 templates (admin, agents, settings)",
+        "9. Refactor JavaScript fetch() calls to HTMX for SSR pattern",
+        "10. Clean up legacy static files after migration complete"
+    ]
+}

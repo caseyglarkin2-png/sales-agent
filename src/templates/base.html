@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}CaseyOS{% endblock %}</title>
-    
+
     <!-- Design System: Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,12 +22,12 @@
 
     <!-- Interactions: HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    
+
     <!-- Cleanup Legacy Service Workers -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                for (let registration of registrations) {
                     // Legacy service worker was named 'caseyos-v1' or 'sw.js'
                     console.log('Unregistering legacy service worker:', registration);
                     registration.unregister();
@@ -34,15 +35,15 @@
             });
         }
     </script>
-    
+
     <!-- HTMX Config with CSRF -->
     <script>
-        document.body.addEventListener('htmx:configRequest', function(evt) {
+        document.body.addEventListener('htmx:configRequest', function (evt) {
             // Try to find the token in metadata first (if we adding it there), else check cookie helper if present
             // For now, looking for meta tag or assuming cookie handling by browser
-            evt.detail.headers['X-CSRF-Token'] = getCookie('csrf_token') || '{{ csrf_token }}'; 
+            evt.detail.headers['X-CSRF-Token'] = getCookie('csrf_token') || '{{ csrf_token }}';
         });
-        
+
         function getCookie(name) {
             let value = "; " + document.cookie;
             let parts = value.split("; " + name + "=");
@@ -52,6 +53,7 @@
 
     {% block head %}{% endblock %}
 </head>
+
 <body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
 
     <!-- Global Navigation -->
@@ -63,12 +65,12 @@
                         <span class="text-xl font-bold text-primary">CaseyOS</span>
                     </div>
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="/caseyos" 
-                           class="{% if active_tab == 'dashboard' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <a href="/caseyos"
+                            class="{% if active_tab == 'dashboard' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Dashboard
                         </a>
-                        <a href="/caseyos/queue" 
-                           class="{% if active_tab == 'queue' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <a href="/caseyos/queue"
+                            class="{% if active_tab == 'queue' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Command Queue
                         </a>
                     </div>
@@ -104,4 +106,5 @@
 
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

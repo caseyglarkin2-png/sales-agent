@@ -37,7 +37,7 @@ class Message(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     gmail_message_id = Column(String(255), unique=True, nullable=False, index=True)
-    gmail_thread_id = Column(String(255), nullable=False, index=True)
+    gmail_thread_id = Column(String(255), nullable=False)  # Index defined in __table_args__
     sender = Column(String(255), nullable=False)
     recipient = Column(String(255), nullable=False)
     subject = Column(String(512), nullable=False)
@@ -60,8 +60,8 @@ class Thread(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     gmail_thread_id = Column(String(255), unique=True, nullable=False, index=True)
-    hubspot_company_id = Column(String(255), nullable=True, index=True)
-    hubspot_contact_id = Column(String(255), nullable=True, index=True)
+    hubspot_company_id = Column(String(255), nullable=True)  # Index in __table_args__
+    hubspot_contact_id = Column(String(255), nullable=True)  # Index in __table_args__
     subject = Column(String(512), nullable=False)
     last_message_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

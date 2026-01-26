@@ -20,7 +20,7 @@ from src.models.form_submission import FormSubmission
 def db_session():
     """Create an in-memory SQLite session for testing."""
     engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine, checkfirst=True)
     Session = sessionmaker(bind=engine)
     session = Session()
     yield session

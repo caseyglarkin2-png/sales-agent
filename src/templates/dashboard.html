@@ -5,39 +5,54 @@
 {% block head %}
 <style>
     /* Custom background just for dashboard */
-    
+
     .glass {
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
+
     .pulse-ring {
         animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
     }
+
     @keyframes pulse-ring {
         0% {
             transform: scale(0.95);
             opacity: 1;
         }
+
         50% {
             opacity: 0.7;
         }
+
         100% {
             transform: scale(1.05);
             opacity: 1;
         }
     }
+
     .speaking {
         animation: speak 0.5s ease-in-out infinite alternate;
     }
+
     @keyframes speak {
-        from { transform: scale(1); opacity: 0.8; }
-        to { transform: scale(1.1); opacity: 1; }
+        from {
+            transform: scale(1);
+            opacity: 0.8;
+        }
+
+        to {
+            transform: scale(1.1);
+            opacity: 1;
+        }
     }
+
     /* Override base body color for dashboard area */
     .dashboard-wrapper {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: calc(100vh - 4rem - 5rem); /* Minus nav and footer */
+        min-height: calc(100vh - 4rem - 5rem);
+        /* Minus nav and footer */
         color: white;
         border-radius: 1rem;
         padding: 1.5rem;
@@ -57,19 +72,21 @@
 
         <!-- Main Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             <!-- Left Panel - Voice Interface -->
             <div class="lg:col-span-1">
                 <div class="glass rounded-2xl p-6 mb-6">
                     <h2 class="text-2xl font-bold mb-4 flex items-center">
                         <span class="mr-2">🎤</span> Voice Commands
                     </h2>
-                    
+
                     <!-- Voice Button -->
                     <div class="text-center mb-6">
-                        <button id="voice-btn" class="relative w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-blue-400 to-purple-600 shadow-2xl hover:shadow-purple-500/50 transition-all">
+                        <button id="voice-btn"
+                            class="relative w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-blue-400 to-purple-600 shadow-2xl hover:shadow-purple-500/50 transition-all">
                             <span class="text-4xl text-white">🎙️</span>
-                            <div id="pulse-ring" class="absolute inset-0 rounded-full border-4 border-white opacity-0"></div>
+                            <div id="pulse-ring" class="absolute inset-0 rounded-full border-4 border-white opacity-0">
+                            </div>
                         </button>
                         <p class="mt-4 text-sm opacity-80" id="voice-status">Click to speak</p>
                     </div>
@@ -78,10 +95,10 @@
                     <div class="mb-4">
                         <label class="block text-sm mb-2 opacity-80">Or type your command:</label>
                         <div class="flex gap-2">
-                            <input type="text" id="text-input" 
-                                   placeholder="e.g., 'Approve this email'"
-                                   class="flex-1 px-4 py-2 rounded-lg bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-300">
-                            <button id="send-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition text-white">
+                            <input type="text" id="text-input" placeholder="e.g., 'Approve this email'"
+                                class="flex-1 px-4 py-2 rounded-lg bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-300">
+                            <button id="send-btn"
+                                class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition text-white">
                                 Send
                             </button>
                         </div>
@@ -90,16 +107,20 @@
                     <!-- Quick Commands -->
                     <div class="space-y-2">
                         <p class="text-sm opacity-80 mb-2">Quick commands:</p>
-                        <button class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
+                        <button
+                            class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
                             "Approve this"
                         </button>
-                        <button class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
+                        <button
+                            class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
                             "Show me the next one"
                         </button>
-                        <button class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
+                        <button
+                            class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
                             "Reject and explain why"
                         </button>
-                        <button class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
+                        <button
+                            class="quick-cmd w-full px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition text-left text-sm">
                             "Approve all"
                         </button>
                     </div>
@@ -107,19 +128,22 @@
                     <!-- TTS Controls -->
                     <div class="mt-6 pt-6 border-t border-white/20">
                         <h3 class="text-sm font-bold mb-3 opacity-80">🔊 Voice Settings</h3>
-                        
+
                         <div class="mb-3">
                             <label class="block text-xs mb-1 opacity-70">Voice:</label>
-                            <select id="voice-select" class="w-full px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 text-gray-900">
+                            <select id="voice-select"
+                                class="w-full px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 text-gray-900">
                                 <option>Loading voices...</option>
                             </select>
                         </div>
-                        
-                        <button id="read-draft-btn" class="w-full px-4 py-3 bg-blue-500 rounded-lg hover:bg-blue-600 transition font-semibold shadow-lg text-white">
+
+                        <button id="read-draft-btn"
+                            class="w-full px-4 py-3 bg-blue-500 rounded-lg hover:bg-blue-600 transition font-semibold shadow-lg text-white">
                             🔊 Read Draft Aloud
                         </button>
-                        
-                        <button id="stop-speaking-btn" class="w-full mt-2 px-4 py-2 bg-red-500/50 rounded-lg hover:bg-red-500 transition text-sm hidden text-white">
+
+                        <button id="stop-speaking-btn"
+                            class="w-full mt-2 px-4 py-2 bg-red-500/50 rounded-lg hover:bg-red-500 transition text-sm hidden text-white">
                             ⏹️ Stop Speaking
                         </button>
                     </div>
@@ -134,7 +158,8 @@
                             <span id="pending-count" class="text-2xl font-bold">0</span>
                         </div>
                         <div class="w-full bg-white/20 rounded-full h-2">
-                            <div id="progress-bar" class="bg-green-400 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            <div id="progress-bar" class="bg-green-400 h-2 rounded-full transition-all"
+                                style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -157,13 +182,16 @@
 
                     <!-- Action Buttons -->
                     <div class="flex gap-4 mt-6">
-                        <button id="approve-btn" class="flex-1 px-6 py-3 bg-green-500 rounded-lg hover:bg-green-600 transition font-semibold text-white">
+                        <button id="approve-btn"
+                            class="flex-1 px-6 py-3 bg-green-500 rounded-lg hover:bg-green-600 transition font-semibold text-white">
                             ✓ Approve
                         </button>
-                        <button id="reject-btn" class="flex-1 px-6 py-3 bg-red-500 rounded-lg hover:bg-red-600 transition font-semibold text-white">
+                        <button id="reject-btn"
+                            class="flex-1 px-6 py-3 bg-red-500 rounded-lg hover:bg-red-600 transition font-semibold text-white">
                             ✗ Reject
                         </button>
-                        <button id="skip-btn" class="px-6 py-3 bg-gray-500 rounded-lg hover:bg-gray-600 transition font-semibold text-white">
+                        <button id="skip-btn"
+                            class="px-6 py-3 bg-gray-500 rounded-lg hover:bg-gray-600 transition font-semibold text-white">
                             → Next
                         </button>
                     </div>
@@ -172,7 +200,8 @@
                 <!-- JARVIS Response -->
                 <div id="jarvis-response" class="glass rounded-2xl p-6 hidden">
                     <div class="flex items-center mb-3">
-                        <div id="jarvis-avatar" class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center mr-3">
+                        <div id="jarvis-avatar"
+                            class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center mr-3">
                             <span class="text-2xl">🤖</span>
                         </div>
                         <div>
@@ -217,25 +246,25 @@
             console.warn('TTS not supported in this browser');
             return;
         }
-        
+
         // Cancel any ongoing speech
         window.speechSynthesis.cancel();
-        
+
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = ttsConfig.rate;
         utterance.pitch = ttsConfig.pitch;
         utterance.volume = ttsConfig.volume;
         utterance.lang = 'en-US';
-        
+
         if (ttsConfig.voice) {
             utterance.voice = ttsConfig.voice;
         }
-        
-        utterance.onstart = () => { 
+
+        utterance.onstart = () => {
             isSpeaking = true;
             document.getElementById('jarvis-avatar')?.classList.add('speaking');
         };
-        utterance.onend = () => { 
+        utterance.onend = () => {
             isSpeaking = false;
             document.getElementById('jarvis-avatar')?.classList.remove('speaking');
         };
@@ -244,7 +273,7 @@
             isSpeaking = false;
             document.getElementById('jarvis-avatar')?.classList.remove('speaking');
         };
-        
+
         window.speechSynthesis.speak(utterance);
     }
 
@@ -265,7 +294,7 @@
                 ttsConfig.rate = config.rate || 1.0;
                 ttsConfig.pitch = config.pitch || 1.0;
                 ttsConfig.volume = config.volume || 1.0;
-                
+
                 // Update UI if voice selector exists
                 if (config.voice_name) {
                     selectVoiceByName(config.voice_name);
@@ -289,19 +318,19 @@
     function populateVoices() {
         const select = document.getElementById('voice-select');
         if (!select) return;
-        
+
         const voices = window.speechSynthesis.getVoices();
-        select.innerHTML = voices.map(voice => 
+        select.innerHTML = voices.map(voice =>
             `<option value="${voice.name}">${voice.name} (${voice.lang})</option>`
         ).join('');
-        
+
         // Restore saved voice preference
         const savedVoice = localStorage.getItem('jarvis_preferred_voice');
         if (savedVoice) {
             select.value = savedVoice;
             selectVoiceByName(savedVoice);
         }
-        
+
         select.addEventListener('change', (e) => {
             const voiceName = e.target.value;
             localStorage.setItem('jarvis_preferred_voice', voiceName);
@@ -314,7 +343,7 @@
     loadStatus();
     loadTTSConfig();
     setInterval(loadStatus, 5000); // Refresh every 5 seconds
-    
+
     // Load voices when available
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = populateVoices;
@@ -323,7 +352,7 @@
 
     // Voice button
     document.getElementById('voice-btn').addEventListener('click', toggleVoice);
-    
+
     // Read Draft button
     document.getElementById('read-draft-btn').addEventListener('click', readCurrentDraft);
     document.getElementById('stop-speaking-btn').addEventListener('click', stopSpeaking);
@@ -331,25 +360,25 @@
     async function readCurrentDraft() {
         const container = document.getElementById('current-item');
         const bodyElement = container.querySelector('pre');
-        
+
         if (!bodyElement) {
             speakResponse("No draft is currently loaded.");
             return;
         }
-        
+
         const draftText = bodyElement.textContent || bodyElement.innerText;
         const subjectElement = container.querySelector('.text-lg.font-semibold');
         const subject = subjectElement ? subjectElement.textContent : '';
-        
-        const fullText = subject 
+
+        const fullText = subject
             ? `Subject: ${subject}. ${draftText}`
             : draftText;
-        
+
         speakResponse(fullText);
-        
+
         // Show stop button
         document.getElementById('stop-speaking-btn').classList.remove('hidden');
-        
+
         // Hide stop button when done
         setTimeout(() => {
             if (!isSpeaking) {
@@ -383,7 +412,7 @@
 
             mediaRecorder.start();
             isListening = true;
-            
+
             document.getElementById('voice-status').textContent = 'Listening...';
             document.getElementById('pulse-ring').classList.add('pulse-ring', 'opacity-100');
             document.getElementById('jarvis-avatar').classList.add('speaking');
@@ -398,7 +427,7 @@
             mediaRecorder.stop();
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
             isListening = false;
-            
+
             document.getElementById('voice-status').textContent = 'Processing...';
             document.getElementById('pulse-ring').classList.remove('pulse-ring', 'opacity-100');
         }
@@ -487,7 +516,7 @@
 
     function updateStatus(data) {
         document.getElementById('pending-count').textContent = data.pending_count || 0;
-        
+
         if (data.current_item) {
             displayCurrentItem(data.current_item);
         }
@@ -500,7 +529,7 @@
 
     function displayCurrentItem(item) {
         const container = document.getElementById('current-item');
-        
+
         if (item.type === 'email_draft') {
             // Use item.body (from API) first, fall back to content.body
             const fullBody = item.body || item.content?.body || 'No content';
@@ -509,7 +538,7 @@
             const subject = item.subject || item.content?.subject || 'No subject';
             const agent = item.agent || item.content?.agent || 'Unknown';
             const priority = item.priority || item.content?.priority || 'Normal';
-            
+
             container.innerHTML = `
                 <div class="space-y-4">
                     <div>
@@ -549,7 +578,7 @@
         const responseDiv = document.getElementById('jarvis-response');
         const textDiv = document.getElementById('jarvis-text');
         const timeDiv = document.getElementById('response-time');
-        
+
         responseDiv.classList.remove('hidden');
         textDiv.textContent = result.spoken_response || 'Command processed';
         timeDiv.textContent = new Date().toLocaleTimeString();
@@ -589,7 +618,7 @@
             <p class="text-sm">${escapeHtml(item.jarvis)}</p>
         `;
         history.insertBefore(entry, history.firstChild);
-        
+
         // Keep only last 20 entries
         while (history.children.length > 20) {
             history.removeChild(history.lastChild);
@@ -599,11 +628,11 @@
     function showError(message) {
         const responseDiv = document.getElementById('jarvis-response');
         const textDiv = document.getElementById('jarvis-text');
-        
+
         responseDiv.classList.remove('hidden');
         textDiv.textContent = `Error: ${message}`;
         textDiv.classList.add('text-red-300');
-        
+
         setTimeout(() => {
             textDiv.classList.remove('text-red-300');
         }, 3000);

@@ -1,0 +1,753 @@
+{
+    "audit_date": "2026-01-26",
+    "audit_version": "1.0",
+    "summary": {
+        "overall_status": "FUNCTIONAL",
+        "maturity_level": "Production-ready with feature gaps",
+        "test_coverage": "~40% baseline (7,329 lines test code)",
+        "key_strengths": [
+            "Solid FastAPI + SQLAlchemy async architecture",
+            "Well-structured agent pattern with Jarvis orchestrator",
+            "Multi-provider LLM support (OpenAI + Gemini) with failover",
+            "Comprehensive signal ingestion framework",
+            "CSRF protection and security middleware",
+            "Operator approval mode for email safety"
+        ],
+        "key_gaps": [
+            "LinkedIn scheduling not implemented (TODO)",
+            "Web scraping for content not implemented (TODO)",
+            "Email escalation sending not implemented (TODO)",
+            "Auto-approval Gmail search not implemented (TODO)",
+            "Client health pulling real HubSpot data not implemented (TODO)"
+        ]
+    },
+    "working_features": {
+        "core_infrastructure": {
+            "status": "WORKING",
+            "components": {
+                "fastapi_app": "Fully configured with 90+ route modules",
+                "database": "PostgreSQL with SQLAlchemy async, 18 models",
+                "redis": "Configured for caching and Celery broker",
+                "celery": "Background task processing with beat scheduler",
+                "logging": "Structured JSON logging with trace IDs",
+                "sentry": "Error tracking integration configured",
+                "csrf_protection": "Full CSRF middleware with token rotation"
+            }
+        },
+        "api_endpoints": {
+            "status": "WORKING",
+            "total_route_files": 106,
+            "key_endpoints": {
+                "health_checks": [
+                    "/health",
+                    "/api/signals/health",
+                    "/api/jarvis/health"
+                ],
+                "command_queue": "/api/command-queue/*",
+                "signals": "/api/signals/*",
+                "jarvis_ai": "/api/jarvis/*",
+                "voice_profiles": "/api/voice/*",
+                "webhooks": [
+                    "/webhooks/forms",
+                    "/webhooks/hubspot",
+                    "/webhooks/gmail"
+                ],
+                "oauth": [
+                    "/auth/google/*",
+                    "/auth/twitter/*"
+                ],
+                "operator_mode": "/api/operator/*",
+                "ui_pages": [
+                    "/caseyos",
+                    "/caseyos/queue"
+                ]
+            }
+        },
+        "agents": {
+            "status": "WORKING",
+            "orchestrator": {
+                "name": "JarvisAgent",
+                "file": "src/agents/jarvis.py",
+                "description": "Master orchestrator routing to specialized agents",
+                "initialized_agents": 15
+            },
+            "sales_agents": [
+                {
+                    "name": "ProspectingAgent",
+                    "file": "prospecting.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "NurturingAgent",
+                    "file": "nurturing.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "ResearchAgent",
+                    "file": "research/standard.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "ThreadReaderAgent",
+                    "file": "specialized.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "LongMemoryAgent",
+                    "file": "specialized.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "AssetHunterAgent",
+                    "file": "specialized.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "MeetingSlotAgent",
+                    "file": "specialized.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "NextStepPlannerAgent",
+                    "file": "specialized.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "DraftWriterAgent",
+                    "file": "specialized.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "ValidationAgent",
+                    "file": "validation.py",
+                    "status": "WORKING"
+                }
+            ],
+            "content_agents": [
+                {
+                    "name": "ContentRepurposeAgent",
+                    "file": "content/repurpose.py",
+                    "status": "PARTIAL - web scraping TODO"
+                },
+                {
+                    "name": "SocialSchedulerAgent",
+                    "file": "content/social_scheduler.py",
+                    "status": "PARTIAL - LinkedIn TODO"
+                },
+                {
+                    "name": "GraphicsRequestAgent",
+                    "file": "content/graphics_request.py",
+                    "status": "WORKING"
+                }
+            ],
+            "fulfillment_agents": [
+                {
+                    "name": "ApprovalGatewayAgent",
+                    "file": "fulfillment/approval_gateway.py",
+                    "status": "PARTIAL - email sending TODO"
+                },
+                {
+                    "name": "ClientHealthAgent",
+                    "file": "fulfillment/client_health.py",
+                    "status": "PARTIAL - real HubSpot data TODO"
+                },
+                {
+                    "name": "DeliverableTrackerAgent",
+                    "file": "fulfillment/deliverable_tracker.py",
+                    "status": "WORKING"
+                }
+            ],
+            "ops_agents": [
+                {
+                    "name": "AgendaGeneratorAgent",
+                    "file": "agenda_generator.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "OutcomeReporterAgent",
+                    "file": "outcome_reporter.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "MarketTrendMonitorAgent",
+                    "file": "market_trend_monitor.py",
+                    "status": "WORKING"
+                }
+            ],
+            "other_agents": [
+                {
+                    "name": "AccountAnalyzerAgent",
+                    "file": "account_analyzer.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "PersonaRouterAgent",
+                    "file": "persona_router.py",
+                    "status": "WORKING"
+                },
+                {
+                    "name": "ResearchDeepAgent",
+                    "file": "research/research_deep.py",
+                    "status": "WORKING"
+                }
+            ]
+        },
+        "ui_templates": {
+            "status": "WORKING",
+            "framework": "Jinja2 + Tailwind CSS + HTMX",
+            "templates": {
+                "base.html": "Base template with nav, Tailwind, HTMX, CSRF injection",
+                "dashboard.html": "JARVIS voice approval interface (647 lines)",
+                "queue.html": "Command Queue management UI"
+            },
+            "routes": {
+                "/caseyos": "Main dashboard (Jarvis voice interface)",
+                "/caseyos/queue": "Command Queue view"
+            },
+            "features": [
+                "Voice command button",
+                "Text input fallback",
+                "Glass morphism design",
+                "Responsive layout",
+                "HTMX dynamic updates"
+            ]
+        }
+    },
+    "integration_status": {
+        "gmail": {
+            "status": "WORKING",
+            "file": "src/connectors/gmail.py",
+            "lines_of_code": 527,
+            "capabilities": {
+                "implemented": [
+                    "OAuth2 authentication with token persistence",
+                    "Token refresh with auto-save to DB",
+                    "Token revocation",
+                    "Search threads by query",
+                    "Get full thread details",
+                    "Get messages list",
+                    "Create and send emails",
+                    "Create drafts",
+                    "Service account support with delegation"
+                ],
+                "not_implemented": [
+                    "Attachment handling (partial)",
+                    "Label management"
+                ]
+            },
+            "scopes": [
+                "gmail.readonly",
+                "gmail.modify",
+                "gmail.compose",
+                "gmail.send"
+            ]
+        },
+        "hubspot": {
+            "status": "WORKING",
+            "file": "src/connectors/hubspot.py",
+            "lines_of_code": 1196,
+            "capabilities": {
+                "implemented": [
+                    "Search contacts by email",
+                    "Search companies by domain",
+                    "Get contact/company details",
+                    "Get contact associations",
+                    "Create tasks",
+                    "Create notes",
+                    "Get email engagements (for voice training)",
+                    "Get form submissions",
+                    "Get recent deals",
+                    "Create contacts/companies/deals"
+                ],
+                "api_version": "v3"
+            }
+        },
+        "llm_openai": {
+            "status": "WORKING",
+            "file": "src/connectors/llm.py",
+            "lines_of_code": 241,
+            "capabilities": {
+                "implemented": [
+                    "Multi-provider support (OpenAI + Gemini)",
+                    "Automatic failover between providers",
+                    "Text generation with temperature/max_tokens",
+                    "System instruction support (Gemini)",
+                    "Google Search grounding (Gemini)"
+                ],
+                "default_model": "gpt-4-turbo-preview"
+            }
+        },
+        "gemini": {
+            "status": "WORKING",
+            "file": "src/connectors/gemini.py",
+            "capabilities": [
+                "Text generation",
+                "System instructions",
+                "Google Search grounding for real-time data"
+            ],
+            "default_model": "gemini-2.0-flash-exp"
+        },
+        "calendar": {
+            "status": "WORKING",
+            "file": "src/connectors/calendar_connector.py",
+            "lines_of_code": 288,
+            "capabilities": {
+                "implemented": [
+                    "Get free/busy information",
+                    "Find available time slots",
+                    "Business hours filtering",
+                    "Mock mode for testing"
+                ],
+                "scopes": [
+                    "calendar.readonly"
+                ]
+            }
+        },
+        "slack": {
+            "status": "CONFIGURED",
+            "file": "src/connectors/slack.py",
+            "capabilities": [
+                "Channel history fetching",
+                "List channels",
+                "Health check"
+            ],
+            "notes": "Requires SLACK_BOT_TOKEN env var"
+        },
+        "twitter": {
+            "status": "CONFIGURED",
+            "file": "src/connectors/twitter.py",
+            "lines_of_code": 469,
+            "capabilities": [
+                "Search recent tweets",
+                "Get user tweets",
+                "Monitor credible industry voices",
+                "Tweet parsing with metrics"
+            ],
+            "notes": "Requires TWITTER_BEARER_TOKEN env var"
+        },
+        "google_drive": {
+            "status": "CONFIGURED",
+            "file": "src/connectors/drive.py",
+            "capabilities": [
+                "Search assets",
+                "Allowlist enforcement for folders"
+            ]
+        },
+        "youtube": {
+            "status": "CONFIGURED",
+            "file": "src/connectors/youtube.py",
+            "capabilities": [
+                "Video transcript extraction for training"
+            ]
+        },
+        "grok_xai": {
+            "status": "CONFIGURED",
+            "file": "src/connectors/grok.py",
+            "capabilities": [
+                "Real-time market intelligence"
+            ],
+            "notes": "Requires XAI_API_KEY from console.x.ai"
+        }
+    },
+    "database_models": {
+        "total_models": 18,
+        "models": {
+            "User": {
+                "file": "src/models/user.py",
+                "purpose": "Google OAuth users with session management",
+                "relationships": [
+                    "UserSession"
+                ]
+            },
+            "UserSession": {
+                "file": "src/models/user.py",
+                "purpose": "Cookie-based session tokens",
+                "relationships": [
+                    "User"
+                ]
+            },
+            "CommandQueueItem": {
+                "file": "src/models/command_queue.py",
+                "purpose": "Daily prioritized actions (Today's Moves)",
+                "relationships": [
+                    "ActionRecommendation"
+                ]
+            },
+            "ActionRecommendation": {
+                "file": "src/models/command_queue.py",
+                "purpose": "APS scores and reasoning for queue items"
+            },
+            "Signal": {
+                "file": "src/models/signal.py",
+                "purpose": "Ingested signals from form/HubSpot/Gmail/Twitter",
+                "fields": [
+                    "source",
+                    "event_type",
+                    "payload",
+                    "payload_hash"
+                ]
+            },
+            "Message": {
+                "file": "src/models/message.py",
+                "purpose": "Gmail messages with embeddings for semantic search",
+                "fields": [
+                    "embedding (vector)",
+                    "gmail_metadata"
+                ]
+            },
+            "Thread": {
+                "file": "src/models/message.py",
+                "purpose": "Gmail threads linked to HubSpot contacts/companies"
+            },
+            "JarvisSession": {
+                "file": "src/models/memory.py",
+                "purpose": "Persistent Jarvis conversation sessions",
+                "relationships": [
+                    "ConversationMemory"
+                ]
+            },
+            "ConversationMemory": {
+                "file": "src/models/memory.py",
+                "purpose": "Individual messages with embeddings for recall"
+            },
+            "MemorySummary": {
+                "file": "src/models/memory.py",
+                "purpose": "Compressed summaries of old conversations"
+            },
+            "Workflow": {
+                "file": "src/models/workflow.py",
+                "purpose": "Workflow execution tracking",
+                "fields": [
+                    "status",
+                    "mode (DRAFT_ONLY/SEND)"
+                ]
+            },
+            "FormSubmission": {
+                "file": "src/models/form_submission.py",
+                "purpose": "HubSpot form submission tracking"
+            },
+            "TrainingSample": {
+                "file": "src/models/training_sample.py",
+                "purpose": "Voice profile training data from multiple sources"
+            },
+            "OAuthToken": {
+                "file": "src/oauth_manager.py",
+                "purpose": "Encrypted OAuth tokens at rest"
+            },
+            "Prospect": {
+                "file": "src/models/prospect.py",
+                "purpose": "Sales prospects (Pydantic model, not SQLAlchemy)"
+            },
+            "Activity": {
+                "file": "src/models/activity.py",
+                "purpose": "Activity tracking"
+            },
+            "Notification": {
+                "file": "src/models/notification.py",
+                "purpose": "User notifications"
+            },
+            "AutoApprovalRule": {
+                "file": "src/models/auto_approval.py",
+                "purpose": "Auto-approval rules engine"
+            }
+        }
+    },
+    "background_tasks": {
+        "celery_config": {
+            "file": "src/celery_app.py",
+            "broker": "Redis",
+            "result_backend": "Redis",
+            "time_limit": "10 minutes",
+            "max_retries": 3
+        },
+        "beat_schedule": {
+            "refresh-expiring-oauth-tokens": {
+                "schedule": "30 minutes",
+                "purpose": "Refresh OAuth tokens before expiry"
+            },
+            "poll-hubspot-signals": {
+                "schedule": "5 minutes",
+                "purpose": "Poll HubSpot for new deals and changes"
+            },
+            "poll-gmail-signals": {
+                "schedule": "5 minutes",
+                "purpose": "Poll Gmail for new emails"
+            },
+            "process-unprocessed-signals": {
+                "schedule": "10 minutes",
+                "purpose": "Process any signals that weren't processed"
+            },
+            "daemon-monitor-signals": {
+                "schedule": "5 minutes",
+                "purpose": "Proactive signal monitoring (Henry-style daemon)"
+            }
+        },
+        "task_files": {
+            "signal_polling.py": "HubSpot/Gmail signal polling tasks",
+            "monitor_signals.py": "Daemon mode proactive monitoring",
+            "formlead_task.py": "Form lead processing",
+            "retention.py": "Data retention tasks",
+            "task_service.py": "Task management service"
+        }
+    },
+    "services": {
+        "signal_service": {
+            "file": "src/services/signal_service.py",
+            "purpose": "Signal creation, deduplication, and processing",
+            "features": [
+                "Payload hash dedup",
+                "5-minute dedup window"
+            ]
+        },
+        "memory_service": {
+            "file": "src/services/memory_service.py",
+            "purpose": "Jarvis persistent memory (Henry-style)",
+            "features": [
+                "Session management",
+                "Message storage with embeddings",
+                "Semantic search for context recall",
+                "Automatic summarization of old conversations",
+                "GDPR-compliant forget functionality"
+            ]
+        },
+        "aps_calculator": {
+            "file": "src/services/aps_calculator.py",
+            "purpose": "Action Priority Score calculation"
+        },
+        "notification_service": {
+            "file": "src/services/notification_service.py",
+            "purpose": "User notification management"
+        },
+        "voice_service": {
+            "file": "src/services/voice_service.py",
+            "purpose": "Voice profile and TTS services"
+        }
+    },
+    "testing": {
+        "total_test_lines": 7329,
+        "test_structure": {
+            "unit_tests": {
+                "path": "tests/unit/",
+                "count": 28,
+                "files": [
+                    "test_agents.py",
+                    "test_auth.py",
+                    "test_connectors.py",
+                    "test_db.py",
+                    "test_gmail_connector.py",
+                    "test_operator_mode.py",
+                    "test_operator_send.py",
+                    "test_prospecting.py",
+                    "test_nurturing.py",
+                    "test_specialized_agents.py",
+                    "test_validation.py",
+                    "test_rate_limiter.py"
+                ]
+            },
+            "integration_tests": {
+                "path": "tests/integration/",
+                "count": 6,
+                "files": [
+                    "test_api.py",
+                    "test_content_repurpose.py",
+                    "test_e2e_workflows.py",
+                    "test_formlead_orchestration.py",
+                    "test_migrations.py",
+                    "test_webhooks.py"
+                ]
+            },
+            "other_tests": [
+                "test_aps_calculator.py",
+                "test_calendar_detection.py",
+                "test_csrf_expansion.py",
+                "test_rate_limiting.py",
+                "test_signal_deduplication.py",
+                "test_voice_summary.py"
+            ]
+        },
+        "coverage_baseline": "40%",
+        "tested_components": [
+            "Auth/OAuth flow",
+            "CSRF middleware",
+            "Operator mode draft/approve/reject",
+            "Rate limiting",
+            "Signal deduplication",
+            "Agent base patterns",
+            "API health endpoints"
+        ],
+        "untested_or_partial": [
+            "Full Jarvis orchestration flow",
+            "Content repurpose agents",
+            "Twitter/Slack connectors",
+            "Celery beat task execution",
+            "Voice training end-to-end"
+        ]
+    },
+    "known_issues": {
+        "todos_in_code": [
+            {
+                "file": "src/agents/content/repurpose.py",
+                "line": 165,
+                "issue": "Web scraping not implemented"
+            },
+            {
+                "file": "src/agents/content/social_scheduler.py",
+                "line": 124,
+                "issue": "LinkedIn scheduling not implemented"
+            },
+            {
+                "file": "src/agents/fulfillment/approval_gateway.py",
+                "line": 315,
+                "issue": "Escalation email sending not implemented"
+            },
+            {
+                "file": "src/agents/fulfillment/approval_gateway.py",
+                "line": 379,
+                "issue": "Email sending using gmail connector not implemented"
+            },
+            {
+                "file": "src/agents/fulfillment/client_health.py",
+                "line": 185,
+                "issue": "Pull real data from HubSpot not implemented"
+            },
+            {
+                "file": "src/auto_approval.py",
+                "line": 230,
+                "issue": "Gmail API search for replies not implemented"
+            }
+        ],
+        "deprecated_files": [
+            "src/routes/caseyos_ui.py - Replaced by src/routes/ui.py",
+            "src/routes/ui_command_queue.py - Replaced by src/routes/ui.py",
+            "Legacy SPA files in src/static/*.html"
+        ],
+        "removed_sprint22": [
+            "quotes_routes",
+            "forecasts_routes",
+            "territories_routes",
+            "competitors_routes",
+            "commissions_routes",
+            "playbooks_routes",
+            "learning_routes",
+            "invoices_routes",
+            "events_routes",
+            "calls_routes",
+            "roles_routes",
+            "teams_routes"
+        ],
+        "potential_issues": [
+            "Large number of route files (106) may impact startup time",
+            "Some connectors require env vars that may not be set in dev",
+            "Celery worker needs to be running for background tasks"
+        ]
+    },
+    "security_features": {
+        "authentication": {
+            "method": "Google OAuth 2.0",
+            "session": "Cookie-based (caseyos_session)",
+            "dev_override": "X-User-ID header for testing"
+        },
+        "csrf_protection": {
+            "status": "ENABLED",
+            "implementation": "Custom CSRFMiddleware",
+            "token_injection": "HTMX configRequest",
+            "bypass_paths": [
+                "/webhooks/*",
+                "/mcp/*",
+                "/health",
+                "/auth/*/callback",
+                "/docs"
+            ]
+        },
+        "security_headers": {
+            "status": "ENABLED",
+            "implementation": "SecurityHeaderMiddleware"
+        },
+        "token_encryption": {
+            "status": "ENABLED",
+            "implementation": "Fernet symmetric encryption",
+            "env_var": "OAUTH_ENCRYPTION_KEY"
+        },
+        "operator_mode": {
+            "status": "ENABLED",
+            "purpose": "Human approval required before sending emails",
+            "default": "DRAFT_ONLY mode (emails saved as drafts)"
+        }
+    },
+    "configuration": {
+        "env_vars_required": [
+            "DATABASE_URL",
+            "REDIS_URL",
+            "GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET",
+            "HUBSPOT_API_KEY",
+            "OPENAI_API_KEY"
+        ],
+        "env_vars_optional": [
+            "GEMINI_API_KEY",
+            "XAI_API_KEY",
+            "TWITTER_BEARER_TOKEN",
+            "SLACK_BOT_TOKEN",
+            "SENTRY_DSN",
+            "OAUTH_ENCRYPTION_KEY"
+        ],
+        "feature_flags": [
+            "FEATURE_COLD_START_DEMO",
+            "FEATURE_VALIDATION_AGENT",
+            "FEATURE_OUTCOME_REPORTER",
+            "MODE_DRAFT_ONLY",
+            "ALLOW_AUTO_SEND",
+            "REQUIRE_APPROVAL",
+            "ALLOW_REAL_SENDS",
+            "AUTO_APPROVE_ENABLED"
+        ]
+    },
+    "sprint_recommendations": {
+        "high_priority": [
+            {
+                "item": "Implement missing email sending in approval_gateway.py",
+                "effort": "Medium",
+                "impact": "High - enables fulfillment agent email actions"
+            },
+            {
+                "item": "Implement auto-approval Gmail search",
+                "effort": "Medium",
+                "impact": "High - enables intelligent auto-approval based on replies"
+            },
+            {
+                "item": "Add real HubSpot data fetching in client_health.py",
+                "effort": "Low",
+                "impact": "Medium - enables real customer health monitoring"
+            }
+        ],
+        "medium_priority": [
+            {
+                "item": "Implement LinkedIn scheduling",
+                "effort": "High",
+                "impact": "Medium - expands social reach"
+            },
+            {
+                "item": "Implement web scraping for content repurpose",
+                "effort": "Medium",
+                "impact": "Medium - enables automatic content extraction"
+            },
+            {
+                "item": "Increase test coverage to 60%",
+                "effort": "Medium",
+                "impact": "High - reduces regression risk"
+            }
+        ],
+        "low_priority": [
+            {
+                "item": "Clean up deprecated route files",
+                "effort": "Low",
+                "impact": "Low - code hygiene"
+            },
+            {
+                "item": "Add more UI templates for other features",
+                "effort": "Medium",
+                "impact": "Medium - improves operator experience"
+            }
+        ]
+    }
+}
