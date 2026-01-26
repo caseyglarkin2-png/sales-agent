@@ -1,4 +1,5 @@
 import pytest
+import os
 from uuid import uuid4
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
@@ -9,6 +10,13 @@ from src.db import get_session
 from src.models.content import ContentMemory, ContentSourceType
 
 client = TestClient(app)
+
+# Skip if no database configured or in CI without DB
+pytestmark = pytest.mark.skipif(
+    os.environ.get("SKIP_DB_TESTS", "false").lower() == "true" or 
+    not os.environ.get("DATABASE_URL"),
+    reason="Database tests require DATABASE_URL and running PostgreSQL"
+)
 
 @pytest.mark.asyncio
 async def test_repurpose_api_flow():

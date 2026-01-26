@@ -385,16 +385,25 @@ async def hubspot_form_submission_test(payload: FormSubmissionPayload) -> dict[s
     }
     ```
     """
+    email = payload.get_email()
+    
     logger.info(
         "HubSpot form webhook test",
         form_id=payload.formId,
-        email=payload.get_email(),
+        email=email,
     )
+    
+    # Validate email is present
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email field is required in form submission"
+        )
 
     return {
         "status": "ok",
         "message": "Form validation successful",
-        "email": payload.get_email(),
+        "email": email,
         "company": payload.get_company(),
         "first_name": payload.get_first_name(),
         "received_fields": len(payload.fieldValues),

@@ -297,13 +297,14 @@ class TestWebhookSecurity:
 class TestWorkflowMocking:
     """Tests with mocked external services."""
 
-    @patch("src.commands.smoke_formlead.datetime")
-    def test_smoke_test_timestamp_handling(self, mock_datetime):
+    def test_smoke_test_timestamp_handling(self):
         """Test smoke test handles timestamps correctly."""
         from src.commands.smoke_formlead import SmokeTestContext
 
         ctx = SmokeTestContext(mock=True)
         assert "timestamp" in ctx.results
+        # Timestamp should be ISO format string with 'T' separator
+        assert isinstance(ctx.results["timestamp"], str)
         assert "T" in ctx.results["timestamp"]  # ISO format
 
 

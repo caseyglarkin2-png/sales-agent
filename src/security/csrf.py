@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import secrets
 import time
-from typing import Optional
+from typing import Optional, Set
 
 from fastapi import HTTPException, Request, status
 
@@ -15,10 +15,19 @@ class CSRFProtection:
         """Initialize CSRF protection with secret key."""
         self.secret_key = secret_key or secrets.token_urlsafe(32)
         self.token_ttl = 3600  # 1 hour
+        # Track issued tokens (in production, use Redis)
+        self._issued_tokens: Set[str] = set()
+        self._max_tokens = 10000  # Limit memory usage
 
     def generate_token(self) -> str:
         """Generate a new CSRF token."""
-        return secrets.token_urlsafe(32)
+        token = secrets.token_urlsafe(32)
+        # Track issued token
+        if len(self._issued_tokens) >= self._max_tokens:
+            # Clear oldest half when at capacity
+            self._issued_tokens = set(list(self._issued_tokens)[self._max_tokens // 2:])
+        self._issued_tokens.add(token)
+        return token
 
     def validate_token(self, token: str, request_path: str) -> bool:
         """
@@ -35,12 +44,12 @@ class CSRFProtection:
             return False
 
         # Token format: base64_token (simple validation for this implementation)
-        # In production, would include timestamp + signature verification
         try:
             # Basic validation: token should be non-empty, reasonable length
             if len(token) < 20 or len(token) > 512:
                 return False
-            return True
+            # Check if token was issued by us
+            return token in self._issued_tokens
         except Exception:
             return False
 
