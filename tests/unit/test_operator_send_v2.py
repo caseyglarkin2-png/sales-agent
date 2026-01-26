@@ -96,7 +96,7 @@ class TestRateLimitEnforcement:
         """Should block send when daily rate limit exceeded"""
         draft_queue._cache[sample_draft["id"]] = sample_draft
 
-with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
+        with patch("src.operator_mode.get_rate_limiter") as mock_get_limiter:
             mock_limiter = AsyncMock()
             mock_limiter.check_can_send.return_value = (False, "Daily limit (20) reached")
             mock_get_limiter.return_value = mock_limiter
