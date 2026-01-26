@@ -4,17 +4,16 @@ UI Verification Script.
 Checks that key UI assets are serving correctly from the production endpoint.
 """
 import sys
+import os
 import httpx
 import asyncio
 
-BASE_URL = "https://web-production-a6ccf.up.railway.app"
+BASE_URL = os.getenv("APP_URL", "http://localhost:8000")
 
 PAGES = [
-    "/static/index.html",
-    "/static/command-queue.html",
-    "/static/jarvis.html",
-    "/static/operator-dashboard.html",
-    "/static/csrf-helper.js",  # CRITICAL
+    "/caseyos",              # Main Dashboard (Jinja2)
+    "/caseyos/queue",        # Command Queue (Jinja2)
+    "/static/csrf-helper.js",
     "/health",
 ]
 

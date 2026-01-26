@@ -3,6 +3,10 @@
 
 echo "🚀 Starting Sales Agent with JARVIS..."
 
+# Verify imports fail fast (Prevent crash loop if deps missing)
+echo "🔍 Verifying imports..."
+python -c "import aiohttp; from src.main import app; print('✅ Imports clean')" || { echo "❌ Import failed!"; exit 1; }
+
 # Get PORT from environment (Railway sets this automatically)
 PORT=${PORT:-8000}
 

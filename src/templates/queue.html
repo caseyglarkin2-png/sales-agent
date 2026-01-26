@@ -1,11 +1,13 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="utf-8" />
-  <title>Today's Moves • CaseyOS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
+{% block title %}Today's Moves • CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    /* 
+     * Ported styles from src/static/command-queue.html 
+     * Kept as custom CSS for safety/speed during migration.
+     */
     :root {
       --primary: #4f46e5;
       --primary-dark: #4338ca;
@@ -24,60 +26,11 @@
       --gray-900: #111827;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      margin: 0;
-      background: var(--gray-50);
-      color: var(--gray-900);
-      line-height: 1.5;
-    }
-
-    /* Navigation */
-    .nav {
-      background: white;
-      border-bottom: 1px solid var(--gray-200);
-      padding: 0.75rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-brand {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--primary);
-      text-decoration: none;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 1.5rem;
-    }
-
-    .nav-links a {
-      color: var(--gray-600);
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-      padding: 0.5rem 0;
-      border-bottom: 2px solid transparent;
-    }
-
-    .nav-links a:hover,
-    .nav-links a.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-
-    /* Main container */
-    .container {
-      max-width: 1200px;
+    /* Override base container styles if needed to avoid conflicts */
+    .queue-container {
+      max-width: 100%; /* Let base.html handle constraints */
       margin: 0 auto;
-      padding: 2rem;
+      /* padding: 2rem; - handled by base.html wrapper */
     }
 
     /* Header */
@@ -546,8 +499,8 @@
       }
     }
 
-    /* Toast notifications */
-    .toast {
+    /* Toast notifications - Custom styles for queue page if needed, otherwise rely on base.html */
+    .toast-legacy {
       position: fixed;
       bottom: 2rem;
       right: 2rem;
@@ -563,88 +516,28 @@
       z-index: 100;
     }
 
-    .toast.show {
+    .toast-legacy.show {
       transform: translateY(0);
       opacity: 1;
     }
 
-    .toast.success {
+    .toast-legacy.success {
       background: var(--success);
     }
 
-    .toast.error {
+    .toast-legacy.error {
       background: var(--danger);
     }
 
     /* Responsive - Mobile First */
     @media (max-width: 768px) {
-      .container {
-        padding: 0.75rem;
+      .queue-container {
+        padding: 0;
       }
-
-      .nav {
-        padding: 0.5rem 1rem;
-      }
-
-      .nav-links {
-        display: none;
-        /* Hide on mobile - use hamburger menu pattern */
-      }
-
-      .nav-brand {
-        font-size: 1.125rem;
-      }
-
+      
       .page-header {
         flex-direction: column !important;
         gap: 1rem;
-        margin-bottom: 1rem;
-      }
-
-      .page-header h1 {
-        font-size: 1.375rem;
-      }
-
-      .btn-sync {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .queue-content {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .queue-actions {
-        width: 100%;
-        justify-content: space-between;
-        padding: 0.5rem 1rem 1rem;
-      }
-
-      .queue-actions .btn {
-        flex: 1;
-        justify-content: center;
-      }
-
-      .stats-bar {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-      }
-
-      .stat-card {
-        flex: 1 1 calc(50% - 0.5rem);
-        min-width: 120px;
-        padding: 0.75rem 1rem;
-        text-align: center;
-      }
-
-      .stat-value {
-        font-size: 1.25rem;
-      }
-
-      .stat-label {
-        font-size: 0.75rem;
       }
 
       .filters {
@@ -732,8 +625,8 @@
 
     /* Small phones */
     @media (max-width: 480px) {
-      .container {
-        padding: 0.5rem;
+      .queue-container {
+        padding: 0;
       }
 
       .stats-bar {
@@ -761,50 +654,13 @@
 
     /* Dark mode support */
     @media (prefers-color-scheme: dark) {
-      :root {
-        --gray-50: #111827;
-        --gray-100: #1f2937;
-        --gray-200: #374151;
-        --gray-300: #4b5563;
-        --gray-400: #6b7280;
-        --gray-500: #9ca3af;
-        --gray-600: #d1d5db;
-        --gray-700: #e5e7eb;
-        --gray-800: #f3f4f6;
-        --gray-900: #f9fafb;
-      }
-
-      body {
-        background: var(--gray-50);
-        color: var(--gray-900);
-      }
-
-      .nav,
-      .queue-list,
-      .stat-card {
-        background: var(--gray-100);
-        border-color: var(--gray-200);
-      }
-
-      .queue-item:hover {
-        background: var(--gray-200);
-      }
+      /* Handled by global Tailwind dark mode mostly, but preserving legacy overrides here if needed */
     }
-  </style>
-</head>
+</style>
+{% endblock %}
 
-<body>
-  <nav class="nav">
-    <a href="/dashboard" class="nav-brand">CaseyOS</a>
-    <div class="nav-links">
-      <a href="/dashboard">Dashboard</a>
-      <a href="/todays-moves" class="active">Today's Moves</a>
-      <a href="/calendar">Calendar</a>
-      <a href="/settings">Settings</a>
-    </div>
-  </nav>
-
-  <div class="container">
+{% block content %}
+<div class="queue-container">
     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
       <div>
         <h1>Today's Moves</h1>
@@ -877,12 +733,20 @@
     <div class="queue-list" id="queue-list">
       <div class="loading">Loading your moves...</div>
     </div>
-  </div>
+</div>
 
-  <div class="toast" id="toast"></div>
+<!-- Legacy toast container (specific to this page's logic for now) -->
+<div class="toast-legacy" id="toast"></div>
 
-  <script src="/static/csrf-helper.js"></script>
-  <script>
+<!-- Mobile Floating Action Button -->
+<button class="fab" onclick="showQuickAdd()" title="Quick add task">+</button>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    /* 
+     * Ported Scripts from src/static/command-queue.html
+     */
     const API_BASE = '/api/command-queue';
     let items = [];
 
@@ -910,8 +774,8 @@
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       toast.textContent = message;
-      toast.className = 'toast ' + type + ' show';
-      setTimeout(() => { toast.className = 'toast'; }, 3000);
+      toast.className = 'toast-legacy ' + type + ' show';
+      setTimeout(() => { toast.className = 'toast-legacy'; }, 3000);
     }
 
     // Render queue list
@@ -1053,6 +917,7 @@
     }
 
     function viewItem(id) {
+        // Updated to use the new UI prefix if we have one, or just keep it relative
       window.location.href = `/queue/${id}`;
     }
 
@@ -1098,11 +963,37 @@
           showToast(`Snoozed until ${until.toLocaleString()}`);
           loadQueue();
         } else {
-          showToast('Failed to snooze item', 'error');
+            showToast('Failed to snooze item', 'error');
         }
       } catch (err) {
         showToast('Failed to snooze item', 'error');
       }
+    }
+
+    async function syncFromHubSpot() {
+        const btn = document.getElementById('sync-hubspot');
+        const text = btn.querySelector('.sync-text');
+        btn.disabled = true;
+        btn.classList.add('syncing');
+        text.textContent = 'Syncing...';
+
+        try {
+            const res = await fetch('/api/crm/sync-now', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                showToast(`Synced! ${data.signals_detected || 0} new detected.`);
+                loadQueue();
+            } else {
+                showToast('Sync failed', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Sync failed', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('syncing');
+            text.textContent = 'Sync from HubSpot';
+        }
     }
 
     async function executeItem(id, actionType, dryRun = false) {
@@ -1243,10 +1134,5 @@
     loadQueue();
     loadCompletedCount();
     loadOutcomeStats();
-  </script>
-
-  <!-- Mobile Floating Action Button -->
-  <button class="fab" onclick="showQuickAdd()" title="Quick add task">+</button>
-</body>
-
-</html>
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CaseyOS{% endblock %}</title>
+    
+    <!-- Design System: Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4f46e5',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Interactions: HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="/static/csrf-helper.js"></script> <!-- Ensure CSRF token is sent with HTMX -->
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
+
+    <!-- Global Navigation -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <span class="text-xl font-bold text-primary">CaseyOS</span>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/caseyos" 
+                           class="{% if active_tab == 'dashboard' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Dashboard
+                        </a>
+                        <a href="/caseyos/queue" 
+                           class="{% if active_tab == 'queue' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Command Queue
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <!-- Status Indicator -->
+                    <div class="flex items-center space-x-2">
+                        <span class="h-2.5 w-2.5 rounded-full bg-green-400"></span>
+                        <span class="text-sm text-gray-500">System Online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Toast/Flash Messages Container -->
+            <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-sm text-gray-500">
+            <div>CaseyOS v3.0 (Sprint 24)</div>
+            <div>&copy; 2026 Dude What's The Bid?! LLC</div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

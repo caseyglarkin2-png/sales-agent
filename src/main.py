@@ -131,6 +131,7 @@ from src.routes import health
 # from src.routes import revenue_intelligence_routes
 from src.routes import admin_flags
 from src.routes import dashboard_api
+from src.routes import ui
 from src.routes import customer_success_routes
 # REMOVED Sprint 22 Task 5 - Unused route
 # from src.routes import email_templates_v2_routes
@@ -272,14 +273,14 @@ from src.routes import debug_api
 from src.routes import integrations_api
 from src.routes import ops
 from src.routes import command_queue
-from src.routes import ui_command_queue
+from src.routes import ui
 from src.routes import signals as signals_routes
 from src.routes import web_auth  # CaseyOS Sprint 1: Web OAuth
 from src.routes import hubspot_signals  # CaseyOS Sprint 3: HubSpot Signal Ingestion
 from src.routes import hubspot_webhooks  # HubSpot CRM Real-Time Webhooks
 from src.routes import actions as actions_routes  # CaseyOS Sprint 9: Action Execution
 from src.routes import outcomes as outcomes_routes  # CaseyOS Sprint 10: Closed-Loop Outcomes
-from src.routes import caseyos_ui  # CaseyOS Sprint 11: Unified Dashboard
+# from src.routes import caseyos_ui  # DEPRECATED Sprint 24 (Replaced by src/routes/ui.py)
 from src.routes import celery_health  # Task 8.18: Celery Beat Health Check
 from src.routes import llm_api  # LLM: Multi-provider AI (OpenAI + Gemini)
 from src.routes import jarvis_api  # Jarvis: Master AI Orchestrator
@@ -326,13 +327,13 @@ app.include_router(gdpr.router)  # Sprint 6: GDPR data deletion + retention
 app.include_router(circuit_breakers.router)  # Sprint 6: Circuit breaker monitoring
 app.include_router(ops.router)  # Ops: Sentry test and admin operations
 app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
-app.include_router(ui_command_queue.router)  # CaseyOS: Command Queue UI v0
+app.include_router(ui.router)  # CaseyOS: Unified UI (Sprint 24)
 app.include_router(signals_routes.router)  # CaseyOS: Signals API (Sprint 8)
 app.include_router(hubspot_signals.router)  # CaseyOS: HubSpot Signal Ingestion (Sprint 3)
 app.include_router(hubspot_webhooks.router)  # HubSpot CRM Real-Time Webhooks
 app.include_router(actions_routes.router)  # CaseyOS Sprint 9: Action Execution
 app.include_router(outcomes_routes.router)  # CaseyOS Sprint 10: Closed-Loop Outcomes
-app.include_router(caseyos_ui.router)  # CaseyOS Sprint 11: Unified Dashboard UI
+# app.include_router(caseyos_ui.router)  # DEPRECATED Sprint 24 (Replaced by ui.router)
 app.include_router(jarvis_api.router)  # Jarvis: Master AI Orchestrator + Agent Hub
 app.include_router(memory_routes.router)  # Sprint 15: Jarvis Persistent Memory API
 app.include_router(llm_api.router)  # LLM: Multi-provider AI (OpenAI + Gemini)
@@ -577,6 +578,8 @@ app.include_router(deal_scoring_routes.router)
     # app.include_router(quote_management_routes.router)
 app.include_router(voice_approval_routes.router)
 app.include_router(content_ingest_routes.router)
+# New UI Routes (Sprint 24)
+app.include_router(ui.router)
 
 # Mount static files for dashboard
 static_dir = os.path.join(os.path.dirname(__file__), "static")
