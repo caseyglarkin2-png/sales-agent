@@ -16,15 +16,20 @@ async def test_validation_compliance_check():
     """Test compliance checking."""
     agent = ValidationAgent()
     
-    # Body with prohibited term
+    # Body with prohibited term ("guarantee")
     bad_body = "I guarantee this will work for your team"
-    good_body = "This solution has helped similar teams streamline their workflow. Please unsubscribe if interested"
+    # Body with proper content and unsubscribe
+    good_body = "This solution has helped similar teams streamline their workflow. Please unsubscribe if not interested."
     
     bad_result = await agent._check_compliance(bad_body)
     good_result = await agent._check_compliance(good_body)
     
+    # Bad body should fail due to "guarantee"
     assert bad_result["passed"] is False
-    assert good_result["passed"] is False  # Missing unsubscribe
+    assert any("guarantee" in v.lower() for v in bad_result["violations"])
+    
+    # Good body should pass (has unsubscribe, no prohibited terms)
+    assert good_result["passed"] is True
     
 
 @pytest.mark.asyncio

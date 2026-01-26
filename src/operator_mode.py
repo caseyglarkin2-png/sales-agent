@@ -278,13 +278,9 @@ class DraftQueue:
         
         # Send via Gmail
         try:
-            from src.connectors.gmail import GmailConnector
+            from src.connectors.gmail import create_gmail_connector
             
-            gmail = GmailConnector(
-                client_id=settings.google_client_id,
-                client_secret=settings.google_client_secret,
-                user_id=settings.google_user_email or approved_by,
-            )
+            gmail = create_gmail_connector()
             
             # Send email
             result = await gmail.send_email(

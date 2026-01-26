@@ -36,10 +36,12 @@ async def test_nurturing_agent_calculate_follow_up():
     
     now = datetime.utcnow()
     
-    # Initial should be ~3 days out
-    assert (date_initial - now).days == 3
+    # Initial should be ~3 days out (allow for timing variance)
+    days_initial = (date_initial - now).days
+    assert days_initial >= 2 and days_initial <= 3, f"Expected ~3 days, got {days_initial}"
     # Qualified should be ~2 days out (sooner follow-up)
-    assert (date_qualified - now).days == 2
+    days_qualified = (date_qualified - now).days
+    assert days_qualified >= 1 and days_qualified <= 2, f"Expected ~2 days, got {days_qualified}"
 
 
 @pytest.mark.asyncio

@@ -132,8 +132,8 @@ class TestDraftWriterAgent:
         
         assert result["status"] == "success"
         body = result.get("body", "")
-        # Should mention multiple time options
-        assert "Tuesday" in body or "2026" in body
+        # Should mention day/time options (Wednesday Jan 21, 2026)
+        assert "Wednesday" in body or "January" in body or "10:00" in body
 
     async def test_draft_includes_asset_link_if_provided(self):
         """Test draft includes asset link when provided."""

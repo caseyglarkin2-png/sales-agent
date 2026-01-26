@@ -136,6 +136,9 @@ class TestDraftEmailModel:
     def test_draft_email_approval_workflow(self, db_session, sample_form_submission):
         """Test draft email approval workflow."""
         workflow = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add(workflow)
+        db_session.flush()  # Flush to get workflow.id
+        
         draft = DraftEmail(
             workflow_id=workflow.id,
             form_submission_id=sample_form_submission.id,
@@ -143,7 +146,7 @@ class TestDraftEmailModel:
             subject="Subject",
             body="Body",
         )
-        db_session.add_all([workflow, draft])
+        db_session.add(draft)
         db_session.commit()
         
         # Approve draft
@@ -158,6 +161,9 @@ class TestDraftEmailModel:
     def test_draft_email_rejection_workflow(self, db_session, sample_form_submission):
         """Test draft email rejection workflow."""
         workflow = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add(workflow)
+        db_session.flush()  # Flush to get workflow.id
+        
         draft = DraftEmail(
             workflow_id=workflow.id,
             form_submission_id=sample_form_submission.id,
@@ -165,7 +171,7 @@ class TestDraftEmailModel:
             subject="Subject",
             body="Body",
         )
-        db_session.add_all([workflow, draft])
+        db_session.add(draft)
         db_session.commit()
         
         # Reject draft
@@ -182,6 +188,9 @@ class TestDraftEmailModel:
     def test_draft_email_relationship_to_workflow(self, db_session, sample_form_submission):
         """Test draft email relationship to workflow."""
         workflow = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add(workflow)
+        db_session.flush()  # Flush to get workflow.id
+        
         draft1 = DraftEmail(
             workflow_id=workflow.id,
             form_submission_id=sample_form_submission.id,
@@ -196,7 +205,7 @@ class TestDraftEmailModel:
             subject="Draft 2",
             body="Body 2",
         )
-        db_session.add_all([workflow, draft1, draft2])
+        db_session.add_all([draft1, draft2])
         db_session.commit()
         
         # Test relationship
@@ -210,6 +219,9 @@ class TestHubSpotTaskModel:
     def test_create_hubspot_task(self, db_session, sample_form_submission):
         """Test creating a HubSpot task."""
         workflow = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add(workflow)
+        db_session.flush()  # Flush to get workflow.id
+        
         task = HubSpotTask(
             workflow_id=workflow.id,
             hubspot_task_id="hs-task-12345",
@@ -218,7 +230,7 @@ class TestHubSpotTaskModel:
             body="Review draft and follow up",
             due_date=datetime.utcnow() + timedelta(days=2),
         )
-        db_session.add_all([workflow, task])
+        db_session.add(task)
         db_session.commit()
         
         assert task.id is not None
@@ -230,6 +242,8 @@ class TestHubSpotTaskModel:
         """Test that hubspot_task_id must be unique."""
         workflow1 = Workflow(form_submission_id=sample_form_submission.id)
         workflow2 = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add_all([workflow1, workflow2])
+        db_session.flush()  # Flush to get workflow IDs
         
         task1 = HubSpotTask(
             workflow_id=workflow1.id,
@@ -244,7 +258,7 @@ class TestHubSpotTaskModel:
             title="Task 2",
         )
         
-        db_session.add_all([workflow1, workflow2, task1])
+        db_session.add(task1)
         db_session.commit()
         
         db_session.add(task2)
@@ -258,6 +272,9 @@ class TestWorkflowErrorModel:
     def test_create_workflow_error(self, db_session, sample_form_submission):
         """Test creating a workflow error."""
         workflow = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add(workflow)
+        db_session.flush()  # Flush to get workflow.id
+        
         error = WorkflowError(
             workflow_id=workflow.id,
             error_type="APIError",
@@ -268,7 +285,7 @@ class TestWorkflowErrorModel:
             max_retries=3,
             next_retry_at=datetime.utcnow() + timedelta(minutes=5),
         )
-        db_session.add_all([workflow, error])
+        db_session.add(error)
         db_session.commit()
         
         assert error.id is not None
@@ -280,6 +297,9 @@ class TestWorkflowErrorModel:
     def test_workflow_error_relationship(self, db_session, sample_form_submission):
         """Test workflow error relationship."""
         workflow = Workflow(form_submission_id=sample_form_submission.id)
+        db_session.add(workflow)
+        db_session.flush()  # Flush to get workflow.id
+        
         error1 = WorkflowError(
             workflow_id=workflow.id,
             error_type="Error1",
@@ -290,7 +310,7 @@ class TestWorkflowErrorModel:
             error_type="Error2",
             error_message="Message 2",
         )
-        db_session.add_all([workflow, error1, error2])
+        db_session.add_all([error1, error2])
         db_session.commit()
         
         # Test relationship
@@ -371,6 +391,7 @@ class TestFormSubmissionModel:
             form_id="form1",
             form_submission_id="sub-123",
             prospect_email="test@example.com",
+            processed=0,  # Explicitly set for testing
         )
         
         # Test pending

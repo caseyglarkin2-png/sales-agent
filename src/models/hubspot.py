@@ -33,7 +33,8 @@ class HubSpotContact(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     hubspot_contact_id = Column(String(255), unique=True, nullable=False, index=True)
-    email = Column(String(255), nullable=False, unique=True, index=True)
+    # NOTE: unique=True already creates index; removed explicit Index() to avoid duplicate
+    email = Column(String(255), nullable=False, unique=True)
     firstname = Column(String(255), nullable=True)
     lastname = Column(String(255), nullable=True)
     company_id = Column(UUID(as_uuid=True), ForeignKey("hubspot_companies.id"), nullable=True)
@@ -41,8 +42,6 @@ class HubSpotContact(Base):
     synced_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (Index("ix_hubspot_contacts_email", "email"),)
 
 
 class HubSpotDeal(Base):
