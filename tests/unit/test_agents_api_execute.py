@@ -69,15 +69,16 @@ class TestExecuteAgentEndpoint:
 
         with patch("src.routes.agents_api.get_agent_registry", return_value=mock_registry):
             with patch("src.routes.agents_api.get_execution_service", return_value=mock_service):
-                async with AsyncClient(
-                    transport=ASGITransport(app=app),
-                    base_url="http://test",
-                ) as client:
-                    response = await client.post(
-                        "/api/agents/ProspectingAgent/execute",
-                        json={"context": {"test": "data"}, "triggered_by": "test_user"},
-                        headers=get_csrf_headers(),
-                    )
+                with patch("src.routes.agents_api.queue_agent_execution", return_value="test-task-id"):
+                    async with AsyncClient(
+                        transport=ASGITransport(app=app),
+                        base_url="http://test",
+                    ) as client:
+                        response = await client.post(
+                            "/api/agents/ProspectingAgent/execute",
+                            json={"context": {"test": "data"}, "triggered_by": "test_user"},
+                            headers=get_csrf_headers(),
+                        )
 
         assert response.status_code == 200
         data = response.json()
@@ -118,15 +119,16 @@ class TestExecuteAgentEndpoint:
 
         with patch("src.routes.agents_api.get_agent_registry", return_value=mock_registry):
             with patch("src.routes.agents_api.get_execution_service", return_value=mock_service):
-                async with AsyncClient(
-                    transport=ASGITransport(app=app),
-                    base_url="http://test",
-                ) as client:
-                    response = await client.post(
-                        "/api/agents/ProspectingAgent/execute",
-                        json={"context": {}, "async_mode": True},
-                        headers=get_csrf_headers(),
-                    )
+                with patch("src.routes.agents_api.queue_agent_execution", return_value="test-task-id"):
+                    async with AsyncClient(
+                        transport=ASGITransport(app=app),
+                        base_url="http://test",
+                    ) as client:
+                        response = await client.post(
+                            "/api/agents/ProspectingAgent/execute",
+                            json={"context": {}, "async_mode": True},
+                            headers=get_csrf_headers(),
+                        )
 
         assert response.status_code == 200
         assert "queued" in response.json()["message"].lower()

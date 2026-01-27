@@ -15,6 +15,7 @@ from src.db import get_db
 from src.logger import get_logger
 from src.models.agent_execution import ExecutionStatus
 from src.services.execution_service import ExecutionService, get_execution_service
+from src.tasks.agent_executor import queue_agent_execution
 
 logger = get_logger(__name__)
 
@@ -257,11 +258,22 @@ async def execute_agent(
     
     if request.async_mode:
         # Queue for async execution via Celery
-        # TODO: Sprint 42.4 - Implement Celery task dispatch
-        message = f"Agent {agent_meta.name} queued for execution"
+        task_id = queue_agent_execution(
+            execution_id=execution.id,
+            agent_class_name=agent_meta.class_name,
+            module_path=agent_meta.module_path,
+            context=request.context,
+        )
+        message = f"Agent {agent_meta.name} queued for execution (task: {task_id[:8]}...)"
     else:
-        # TODO: Implement sync execution
-        message = f"Agent {agent_meta.name} execution started"
+        # Sync execution not implemented - use async
+        message = f"Agent {agent_meta.name} execution started (sync mode not supported, using async)"
+        task_id = queue_agent_execution(
+            execution_id=execution.id,
+            agent_class_name=agent_meta.class_name,
+            module_path=agent_meta.module_path,
+            context=request.context,
+        )
     
     logger.info(f"Execution {execution.id} started for {agent_meta.name}")
     
