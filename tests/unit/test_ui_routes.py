@@ -87,6 +87,26 @@ class TestOtherUIRoutes:
         assert "Agents" in response.text
 
     @pytest.mark.asyncio
+    async def test_agents_page_has_run_now_button(self, async_client):
+        """Agents page includes Run Now button in modal."""
+        async with async_client as client:
+            response = await client.get("/caseyos/agents")
+        
+        assert response.status_code == 200
+        assert "Run Now" in response.text
+        assert "execute-modal" in response.text
+
+    @pytest.mark.asyncio
+    async def test_agents_page_has_execute_form(self, async_client):
+        """Agents page includes execute form elements."""
+        async with async_client as client:
+            response = await client.get("/caseyos/agents")
+        
+        assert response.status_code == 200
+        assert "exec-context" in response.text
+        assert "executeAgent" in response.text
+
+    @pytest.mark.asyncio
     async def test_queue_page_loads(self, async_client):
         """GET /caseyos/queue returns 200."""
         async with async_client as client:

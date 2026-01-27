@@ -102,10 +102,92 @@
                 <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
                     Close
                 </button>
+                <button onclick="openExecuteModal()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    ▶️ Run Now
+                </button>
                 <a href="/caseyos/gemini"
                     class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                     ✨ Use with Jarvis
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Execute Agent Modal -->
+    <div id="execute-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 transform transition-all">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <span class="text-3xl mr-3">▶️</span>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900">Execute Agent</h2>
+                            <span class="text-sm text-gray-500" id="exec-agent-name">Agent Name</span>
+                        </div>
+                    </div>
+                    <button onclick="closeExecuteModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Execution Form -->
+                <form id="execute-form" onsubmit="executeAgent(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Input Context (JSON)
+                        </label>
+                        <textarea id="exec-context" 
+                            class="w-full h-40 p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder='{"key": "value"}'>{}</textarea>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Provide context for the agent execution in JSON format
+                        </p>
+                    </div>
+                    
+                    <!-- Execution Result Area (hidden by default) -->
+                    <div id="exec-result" class="mb-4 hidden">
+                        <div id="exec-pending" class="hidden">
+                            <div class="flex items-center justify-center p-4 bg-yellow-50 rounded-lg">
+                                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-600 mr-3"></div>
+                                <span class="text-yellow-700">Execution queued...</span>
+                            </div>
+                        </div>
+                        <div id="exec-success" class="hidden">
+                            <div class="p-4 bg-green-50 rounded-lg">
+                                <div class="flex items-center text-green-700 font-medium mb-2">
+                                    ✅ Execution Queued
+                                </div>
+                                <p class="text-sm text-green-600">
+                                    Execution ID: <span id="exec-id" class="font-mono">--</span>
+                                </p>
+                                <a href="/caseyos/executions" class="text-sm text-green-700 underline mt-2 inline-block">
+                                    View in Execution History →
+                                </a>
+                            </div>
+                        </div>
+                        <div id="exec-error" class="hidden">
+                            <div class="p-4 bg-red-50 rounded-lg">
+                                <div class="flex items-center text-red-700 font-medium mb-2">
+                                    ❌ Execution Failed
+                                </div>
+                                <p class="text-sm text-red-600" id="exec-error-msg">Error message</p>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-end space-x-3">
+                <button onclick="closeExecuteModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                    Cancel
+                </button>
+                <button type="button" onclick="executeAgent()" id="exec-submit-btn"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    ▶️ Execute
+                </button>
             </div>
         </div>
     </div>
@@ -237,6 +319,108 @@
 
             grid.appendChild(card);
         });
+
+    // Execute Modal Functions
+    let currentAgentName = null;
+
+    function openExecuteModal() {
+        const agent = allAgents.find(a => a.name === document.getElementById('modal-title').textContent);
+        if (!agent) return;
+
+        currentAgentName = agent.name;
+        document.getElementById('exec-agent-name').textContent = agent.name;
+        document.getElementById('exec-context').value = '{}';
+        
+        // Reset result states
+        document.getElementById('exec-result').classList.add('hidden');
+        document.getElementById('exec-pending').classList.add('hidden');
+        document.getElementById('exec-success').classList.add('hidden');
+        document.getElementById('exec-error').classList.add('hidden');
+        document.getElementById('exec-submit-btn').disabled = false;
+        
+        closeModal();
+        document.getElementById('execute-modal').classList.remove('hidden');
+    }
+
+    function closeExecuteModal() {
+        document.getElementById('execute-modal').classList.add('hidden');
+        currentAgentName = null;
+    }
+
+    async function executeAgent(event) {
+        if (event) event.preventDefault();
+        if (!currentAgentName) return;
+
+        // Parse context
+        let context = {};
+        try {
+            context = JSON.parse(document.getElementById('exec-context').value);
+        } catch (e) {
+            document.getElementById('exec-result').classList.remove('hidden');
+            document.getElementById('exec-error').classList.remove('hidden');
+            document.getElementById('exec-error-msg').textContent = 'Invalid JSON: ' + e.message;
+            return;
+        }
+
+        // Show pending state
+        document.getElementById('exec-result').classList.remove('hidden');
+        document.getElementById('exec-pending').classList.remove('hidden');
+        document.getElementById('exec-error').classList.add('hidden');
+        document.getElementById('exec-success').classList.add('hidden');
+        document.getElementById('exec-submit-btn').disabled = true;
+
+        try {
+            // Get CSRF token
+            const csrfToken = getCookie('csrf_token') || '';
+            
+            const response = await fetch(`/api/agents/${encodeURIComponent(currentAgentName)}/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ context })
+            });
+
+            const data = await response.json();
+
+            document.getElementById('exec-pending').classList.add('hidden');
+
+            if (response.ok) {
+                document.getElementById('exec-success').classList.remove('hidden');
+                document.getElementById('exec-id').textContent = data.execution_id;
+            } else {
+                document.getElementById('exec-error').classList.remove('hidden');
+                document.getElementById('exec-error-msg').textContent = data.detail || 'Unknown error';
+                document.getElementById('exec-submit-btn').disabled = false;
+            }
+        } catch (error) {
+            document.getElementById('exec-pending').classList.add('hidden');
+            document.getElementById('exec-error').classList.remove('hidden');
+            document.getElementById('exec-error-msg').textContent = 'Network error: ' + error.message;
+            document.getElementById('exec-submit-btn').disabled = false;
+        }
+    }
+
+    // Close execute modal on escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeExecuteModal();
+        }
+    });
+
+    // Close execute modal on backdrop click
+    document.getElementById('execute-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeExecuteModal();
+    });
+
+    // Helper function to get cookie
+    function getCookie(name) {
+        let value = "; " + document.cookie;
+        let parts = value.split("; " + name + "=");
+        if (parts.length == 2) return parts.pop().split(";").shift();
+        return '';
+    }
 
         // Show empty state if no results
         if (grid.children.length === 0) {
