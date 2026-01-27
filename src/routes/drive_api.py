@@ -4,7 +4,7 @@ Sprint 35: Drive Integration & File Context
 Provides API endpoints for browsing and accessing Google Drive files.
 """
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,8 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db import get_db
 from src.auth.decorators import get_current_user_optional
 from src.models.user import User
-from src.oauth_manager import TokenManager
 from src.logger import get_logger
+
+# Lazy import to avoid startup failures if cryptography not available
+if TYPE_CHECKING:
+    from src.oauth_manager import TokenManager
 
 logger = get_logger(__name__)
 
@@ -80,6 +83,8 @@ async def get_drive_service(user_id: Optional[UUID], db: AsyncSession):
         return None
     
     try:
+        # Lazy import to avoid startup failures
+        from src.oauth_manager import TokenManager
         token_manager = TokenManager(db)
         token_data = await token_manager.get_valid_token(user_id, "google")
         
