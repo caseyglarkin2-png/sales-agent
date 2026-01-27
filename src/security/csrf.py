@@ -97,13 +97,27 @@ def exclude_path(path: str) -> bool:
     
     Excluded paths:
     - /api/webhooks/* - External webhooks with signature validation
+    - /api/gemini/* - Gemini AI portal (Sprint 39A: session-based auth via cookies)
+    - /api/drive/* - Drive integration (Sprint 39A: session-based auth via cookies)
     - /mcp/* - MCP server (Claude Desktop integration)
     - /health, /healthz, /ready - Health checks
     - /auth/* - OAuth callbacks
     - /docs, /redoc, /openapi.json - API documentation
+    
+    Note: Gemini and Drive APIs are excluded because they use session-based authentication
+    where the browser automatically sends the session cookie. HTMX requests from these
+    pages are authenticated via the session, making CSRF tokens redundant for these endpoints.
     """
     # Webhook endpoints (have signature validation)
     if path.startswith("/api/webhooks"):
+        return True
+
+    # Gemini AI Portal (Sprint 39A - session-based auth)
+    if path.startswith("/api/gemini"):
+        return True
+    
+    # Drive Integration (Sprint 39A - session-based auth)
+    if path.startswith("/api/drive"):
         return True
 
     # MCP server (Claude Desktop integration)
