@@ -226,8 +226,26 @@ from src.routes import sequences_routes as sequences_v2_routes
 # from src.routes import roi_calculator_routes
 from src.routes import contact_queue
 from src.routes import forms as forms_routes
-from src.routes import gemini_api  # Sprint 34: Gemini AI Portal
-from src.routes import drive_api  # Sprint 35: Google Drive Integration
+
+# Sprint 34-35: Gemini and Drive (optional - degrade gracefully if deps missing)
+try:
+    from src.routes import gemini_api
+    GEMINI_ENABLED = True
+except ImportError as e:
+    import structlog
+    structlog.get_logger().warning("gemini_api import failed", error=str(e))
+    gemini_api = None
+    GEMINI_ENABLED = False
+
+try:
+    from src.routes import drive_api
+    DRIVE_ENABLED = True
+except ImportError as e:
+    import structlog
+    structlog.get_logger().warning("drive_api import failed", error=str(e))
+    drive_api = None
+    DRIVE_ENABLED = False
+
 # REMOVED Sprint 22 Task 5 - Unused route
 # from src.routes import proposal_templates_routes
 # REMOVED Sprint 22 Task 5 - Unused route
@@ -330,8 +348,13 @@ app.include_router(circuit_breakers.router)  # Sprint 6: Circuit breaker monitor
 app.include_router(ops.router)  # Ops: Sentry test and admin operations
 app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
 app.include_router(ui.router)  # CaseyOS: Unified UI (Sprint 24)
-app.include_router(gemini_api.router)  # Sprint 34: Gemini AI Portal
-app.include_router(drive_api.router)  # Sprint 35: Google Drive Integration
+
+# Sprint 34-35: Gemini and Drive (conditionally enabled)
+if GEMINI_ENABLED and gemini_api:
+    app.include_router(gemini_api.router)  # Sprint 34: Gemini AI Portal
+if DRIVE_ENABLED and drive_api:
+    app.include_router(drive_api.router)  # Sprint 35: Google Drive Integration
+
 app.include_router(signals_routes.router)  # CaseyOS: Signals API (Sprint 8)
 app.include_router(hubspot_signals.router)  # CaseyOS: HubSpot Signal Ingestion (Sprint 3)
 app.include_router(hubspot_webhooks.router)  # HubSpot CRM Real-Time Webhooks
