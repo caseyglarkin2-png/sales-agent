@@ -1088,132 +1088,451 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 
 ---
 
+## Sprint 39A: Critical Hotfix - Gemini CSRF Fix
+**Goal**: Fix blocking CSRF issue preventing Gemini chat from working.
+**Demo**: User sends message in Gemini portal → receives AI response (no more 403 error).
+**Priority**: P0 - Deploy immediately, 30-minute fix.
+
+> **Note**: This is an emergency hotfix sprint. Complete and deploy before continuing.
+
+### Task 39A.1: Exempt Gemini API from CSRF Middleware
+**Description**: Add `/api/gemini` and `/api/drive` to CSRF exclusion list.
+**Files**: `src/security/csrf.py`
+**Validation**: `curl -X POST /api/gemini/chat` returns AI response, not 403
+**Tests**: `tests/unit/test_csrf_exclusions.py`, `tests/e2e/test_gemini_chat_flow.py`
+**Acceptance Criteria**:
+- [ ] Add `/api/gemini` to `exclude_path()` function
+- [ ] Add `/api/drive` to exclusion (same session-based auth)
+- [ ] Add comment explaining why (HTMX sends cookies, session-auth sufficient)
+- [ ] Write test: `test_gemini_excluded_from_csrf`
+- [ ] Commit: "fix(csrf): exempt Gemini and Drive APIs from CSRF check"
+
+### Task 39A.2: Add Agents Navigation Link (Quick Win)
+**Description**: Add Agents link to navigation bar.
+**Files**: `src/templates/base.html`
+**Validation**: Navigation shows "🤖 Agents" link
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add nav link placeholder to `/caseyos/agents`
+- [ ] Use robot emoji: 🤖 Agents
+- [ ] Position after Drive in nav order
+- [ ] Create minimal placeholder route that returns 501 "Coming Soon"
+- [ ] Commit: "feat(ui): add agents navigation placeholder"
+
+---
+
+## Sprint 39B: Contact Enrichment & Memory
+**Goal**: Show WHO drafts are for and enable conversation memory in Gemini.
+**Demo**: Queue items show "👤 John Smith (john@acme.com)". Gemini remembers previous messages.
+
+> **Note**: Supersedes original Sprint 39 tasks 39.3-39.5
+
+### Task 39B.1: Wire Existing MemoryService to Gemini Chat
+**Description**: Replace in-memory chat_sessions dict with existing MemoryService.
+**Files**: `src/routes/gemini_api.py`, `src/services/memory_service.py`
+**Validation**: Chat history persists across page refreshes for same session
+**Tests**: `tests/unit/test_gemini_memory.py`
+**Acceptance Criteria**:
+- [ ] Import and use existing `MemoryService` 
+- [ ] Store messages with `add_message(session_id, message)`
+- [ ] Retrieve with `get_recent_messages(session_id, limit=10)`
+- [ ] Pass history to Gemini API for context
+- [ ] Commit: "feat(gemini): wire existing MemoryService for conversation history"
+
+### Task 39B.2: Add Contact Name to Queue Item Response
+**Description**: Enrich queue items with HubSpot contact name and email.
+**Files**: `src/routes/command_queue.py`, `src/models/command_queue.py`
+**Validation**: GET `/api/command-queue/today` returns items with `contact_name`, `contact_email`
+**Tests**: `tests/unit/test_queue_enrichment.py`
+**Acceptance Criteria**:
+- [ ] Add `contact_name` and `contact_email` to `CommandQueueItemResponse`
+- [ ] Extract from `action_context` if present
+- [ ] Return empty string if not available (graceful degradation)
+- [ ] Commit: "feat(queue): add contact name/email to queue item response"
+
+### Task 39B.3: Background Contact Enrichment Task
+**Description**: Celery task to fetch contact details from HubSpot for queue items.
+**Files**: `src/tasks/enrichment.py`, `src/celery_app.py`
+**Validation**: Queue items with `contact_id` get enriched with name/email
+**Tests**: `tests/unit/test_contact_enrichment_task.py`
+**Acceptance Criteria**:
+- [ ] Create `enrich_queue_contacts` Celery task
+- [ ] Fetch contact from HubSpot by ID
+- [ ] Store `firstname`, `lastname`, `email` in `action_context`
+- [ ] Add to beat schedule (run every 5 minutes)
+- [ ] Commit: "feat(tasks): add background contact enrichment"
+
+### Task 39B.4: Display Contact Info in Queue UI
+**Description**: Update queue template to show contact name and email.
+**Files**: `src/templates/queue.html`
+**Validation**: Queue items display "👤 John Smith (john@acme.com)"
+**Tests**: Visual verification in production
+**Acceptance Criteria**:
+- [ ] Update queue-meta section to show contact_name
+- [ ] Show email on hover or in parentheses
+- [ ] Show company name if available
+- [ ] Graceful fallback if no contact info
+- [ ] Commit: "feat(ui): display contact info in queue items"
+
+### Task 39B.5: Add HubSpot Contact Card Component
+**Description**: Reusable component showing full HubSpot contact details.
+**Files**: `src/templates/components/hubspot_contact.html`, `src/routes/command_queue.py`
+**Validation**: Contact card shows photo, name, title, company, recent activity
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Create partial template for contact card
+- [ ] Fetch contact details via HubSpot API
+- [ ] Show: photo, name, title, company, email
+- [ ] Show recent activity (last email, last meeting)
+- [ ] Commit: "feat(ui): add HubSpot contact card component"
+
+---
+
+## Sprint 40: Draft Editing & Queue Detail
+**Goal**: Enable editing drafts before sending, with full context view.
+**Demo**: Click queue item → see full draft with HubSpot context → edit subject/body → send.
+
+### Task 40.1: Create Queue Item Detail Template
+**Description**: Build full-page detail view for queue items.
+**Files**: `src/templates/queue_detail.html`, `src/routes/ui.py`
+**Validation**: GET `/caseyos/queue/{id}` shows full item detail
+**Tests**: Visual verification, route returns 200
+**Acceptance Criteria**:
+- [ ] Create `queue_detail.html` extending `base.html`
+- [ ] Show full draft content (subject, body)
+- [ ] Display HubSpot contact card
+- [ ] Show deal stage and pipeline if linked
+- [ ] Commit: "feat(ui): create queue item detail page"
+
+### Task 40.2: Add Inline Draft Editor
+**Description**: Add editable fields for draft subject and body.
+**Files**: `src/templates/queue_detail.html`
+**Validation**: Click edit → fields become editable → save updates draft
+**Tests**: `tests/e2e/test_draft_editing.py`
+**Acceptance Criteria**:
+- [ ] Add edit button that toggles edit mode
+- [ ] Subject becomes text input
+- [ ] Body becomes textarea with markdown preview
+- [ ] Save button calls PATCH endpoint
+- [ ] Commit: "feat(ui): add inline draft editor"
+
+### Task 40.3: Create Draft Update API Endpoint
+**Description**: API to update draft content (subject, body).
+**Files**: `src/routes/command_queue.py`
+**Validation**: PATCH `/api/command-queue/{id}/draft` updates draft content
+**Tests**: `tests/unit/test_draft_update.py`
+**Acceptance Criteria**:
+- [ ] Create `/api/command-queue/{id}/draft` PATCH endpoint
+- [ ] Accept `subject` and `body` fields
+- [ ] Validate body length (min 50 chars)
+- [ ] Update `action_context` with new content
+- [ ] Commit: "feat(api): add draft content update endpoint"
+
+### Task 40.4: Add HubSpot Contact Card Component
+**Description**: Reusable component showing full HubSpot contact details.
+**Files**: `src/templates/components/hubspot_contact.html`, `src/routes/command_queue.py`
+**Validation**: Contact card shows photo, name, title, company, recent activity
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Create partial template for contact card
+- [ ] Fetch contact details via HubSpot API
+- [ ] Show: photo, name, title, company, email
+- [ ] Show recent activity (last email, last meeting)
+- [ ] Commit: "feat(ui): add HubSpot contact card component"
+
+### Task 40.5: Add Deal Context Panel
+**Description**: Show linked deal information in queue detail.
+**Files**: `src/templates/queue_detail.html`, `src/routes/command_queue.py`
+**Validation**: If item has `deal_id`, show deal stage, amount, close date
+**Tests**: `tests/unit/test_deal_context.py`
+**Acceptance Criteria**:
+- [ ] Add API endpoint to fetch deal details
+- [ ] Display deal stage with pipeline visualization
+- [ ] Show deal amount and expected close date
+- [ ] Show associated contacts
+- [ ] Commit: "feat(ui): add deal context panel"
+
+### Task 40.6: Add Send with Edits Button
+**Description**: Button to approve and send the edited draft.
+**Files**: `src/templates/queue_detail.html`, `src/routes/command_queue.py`
+**Validation**: Click "Send with Edits" → draft sent with modifications
+**Tests**: `tests/e2e/test_send_edited_draft.py`
+**Acceptance Criteria**:
+- [ ] Add "Send with Edits" button
+- [ ] Save edits before sending
+- [ ] Call existing execute endpoint
+- [ ] Show success/error notification
+- [ ] Commit: "feat(ui): add send with edits button"
+
+---
+
+## Sprint 41: Agent Discovery & Surfacing
+**Goal**: Expose all 38 built agents in the UI for discovery and invocation.
+**Demo**: User navigates to Agents Hub → sees all agents by domain → clicks "Try" → opens in Gemini with agent selected.
+
+### Task 41.1: Create Agent Registry
+**Description**: Centralized registry that auto-discovers all agents.
+**Files**: `src/agents/registry.py`
+**Validation**: `AgentRegistry.list_all()` returns metadata for all 38 agents
+**Tests**: `tests/unit/test_agent_registry.py`
+**Acceptance Criteria**:
+- [ ] Create `AgentRegistry` class with singleton pattern
+- [ ] Scan `src/agents/` directories for agent classes
+- [ ] Extract: name, description, domain, capabilities from docstrings
+- [ ] Add `get_by_domain()` method for filtering
+- [ ] Commit: "feat(agents): create centralized agent registry"
+
+### Task 41.2: Add Agent Metadata to Existing Agents
+**Description**: Add standardized metadata to all agent classes.
+**Files**: All agent files in `src/agents/`
+**Validation**: Each agent has `AGENT_META` dict with name, description, domain
+**Tests**: `tests/unit/test_agent_metadata.py` - verify all agents have metadata
+**Acceptance Criteria**:
+- [ ] Define `AGENT_META` schema
+- [ ] Add to all specialized agents
+- [ ] Add to all content agents
+- [ ] Add to all fulfillment agents
+- [ ] Add to all data hygiene agents
+- [ ] Commit: "feat(agents): add standardized metadata to all agents"
+
+### Task 41.3: Create Agents Hub Template
+**Description**: Build agent discovery and management UI.
+**Files**: `src/templates/agents.html`, `src/routes/ui.py`
+**Validation**: GET `/caseyos/agents` shows all agents grouped by domain
+**Tests**: Visual verification, route returns 200
+**Acceptance Criteria**:
+- [ ] Create `agents.html` extending `base.html`
+- [ ] Group agents by domain (Sales, Content, Fulfillment, etc.)
+- [ ] Show agent card with name, description, status
+- [ ] Add "Try in Gemini" button per agent
+- [ ] Commit: "feat(ui): create agents hub page"
+
+### Task 41.4: Add Agents Navigation Link
+**Description**: Add Agents to main navigation bar.
+**Files**: `src/templates/base.html`
+**Validation**: Navigation shows "🤖 Agents" link between Gemini and Drive
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add nav link to `/caseyos/agents`
+- [ ] Use robot emoji: 🤖 Agents
+- [ ] Position between Gemini and Drive
+- [ ] Commit: "feat(ui): add agents to navigation"
+
+### Task 41.5: Create Agents API Endpoints
+**Description**: API to list agents and get agent details.
+**Files**: `src/routes/agents_api.py`, `src/main.py`
+**Validation**: GET `/api/agents` returns all agents with metadata
+**Tests**: `tests/unit/test_agents_api.py`
+**Acceptance Criteria**:
+- [ ] Create `/api/agents` GET endpoint (list all)
+- [ ] Create `/api/agents/{name}` GET endpoint (single agent)
+- [ ] Create `/api/agents/domains` GET endpoint (list domains)
+- [ ] Register router in main.py
+- [ ] Commit: "feat(api): add agents discovery endpoints"
+
+### Task 41.6: Add Agent Selector to Gemini Portal
+**Description**: Dropdown to select specific agent in Gemini chat.
+**Files**: `src/templates/gemini.html`, `src/routes/gemini_api.py`
+**Validation**: Select agent → Jarvis routes to that agent specifically
+**Tests**: `tests/e2e/test_agent_selection.py`
+**Acceptance Criteria**:
+- [ ] Add agent selector dropdown (visible when Jarvis Mode enabled)
+- [ ] Group options by domain
+- [ ] Pass selected agent to `/api/gemini/jarvis/chat`
+- [ ] Update Jarvis to respect explicit agent selection
+- [ ] Commit: "feat(ui): add agent selector to Gemini portal"
+
+---
+
+## Sprint 42: Agent Orchestration & Execution
+**Goal**: Enable manual agent execution and track execution history.
+**Demo**: Click "Run Now" on agent → see execution in progress → view results and history.
+
+### Task 42.1: Create Agent Execution Model
+**Description**: Database model to track agent executions.
+**Files**: `src/models/agent_execution.py`, migration file
+**Validation**: Can create and query AgentExecution records
+**Tests**: `tests/unit/test_agent_execution_model.py`
+**Acceptance Criteria**:
+- [ ] Create `AgentExecution` model with: id, agent_name, status, input, output, duration, timestamps
+- [ ] Add migration for `agent_executions` table
+- [ ] Index by `agent_name` and `created_at`
+- [ ] Commit: "feat(models): add agent execution tracking model"
+
+### Task 42.2: Add Manual Agent Trigger Endpoint
+**Description**: API to manually execute an agent with given context.
+**Files**: `src/routes/agents_api.py`
+**Validation**: POST `/api/agents/{name}/execute` triggers agent
+**Tests**: `tests/unit/test_agent_trigger.py`
+**Acceptance Criteria**:
+- [ ] Create execute endpoint accepting context JSON
+- [ ] Validate agent exists
+- [ ] Create AgentExecution record
+- [ ] Return execution_id for tracking
+- [ ] Commit: "feat(api): add manual agent trigger endpoint"
+
+### Task 42.3: Add Async Agent Execution via Celery
+**Description**: Execute agents asynchronously via Celery task.
+**Files**: `src/tasks/agent_executor.py`, `src/celery_app.py`
+**Validation**: Agent execution runs in background, status updates visible
+**Tests**: `tests/unit/test_agent_executor_task.py`
+**Acceptance Criteria**:
+- [ ] Create `execute_agent` Celery task
+- [ ] Update AgentExecution status: pending → running → success/failed
+- [ ] Capture output and errors
+- [ ] Store execution duration
+- [ ] Commit: "feat(tasks): add async agent execution task"
+
+### Task 42.4: Add Execution History to Agent Hub
+**Description**: Show recent executions for each agent.
+**Files**: `src/templates/agents.html`, `src/routes/agents_api.py`
+**Validation**: Agent card shows last 5 executions with status
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add GET `/api/agents/{name}/history` endpoint
+- [ ] Show mini timeline of recent executions
+- [ ] Color-code by status (green=success, red=failed)
+- [ ] Show execution time and duration
+- [ ] Commit: "feat(ui): add execution history to agent hub"
+
+### Task 42.5: Add Agent Detail Modal
+**Description**: Modal showing full agent details and capabilities.
+**Files**: `src/templates/agents.html`
+**Validation**: Click agent → modal shows description, capabilities, history
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Create modal component
+- [ ] Show full description
+- [ ] List all capabilities/methods
+- [ ] Show recent execution results
+- [ ] Add "Run Now" button in modal
+- [ ] Commit: "feat(ui): add agent detail modal"
+
+### Task 42.6: Add Real-Time Execution Status
+**Description**: Show execution progress in real-time via SSE or polling.
+**Files**: `src/routes/agents_api.py`, `src/templates/agents.html`
+**Validation**: Start execution → see status updates live
+**Tests**: `tests/e2e/test_execution_status.py`
+**Acceptance Criteria**:
+- [ ] Add `/api/agents/executions/{id}/status` endpoint
+- [ ] Poll every 2 seconds for status updates
+- [ ] Show spinner while running
+- [ ] Display result when complete
+- [ ] Commit: "feat(ui): add real-time execution status"
+
+---
+
+## Sprint 43: Gemini-Agent Integration & Power Features
+**Goal**: Enable Gemini to use all agents seamlessly with context awareness.
+**Demo**: "Research Acme Corp, draft a proposal, and schedule a meeting" → all three agents execute in sequence.
+
+### Task 43.1: Expand Jarvis Tool Definitions
+**Description**: Add tool definitions for all exposed agents.
+**Files**: `src/agents/jarvis.py`
+**Validation**: `get_tool_definitions()` returns 20+ tools
+**Tests**: `tests/unit/test_jarvis_tools_complete.py`
+**Acceptance Criteria**:
+- [ ] Add tools for content agents (repurpose, social_scheduler)
+- [ ] Add tools for fulfillment agents (deliverable_tracker, approval_gateway)
+- [ ] Add tools for data hygiene (duplicate_watcher, enrichment)
+- [ ] Add tools for ops (competitor_watch, revenue_ops)
+- [ ] Commit: "feat(jarvis): expand tool definitions for all agents"
+
+### Task 43.2: Add Context Passing Between Agents
+**Description**: Enable agents to pass context to subsequent agents in workflow.
+**Files**: `src/agents/jarvis.py`, `src/services/context_service.py`
+**Validation**: Research agent output flows into draft_email agent
+**Tests**: `tests/unit/test_context_passing.py`
+**Acceptance Criteria**:
+- [ ] Create `ContextService` for workflow state
+- [ ] Store intermediate results with TTL
+- [ ] Pass context to next agent in chain
+- [ ] Clean up context after workflow complete
+- [ ] Commit: "feat(agents): add context passing between agents"
+
+### Task 43.3: Add Workflow Templates
+**Description**: Pre-defined multi-agent workflows for common tasks.
+**Files**: `src/agents/workflows.py`, `src/routes/gemini_api.py`
+**Validation**: "Use account research workflow" → executes 3-agent sequence
+**Tests**: `tests/unit/test_workflow_templates.py`
+**Acceptance Criteria**:
+- [ ] Create WorkflowTemplate model
+- [ ] Define: Account Research, New Deal, Content Campaign workflows
+- [ ] Add `/api/gemini/workflows` endpoint
+- [ ] Show workflow selector in Gemini UI
+- [ ] Commit: "feat(agents): add pre-defined workflow templates"
+
+### Task 43.4: Add Progress Reporting for Multi-Step
+**Description**: Show progress as Jarvis executes multi-agent workflows.
+**Files**: `src/templates/gemini.html`, `src/routes/gemini_api.py`
+**Validation**: Multi-step request → shows "Step 1/3: Researching..." updates
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add progress indicator component
+- [ ] Stream status updates via SSE
+- [ ] Show current agent and step number
+- [ ] Display intermediate results as they complete
+- [ ] Commit: "feat(ui): add multi-step progress reporting"
+
+### Task 43.5: Add Conversation Memory
+**Description**: Gemini remembers conversation context across messages.
+**Files**: `src/routes/gemini_api.py`, `src/models/gemini_chat.py`
+**Validation**: "What was that company's revenue?" refers to previous message
+**Tests**: `tests/unit/test_conversation_memory.py`
+**Acceptance Criteria**:
+- [ ] Create GeminiChatSession model
+- [ ] Store last 10 messages per session
+- [ ] Pass history to Gemini API
+- [ ] Clear on "New Chat"
+- [ ] Commit: "feat(gemini): add conversation memory"
+
+### Task 43.6: Add Quick Action Buttons
+**Description**: Pre-defined quick actions for common tasks.
+**Files**: `src/templates/gemini.html`
+**Validation**: Click "Draft Follow-up" → pre-fills prompt template
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add quick action bar above chat input
+- [ ] Define 5 common actions: Research, Draft Email, Check Calendar, Create Proposal, Analyze Account
+- [ ] Each button pre-fills prompt with template
+- [ ] Style as pill buttons
+- [ ] Commit: "feat(ui): add quick action buttons to Gemini"
+
+---
+
 ## Test Strategy Per Sprint
 
-### Unit Tests
-- Each task includes at least 2 unit tests
-- Mock external dependencies
-- Target: 80% code coverage per new file
+### Sprint 39 Tests
+- [ ] `tests/unit/test_csrf_exclusions.py` - Gemini/Drive paths excluded
+- [ ] `tests/unit/test_csrf_cookie.py` - cookie persistence
+- [ ] `tests/unit/test_queue_enrichment.py` - contact data in response
+- [ ] `tests/unit/test_contact_enrichment_task.py` - background task
+- [ ] `tests/e2e/test_gemini_chat.py` - full chat flow works
 
-### Integration Tests
-- One integration test per feature
-- Use test database
-- Target: 60% coverage of happy paths
+### Sprint 40 Tests
+- [ ] `tests/unit/test_draft_update.py` - draft content update
+- [ ] `tests/unit/test_deal_context.py` - deal details fetched
+- [ ] `tests/e2e/test_draft_editing.py` - inline edit flow
+- [ ] `tests/e2e/test_send_edited_draft.py` - send with modifications
 
-### E2E Tests
-- One E2E test per sprint
-- Uses real browser (Playwright)
-- Validates critical user journey
+### Sprint 41 Tests
+- [ ] `tests/unit/test_agent_registry.py` - auto-discovery
+- [ ] `tests/unit/test_agent_metadata.py` - all agents have metadata
+- [ ] `tests/unit/test_agents_api.py` - list and get endpoints
+- [ ] `tests/e2e/test_agent_selection.py` - Gemini agent routing
 
----
+### Sprint 42 Tests
+- [ ] `tests/unit/test_agent_execution_model.py` - model CRUD
+- [ ] `tests/unit/test_agent_trigger.py` - execute endpoint
+- [ ] `tests/unit/test_agent_executor_task.py` - Celery task
+- [ ] `tests/e2e/test_execution_status.py` - real-time updates
 
-## Definition of Done
-
-Each task is complete when:
-1. ✅ Code implemented and follows project patterns
-2. ✅ Unit tests pass locally
-3. ✅ Integration tests pass (if applicable)
-4. ✅ No linting errors (`make lint`)
-5. ✅ Documentation updated (if API change)
-6. ✅ Committed with conventional commit message
-7. ✅ PR reviewed and approved
-8. ✅ Merged to main
-9. ✅ Deployed to staging (automatic)
-
----
-
-## Priority Matrix
-
-| Priority | Sprint | Business Value | Technical Risk | Demo |
-|----------|--------|----------------|----------------|------|
-| P0 | 25 | Fix broken tests | Low | Health check green |
-| P0 | 25 | Remove legacy files | Low | Cleaner codebase |
-| P0 | 26 | Complete OAuth | Medium | Real token stored |
-| P0 | 33 | Fix production OAuth | Low | Login works |
-| P1 | 26 | Core UI templates | Medium | Navigate all pages |
-| P1 | 26.5 | Integration activation | High | Real HubSpot → Gmail flow |
-| P1 | 27 | Queue + Campaigns | Medium | Filter, bulk approve, create campaign |
-| P1 | 34 | Gemini Portal | Medium | Chat with AI |
-| P1 | 35 | Drive Integration | Medium | Browse and attach files |
-| P1 | 36 | Jarvis Integration | High | AI-powered workflows |
-| P2 | 28 | Signal processing | High | Webhook → queue item |
-| P2 | 29 | Email/voice | Medium | Voice-styled draft |
-| P2 | 37 | Deep Research | Medium | Multi-source reports |
-| P2 | 38 | Agent Dashboard | Medium | Manage all agents |
-| P3 | 30 | Observability | Low | Sentry + Slack alerts |
-| P3 | 31 | Security | Medium | Rate limiting + audit |
-| P3 | 32 | Performance | High | <200ms P95 |
-
----
-
-## Test Requirements Per Sprint
-
-### Sprint 25 Tests
-- [ ] `tests/unit/test_health.py` - connector health endpoint
-- [ ] `tests/e2e/test_smoke.py` - Playwright smoke test
-
-### Sprint 26 Tests  
-- [ ] `tests/unit/test_oauth_storage.py` - token persistence
-- [ ] `tests/e2e/test_navigation.py` - all pages load
-
-### Sprint 26.5 Tests
-- [ ] `tests/integration/test_hubspot_sync.py` - real API sync
-- [ ] `tests/integration/test_full_flow.py` - contact → draft → send
-
-### Sprint 27 Tests
-- [ ] `tests/unit/test_queue_filtering.py` - filter logic
-- [ ] `tests/unit/test_bulk_actions.py` - batch approve/reject
-- [ ] `tests/e2e/test_campaign_wizard.py` - campaign creation
-
-### Sprint 28 Tests
-- [ ] `tests/unit/test_signal_dedup.py` - TTL logic
-- [ ] `tests/integration/test_hubspot_webhook.py` - webhook handling
-- [ ] `tests/unit/test_gmail_polling.py` - reply detection
-
-### Sprint 29 Tests
-- [ ] `tests/unit/test_voice_profiles.py` - tone generation
-- [ ] `tests/e2e/test_draft_editing.py` - inline edit
-
-### Sprint 30 Tests
-- [ ] `tests/unit/test_metrics.py` - Prometheus format
-- [ ] `tests/integration/test_sentry.py` - error capture
-
-### Sprint 31 Tests
-- [ ] `tests/security/test_rate_limiting.py` - 429 responses
-- [ ] `tests/security/test_injection.py` - input sanitization
-
-### Sprint 32 Tests
-- [ ] `tests/performance/test_latency.py` - P95 < 200ms
-- [ ] `tests/load/test_concurrent.py` - 100 users
-
-### Sprint 33 Tests
-- [ ] `tests/unit/test_oauth_redirect.py` - redirect URI consistency
-- [ ] `tests/integration/test_drive_oauth.py` - user OAuth token flow
-
-### Sprint 34 Tests
-- [ ] `tests/unit/test_gemini_api.py` - chat endpoint
-- [ ] `tests/unit/test_gemini_connector.py` - API integration
-- [ ] `tests/e2e/test_gemini_chat.py` - full chat interaction
-
-### Sprint 35 Tests
-- [ ] `tests/unit/test_drive_api.py` - file listing endpoints
-- [ ] `tests/unit/test_drive_extractor.py` - content extraction
-- [ ] `tests/integration/test_gemini_drive.py` - Drive context in chat
-
-### Sprint 36 Tests
-- [ ] `tests/unit/test_gemini_tools.py` - tool calling
-- [ ] `tests/unit/test_jarvis_bridge.py` - tool routing
-- [ ] `tests/integration/test_multi_step.py` - workflow execution
-
-### Sprint 37 Tests
-- [ ] `tests/unit/test_deep_research.py` - research agent
-- [ ] `tests/unit/test_workspace_memory.py` - context recall
-- [ ] `tests/e2e/test_research_flow.py` - full research flow
-
-### Sprint 38 Tests
-- [ ] `tests/unit/test_agent_registry.py` - agent discovery
-- [ ] `tests/unit/test_agent_execution.py` - history tracking
-- [ ] `tests/e2e/test_agent_hub.py` - UI interactions
+### Sprint 43 Tests
+- [ ] `tests/unit/test_jarvis_tools_complete.py` - 20+ tools defined
+- [ ] `tests/unit/test_context_passing.py` - inter-agent context
+- [ ] `tests/unit/test_workflow_templates.py` - template execution
+- [ ] `tests/unit/test_conversation_memory.py` - history persistence
+- [ ] `tests/e2e/test_multi_step_workflow.py` - full workflow execution
 
 ---
 
@@ -1230,6 +1549,10 @@ Each task is complete when:
 9. **Campaigns.py (605 lines)** has no UI (fixed in Sprint 27.5-27.6)
 10. **Dual OAuth callback routes** - `/auth/callback` and `/auth/google/callback` (consolidated in Sprint 33)
 11. **DriveConnector uses service account** - needs user OAuth (fixed in Sprint 33.4)
+12. **Gemini API blocked by CSRF** - needs exclusion (Sprint 39.1)
+13. **Queue items missing contact context** - needs enrichment (Sprint 39.3-39.5)
+14. **38 agents not exposed in UI** - needs Agent Hub (Sprint 41)
+15. **No draft editing capability** - needs detail page (Sprint 40)
 
 ---
 
