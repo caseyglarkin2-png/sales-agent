@@ -226,6 +226,7 @@ from src.routes import sequences_routes as sequences_v2_routes
 # from src.routes import roi_calculator_routes
 from src.routes import contact_queue
 from src.routes import forms as forms_routes
+from src.routes import agents_api  # Sprint 41: Agent Discovery & Registry
 
 # Sprint 34-35: Gemini and Drive (optional - degrade gracefully if deps missing)
 try:
@@ -348,6 +349,7 @@ app.include_router(circuit_breakers.router)  # Sprint 6: Circuit breaker monitor
 app.include_router(ops.router)  # Ops: Sentry test and admin operations
 app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
 app.include_router(ui.router)  # CaseyOS: Unified UI (Sprint 24)
+app.include_router(agents_api.router)  # Sprint 41: Agent Discovery & Registry
 
 # Sprint 34-35: Gemini and Drive (conditionally enabled)
 if GEMINI_ENABLED and gemini_api:
