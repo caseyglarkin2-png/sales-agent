@@ -693,276 +693,276 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 
 ---
 
-## Sprint 33: OAuth Consolidation & Production Fix
+## Sprint 33: OAuth Consolidation & Production Fix ✅ COMPLETE
 **Goal**: Fix production OAuth authentication, consolidate callback routes, enable Google Workspace access.
 **Demo**: User clicks "Sign in with Google" on production → successfully authenticates → lands on dashboard.
 
-### Task 33.0: Verify Google Console OAuth Configuration
+### Task 33.0: Verify Google Console OAuth Configuration ✅
 **Description**: Ensure Google Cloud Console has correct redirect URIs.
 **Files**: `docs/INTEGRATION_SETUP.md`
 **Validation**: Google Console shows `https://web-production-a6ccf.up.railway.app/auth/callback`
 **Acceptance Criteria**:
-- [ ] Verify production redirect URI in Google Console
-- [ ] Add both `/auth/callback` as authorized redirect URI
-- [ ] Remove any `/auth/google/callback` if present (consolidation)
-- [ ] Document in INTEGRATION_SETUP.md
-- [ ] Commit: "docs: update Google Console OAuth redirect URI"
+- [x] Verify production redirect URI in Google Console
+- [x] Add both `/auth/callback` as authorized redirect URI
+- [x] Remove any `/auth/google/callback` if present (consolidation)
+- [x] Document in INTEGRATION_SETUP.md
+- [x] Commit: "docs: update Google Console OAuth redirect URI"
 
-### Task 33.1: Deprecate Legacy OAuth Callback Route
+### Task 33.1: Deprecate Legacy OAuth Callback Route ✅
 **Description**: Add deprecation warning to `/auth/google/callback` and redirect to primary flow.
 **Files**: `src/routes/auth_routes.py`
 **Validation**: Hitting `/auth/google/callback` redirects with deprecation log
 **Acceptance Criteria**:
-- [ ] Add deprecation warning log to `/auth/google/callback`
-- [ ] Redirect users to `/login` with message
-- [ ] Plan removal in Sprint 35
-- [ ] Commit: "chore(auth): deprecate legacy OAuth callback route"
+- [x] Add deprecation warning log to `/auth/google/callback`
+- [x] Redirect users to `/login` with message
+- [x] Plan removal in Sprint 35
+- [x] Commit: "chore(auth): deprecate legacy OAuth callback route"
 
-### Task 33.2: Add Drive OAuth Scope to Web Auth
+### Task 33.2: Add Drive OAuth Scope to Web Auth ✅
 **Description**: Request Drive read-only scope during OAuth to enable file access.
 **Files**: `src/routes/web_auth.py`
 **Validation**: OAuth consent shows "View files in Google Drive"
 **Acceptance Criteria**:
-- [ ] Add `https://www.googleapis.com/auth/drive.readonly` to OAUTH_SCOPES
-- [ ] Test OAuth flow shows Drive permission request
-- [ ] Commit: "feat(oauth): add Drive read scope to OAuth flow"
+- [x] Add `https://www.googleapis.com/auth/drive.readonly` to OAUTH_SCOPES
+- [x] Test OAuth flow shows Drive permission request
+- [x] Commit: "feat(oauth): add Drive read scope to OAuth flow"
 
-### Task 33.3: Store Drive Token in OAuth Manager
+### Task 33.3: Store Drive Token in OAuth Manager ✅
 **Description**: Ensure Drive access token is stored and refreshable.
 **Files**: `src/oauth_manager.py`, `src/models/oauth.py`
 **Validation**: After OAuth, `oauth_tokens` table has entry with Drive scope
 **Acceptance Criteria**:
-- [ ] Verify token storage includes all granted scopes
-- [ ] Add test: OAuth callback stores token with Drive scope
-- [ ] Commit: "feat(oauth): store Drive scope in OAuth tokens"
+- [x] Verify token storage includes all granted scopes
+- [x] Add test: OAuth callback stores token with Drive scope
+- [x] Commit: "feat(oauth): store Drive scope in OAuth tokens"
 
-### Task 33.4: Create User-OAuth Drive Connector
+### Task 33.4: Create User-OAuth Drive Connector ✅
 **Description**: Modify DriveConnector to use user OAuth tokens instead of service account.
 **Files**: `src/connectors/drive.py`, `src/oauth_manager.py`
 **Validation**: `drive.search_assets()` uses user's OAuth token
 **Acceptance Criteria**:
-- [ ] Add `from_user_oauth(user_id)` class method to DriveConnector
-- [ ] Fetch token from `oauth_tokens` table
-- [ ] Build credentials from stored token
-- [ ] Refresh token if expired
-- [ ] Commit: "feat(drive): add user-OAuth based Drive connector"
+- [x] Add `from_user_oauth(user_id)` class method to DriveConnector
+- [x] Fetch token from `oauth_tokens` table
+- [x] Build credentials from stored token
+- [x] Refresh token if expired
+- [x] Commit: "feat(drive): add user-OAuth based Drive connector"
 
 ---
 
-## Sprint 34: Gemini Portal Foundation
+## Sprint 34: Gemini Portal Foundation ✅ COMPLETE
 **Goal**: Build interactive Gemini AI portal UI integrated into CaseyOS.
 **Demo**: Navigate to `/caseyos/gemini` → chat with Gemini → get response with grounding.
 
-### Task 34.1: Create Gemini Portal Template
+### Task 34.1: Create Gemini Portal Template ✅
 **Description**: Build Jinja2 template for Gemini AI chat interface.
 **Files**: `src/templates/gemini.html`, `src/routes/ui.py`
 **Validation**: GET `/caseyos/gemini` renders chat interface
 **Acceptance Criteria**:
-- [ ] Create `gemini.html` extending `base.html`
-- [ ] Add chat message container with scroll
-- [ ] Add input field with send button
-- [ ] Add model selector dropdown (Flash 2.0, Pro 1.5, etc.)
-- [ ] Add "Gemini" to navigation bar
-- [ ] Commit: "feat(ui): add Gemini portal template"
+- [x] Create `gemini.html` extending `base.html`
+- [x] Add chat message container with scroll
+- [x] Add input field with send button
+- [x] Add model selector dropdown (Flash 2.0, Pro 1.5, etc.)
+- [x] Add "Gemini" to navigation bar
+- [x] Commit: "feat(ui): add Gemini portal template"
 
-### Task 34.2: Create Gemini Chat API Endpoint
+### Task 34.2: Create Gemini Chat API Endpoint ✅
 **Description**: Build API endpoint for Gemini chat interactions.
 **Files**: `src/routes/gemini_api.py`, `src/main.py`
 **Validation**: POST `/api/gemini/chat` returns AI response
 **Acceptance Criteria**:
-- [ ] Create `src/routes/gemini_api.py` router
-- [ ] Add POST `/api/gemini/chat` endpoint
-- [ ] Accept: `{message, model, enable_grounding}`
-- [ ] Return: `{response, sources, model_used}`
-- [ ] Register router in main.py
-- [ ] Commit: "feat(api): add Gemini chat API endpoint"
+- [x] Create `src/routes/gemini_api.py` router
+- [x] Add POST `/api/gemini/chat` endpoint
+- [x] Accept: `{message, model, enable_grounding}`
+- [x] Return: `{response, sources, model_used}`
+- [x] Register router in main.py
+- [x] Commit: "feat(api): add Gemini chat API endpoint"
 
-### Task 34.3: Implement HTMX Chat Interface
+### Task 34.3: Implement HTMX Chat Interface ✅
 **Description**: Wire up chat UI with HTMX for real-time interaction.
 **Files**: `src/templates/gemini.html`, `src/routes/gemini_api.py`
 **Validation**: Type message → click send → response appears without reload
 **Acceptance Criteria**:
-- [ ] Add HTMX POST for message submission
-- [ ] Append response to chat container
-- [ ] Show typing indicator while waiting
-- [ ] Clear input on successful send
-- [ ] Commit: "feat(ui): implement HTMX Gemini chat"
+- [x] Add HTMX POST for message submission
+- [x] Append response to chat container
+- [x] Show typing indicator while waiting
+- [x] Clear input on successful send
+- [x] Commit: "feat(ui): implement HTMX Gemini chat"
 
-### Task 34.4: Add Grounding Toggle
+### Task 34.4: Add Grounding Toggle ✅
 **Description**: Allow enabling Google Search grounding for factual responses.
 **Files**: `src/templates/gemini.html`, `src/routes/gemini_api.py`
 **Validation**: Enable grounding → response includes source links
 **Acceptance Criteria**:
-- [ ] Add "Enable Grounding" toggle checkbox
-- [ ] Pass grounding flag to Gemini API
-- [ ] Display sources below response when grounded
-- [ ] Commit: "feat(gemini): add Google Search grounding toggle"
+- [x] Add "Enable Grounding" toggle checkbox
+- [x] Pass grounding flag to Gemini API
+- [x] Display sources below response when grounded
+- [x] Commit: "feat(gemini): add Google Search grounding toggle"
 
-### Task 34.5: Add Chat History Persistence
+### Task 34.5: Add Chat History Persistence ✅
 **Description**: Store chat history in session/database for conversation continuity.
 **Files**: `src/models/gemini_chat.py`, `src/routes/gemini_api.py`
 **Validation**: Refresh page → previous messages still visible
 **Acceptance Criteria**:
-- [ ] Create `GeminiChatSession` and `GeminiChatMessage` models
-- [ ] Store messages in database per user session
-- [ ] Load history on page load
-- [ ] Add "New Chat" button to clear
-- [ ] Commit: "feat(gemini): add chat history persistence"
+- [x] Create `GeminiChatSession` and `GeminiChatMessage` models
+- [x] Store messages in database per user session
+- [x] Load history on page load
+- [x] Add "New Chat" button to clear
+- [x] Commit: "feat(gemini): add chat history persistence"
 
-### Task 34.6: Add System Prompt Configuration
+### Task 34.6: Add System Prompt Configuration ✅
 **Description**: Allow configuring system prompts for different use cases.
 **Files**: `src/templates/gemini.html`, `src/routes/gemini_api.py`
 **Validation**: Select "Sales Assistant" → Gemini responds with sales focus
 **Acceptance Criteria**:
-- [ ] Add system prompt dropdown (Sales, Research, Writer)
-- [ ] Define 3 default system prompts
-- [ ] Pass system prompt to Gemini API
-- [ ] Commit: "feat(gemini): add configurable system prompts"
+- [x] Add system prompt dropdown (Sales, Research, Writer)
+- [x] Define 3 default system prompts
+- [x] Pass system prompt to Gemini API
+- [x] Commit: "feat(gemini): add configurable system prompts"
 
 ---
 
-## Sprint 35: Drive Integration & File Context
+## Sprint 35: Drive Integration & File Context ✅ COMPLETE
 **Goal**: Enable Gemini to access and analyze Google Drive files.
 **Demo**: Ask Gemini "Summarize the Q4 proposal for Acme Corp" → retrieves file → provides summary.
 
-### Task 35.1: Create Drive Browser Template
+### Task 35.1: Create Drive Browser Template ✅
 **Description**: Build UI for browsing Google Drive files.
 **Files**: `src/templates/drive.html`, `src/routes/ui.py`
 **Validation**: GET `/caseyos/drive` shows file browser
 **Acceptance Criteria**:
-- [ ] Create `drive.html` extending `base.html`
-- [ ] Show folder tree on left
-- [ ] Show file list on right
-- [ ] Add "Drive" to navigation
-- [ ] Commit: "feat(ui): add Drive browser template"
+- [x] Create `drive.html` extending `base.html`
+- [x] Show folder tree on left
+- [x] Show file list on right
+- [x] Add "Drive" to navigation
+- [x] Commit: "feat(ui): add Drive browser template"
 
-### Task 35.2: Create Drive API Endpoints
+### Task 35.2: Create Drive API Endpoints ✅
 **Description**: Build API endpoints for Drive file operations.
 **Files**: `src/routes/drive_api.py`, `src/main.py`
 **Validation**: GET `/api/drive/files` returns user's files
 **Acceptance Criteria**:
-- [ ] Create `src/routes/drive_api.py` router
-- [ ] Add GET `/api/drive/folders` - list folders
-- [ ] Add GET `/api/drive/files?folder_id=x` - list files
-- [ ] Add GET `/api/drive/file/{id}/content` - get file content
-- [ ] Register router in main.py
-- [ ] Commit: "feat(api): add Drive file API endpoints"
+- [x] Create `src/routes/drive_api.py` router
+- [x] Add GET `/api/drive/folders` - list folders
+- [x] Add GET `/api/drive/files?folder_id=x` - list files
+- [x] Add GET `/api/drive/file/{id}/content` - get file content
+- [x] Register router in main.py
+- [x] Commit: "feat(api): add Drive file API endpoints"
 
-### Task 35.3: Implement Drive File Picker
+### Task 35.3: Implement Drive File Picker ✅
 **Description**: Add file picker component for selecting Drive files.
 **Files**: `src/templates/components/drive_picker.html`, `src/templates/gemini.html`
 **Validation**: Click "Attach File" → modal shows Drive files → select → file attached
 **Acceptance Criteria**:
-- [ ] Create reusable file picker partial template
-- [ ] Add HTMX-powered folder navigation
-- [ ] Support multi-file selection
-- [ ] Show file preview thumbnail
-- [ ] Commit: "feat(ui): add Drive file picker component"
+- [x] Create reusable file picker partial template
+- [x] Add HTMX-powered folder navigation
+- [x] Support multi-file selection
+- [x] Show file preview thumbnail
+- [x] Commit: "feat(ui): add Drive file picker component"
 
-### Task 35.4: Add File Content Extraction
+### Task 35.4: Add File Content Extraction ✅
 **Description**: Extract text content from various file types.
 **Files**: `src/connectors/drive_extractor.py`
 **Validation**: PDF, Docs, Sheets return extracted text
 **Acceptance Criteria**:
-- [ ] Extract text from Google Docs (export as plain text)
-- [ ] Extract text from PDFs (using existing pdf extraction)
-- [ ] Extract text from Google Sheets (export as CSV)
-- [ ] Handle errors gracefully with fallback
-- [ ] Commit: "feat(drive): add multi-format content extraction"
+- [x] Extract text from Google Docs (export as plain text)
+- [x] Extract text from PDFs (using existing pdf extraction)
+- [x] Extract text from Google Sheets (export as CSV)
+- [x] Handle errors gracefully with fallback
+- [x] Commit: "feat(drive): add multi-format content extraction"
 
-### Task 35.5: Integrate Drive Context with Gemini
+### Task 35.5: Integrate Drive Context with Gemini ✅
 **Description**: Allow Gemini to reference attached Drive files in responses.
 **Files**: `src/routes/gemini_api.py`, `src/connectors/gemini.py`
 **Validation**: Attach file → ask question → Gemini references file content
 **Acceptance Criteria**:
-- [ ] Accept `file_ids` in chat request
-- [ ] Fetch and extract file content
-- [ ] Include in Gemini prompt as context
-- [ ] Cite file in response
-- [ ] Commit: "feat(gemini): integrate Drive file context"
+- [x] Accept `file_ids` in chat request
+- [x] Fetch and extract file content
+- [x] Include in Gemini prompt as context
+- [x] Cite file in response
+- [x] Commit: "feat(gemini): integrate Drive file context"
 
-### Task 35.6: Add Drive Search in Gemini
+### Task 35.6: Add Drive Search in Gemini ✅
 **Description**: Enable natural language Drive search from Gemini chat.
 **Files**: `src/routes/gemini_api.py`, `src/connectors/drive.py`
 **Validation**: Ask "Find the Acme proposal" → Gemini searches Drive → returns matches
 **Acceptance Criteria**:
-- [ ] Detect search intent in message
-- [ ] Call `drive.search_assets()` with extracted query
-- [ ] Return file list in response
-- [ ] Allow clicking file to attach
-- [ ] Commit: "feat(gemini): add natural language Drive search"
+- [x] Detect search intent in message
+- [x] Call `drive.search_assets()` with extracted query
+- [x] Return file list in response
+- [x] Allow clicking file to attach
+- [x] Commit: "feat(gemini): add natural language Drive search"
 
 ---
 
-## Sprint 36: Jarvis Integration & Agent Orchestration
+## Sprint 36: Jarvis Integration & Agent Orchestration ✅ COMPLETE
 **Goal**: Connect Gemini Portal and Drive to Jarvis for intelligent routing.
 **Demo**: Ask "Draft an email to the CEO of Acme about our Q4 proposal" → Jarvis fetches proposal → drafts email.
 
-### Task 36.1: Add Gemini Tool Calling Support
+### Task 36.1: Add Gemini Tool Calling Support ✅
 **Description**: Implement function/tool calling for Gemini to invoke agents.
 **Files**: `src/connectors/gemini.py`
 **Validation**: Gemini can call defined tools and receive results
 **Acceptance Criteria**:
-- [ ] Add tool definitions to Gemini API calls
-- [ ] Define tools: `search_drive`, `draft_email`, `get_contact`, `search_hubspot`
-- [ ] Parse tool call responses
-- [ ] Execute tool and return result
-- [ ] Commit: "feat(gemini): add function/tool calling support"
+- [x] Add tool definitions to Gemini API calls
+- [x] Define tools: `search_drive`, `draft_email`, `get_contact`, `search_hubspot`
+- [x] Parse tool call responses
+- [x] Execute tool and return result
+- [x] Commit: "feat(gemini): add function/tool calling support"
 
-### Task 36.2: Create Jarvis-Gemini Bridge
+### Task 36.2: Create Jarvis-Gemini Bridge ✅
 **Description**: Route Gemini tool calls to Jarvis for agent execution.
 **Files**: `src/agents/jarvis.py`, `src/routes/gemini_api.py`
 **Validation**: Gemini tool call → Jarvis routes to correct agent → result returned
 **Acceptance Criteria**:
-- [ ] Add `handle_tool_call(tool_name, params)` to Jarvis
-- [ ] Map tool names to agent methods
-- [ ] Return structured results
-- [ ] Log all tool executions
-- [ ] Commit: "feat(jarvis): add Gemini tool call routing"
+- [x] Add `handle_tool_call(tool_name, params)` to Jarvis
+- [x] Map tool names to agent methods
+- [x] Return structured results
+- [x] Log all tool executions
+- [x] Commit: "feat(jarvis): add Gemini tool call routing"
 
-### Task 36.3: Add Email Draft Tool
+### Task 36.3: Add Email Draft Tool ✅
 **Description**: Enable Gemini to draft emails through Jarvis.
 **Files**: `src/agents/jarvis.py`, `src/connectors/gemini.py`
 **Validation**: "Draft email to john@acme.com about project update" → draft created
 **Acceptance Criteria**:
-- [ ] Define `draft_email` tool with parameters
-- [ ] Route to DraftWriterAgent
-- [ ] Create draft in command queue
-- [ ] Return draft preview to Gemini
-- [ ] Commit: "feat(jarvis): add email draft tool"
+- [x] Define `draft_email` tool with parameters
+- [x] Route to DraftWriterAgent
+- [x] Create draft in command queue
+- [x] Return draft preview to Gemini
+- [x] Commit: "feat(jarvis): add email draft tool"
 
-### Task 36.4: Add HubSpot Lookup Tool
+### Task 36.4: Add HubSpot Lookup Tool ✅
 **Description**: Enable Gemini to query HubSpot contacts and deals.
 **Files**: `src/agents/jarvis.py`, `src/connectors/hubspot.py`
 **Validation**: "What's the status of Acme Corp deal?" → returns deal info
 **Acceptance Criteria**:
-- [ ] Define `search_hubspot` tool
-- [ ] Search contacts by name/email
-- [ ] Search deals by company/stage
-- [ ] Return formatted results
-- [ ] Commit: "feat(jarvis): add HubSpot lookup tool"
+- [x] Define `search_hubspot` tool
+- [x] Search contacts by name/email
+- [x] Search deals by company/stage
+- [x] Return formatted results
+- [x] Commit: "feat(jarvis): add HubSpot lookup tool"
 
-### Task 36.5: Add Calendar Integration Tool
+### Task 36.5: Add Calendar Integration Tool ✅
 **Description**: Enable Gemini to check and create calendar events.
 **Files**: `src/agents/jarvis.py`, `src/connectors/calendar.py`
 **Validation**: "Schedule a call with Acme Corp next Tuesday at 2pm" → event created
 **Acceptance Criteria**:
-- [ ] Define `check_calendar` and `create_event` tools
-- [ ] Query free/busy for scheduling
-- [ ] Create events with attendees
-- [ ] Return confirmation
-- [ ] Commit: "feat(jarvis): add Calendar integration tools"
+- [x] Define `check_calendar` and `create_event` tools
+- [x] Query free/busy for scheduling
+- [x] Create events with attendees
+- [x] Return confirmation
+- [x] Commit: "feat(jarvis): add Calendar integration tools"
 
-### Task 36.6: Add Multi-Step Workflow Execution
+### Task 36.6: Add Multi-Step Workflow Execution ✅
 **Description**: Enable Jarvis to execute multi-step workflows from Gemini.
 **Files**: `src/agents/jarvis.py`, `src/routes/gemini_api.py`
 **Validation**: "Research Acme, find proposal, draft follow-up email" → executes all steps
 **Acceptance Criteria**:
-- [ ] Parse multi-step intents
-- [ ] Execute agents in sequence
-- [ ] Pass context between steps
-- [ ] Report progress in chat
-- [ ] Commit: "feat(jarvis): add multi-step workflow execution"
+- [x] Parse multi-step intents
+- [x] Execute agents in sequence
+- [x] Pass context between steps
+- [x] Report progress in chat
+- [x] Commit: "feat(jarvis): add multi-step workflow execution"
 
 ---
 
