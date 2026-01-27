@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Gemini AI - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .chat-container {
+        height: calc(100vh - 280px);
+        min-height: 400px;
+    }
+    .typing-indicator span {
+        animation: blink 1.4s infinite both;
+    }
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    @keyframes blink {
+        0%, 80%, 100% { opacity: 0; }
+        40% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">✨ Gemini AI</h1>
+            <p class="text-gray-600">AI-powered assistant for sales, research, and content</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <!-- Jarvis Mode Toggle -->
+            <label class="flex items-center space-x-2 cursor-pointer bg-purple-50 px-3 py-2 rounded-lg border border-purple-200">
+                <input type="checkbox" id="jarvis-mode" class="form-checkbox h-4 w-4 text-purple-600 rounded">
+                <span class="text-sm text-purple-700 font-medium">🤖 Jarvis Mode</span>
+            </label>
+            
+            <!-- Model Selector -->
+            <select id="model-selector" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                <option value="gemini-2.0-flash-exp">⚡ Gemini 2.0 Flash</option>
+                <option value="gemini-1.5-pro">🧠 Gemini 1.5 Pro</option>
+                <option value="gemini-1.5-flash">🚀 Gemini 1.5 Flash</option>
+                <option value="gemini-exp-1206">🔬 Gemini Experimental</option>
+            </select>
+            
+            <!-- System Prompt Selector -->
+            <select id="system-prompt" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                <option value="">Default Assistant</option>
+                <option value="sales_assistant">🎯 Sales Assistant</option>
+                <option value="researcher">🔍 Research Analyst</option>
+                <option value="writer">✍️ Content Writer</option>
+                <option value="analyst">📊 Data Analyst</option>
+            </select>
+            
+            <!-- Grounding Toggle -->
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="enable-grounding" class="form-checkbox h-4 w-4 text-primary rounded">
+                <span class="text-sm text-gray-700">🌐 Web Grounding</span>
+            </label>
+            
+            <!-- New Chat Button -->
+            <button id="new-chat-btn" 
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                + New Chat
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Chat Area -->
+    <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="chat-container overflow-y-auto p-4 space-y-4">
+            <!-- Welcome Message -->
+            <div class="flex justify-center">
+                <div class="bg-gray-50 rounded-lg px-6 py-4 max-w-lg text-center">
+                    <div class="text-4xl mb-2">✨</div>
+                    <h3 class="font-semibold text-gray-800 mb-1">Welcome to Gemini AI</h3>
+                    <p class="text-sm text-gray-600">
+                        Ask me anything about sales, research, or have me help with content. 
+                        Enable Web Grounding for factual, cited responses.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Attached Files Area -->
+        <div id="attached-files" class="px-4 flex flex-wrap gap-2">
+            <!-- Attached files will appear here -->
+        </div>
+        
+        <!-- Typing Indicator (hidden by default) -->
+        <div id="typing-indicator" class="hidden px-4 py-2">
+            <div class="flex items-center space-x-2 text-gray-500">
+                <div class="typing-indicator flex space-x-1">
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                </div>
+                <span class="text-sm">Gemini is thinking...</span>
+            </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div class="border-t border-gray-200 p-4">
+            <form id="chat-form" class="flex space-x-4">
+                <!-- Drive File Picker Button -->
+                <button type="button" 
+                        id="attach-files-btn"
+                        class="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 rounded-lg transition-colors"
+                        title="Attach Drive files">
+                    📎
+                </button>
+                
+                <!-- Message Input -->
+                <input type="text" 
+                       id="message-input"
+                       name="message"
+                       placeholder="Ask Gemini anything..."
+                       class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent"
+                       autocomplete="off">
+                
+                <!-- Send Button -->
+                <button type="submit" 
+                        id="send-btn"
+                        class="flex-shrink-0 bg-primary hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2">
+                    <span>Send</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Drive File Picker Modal -->
+<div id="file-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between p-4 border-b">
+            <h3 class="text-lg font-semibold">📁 Select Files from Drive</h3>
+            <button id="close-picker" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+        
+        <!-- Search -->
+        <div class="p-4 border-b">
+            <input type="text" 
+                   id="drive-search"
+                   placeholder="Search files..."
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+        </div>
+        
+        <!-- File List -->
+        <div id="file-list" class="flex-1 overflow-y-auto p-4"
+             hx-get="/api/drive/files/html"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="text-center py-8 text-gray-500">Loading files...</div>
+        </div>
+        
+        <div class="p-4 border-t bg-gray-50 flex justify-end">
+            <button id="done-picking" class="bg-primary hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Session management
+    let sessionId = localStorage.getItem('gemini_session_id') || null;
+    
+    // DOM elements
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const modelSelector = document.getElementById('model-selector');
+    const systemPrompt = document.getElementById('system-prompt');
+    const enableGrounding = document.getElementById('enable-grounding');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const attachFilesBtn = document.getElementById('attach-files-btn');
+    const filePickerModal = document.getElementById('file-picker-modal');
+    const closePicker = document.getElementById('close-picker');
+    const donePicking = document.getElementById('done-picking');
+    
+    // Get attached file IDs
+    function getAttachedFileIds() {
+        const inputs = document.querySelectorAll('#attached-files input[name="file_ids"]');
+        return Array.from(inputs).map(i => i.value);
+    }
+    
+    // Scroll to bottom
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Add user message
+    function addUserMessage(content) {
+        const div = document.createElement('div');
+        div.className = 'flex justify-end mb-4';
+        div.innerHTML = `
+            <div class="bg-blue-100 rounded-lg px-4 py-2 max-w-[80%]">
+                <p class="text-gray-800">${escapeHtml(content)}</p>
+            </div>
+        `;
+        chatMessages.appendChild(div);
+        scrollToBottom();
+    }
+    
+    // Escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Handle form submission
+    const jarvisMode = document.getElementById('jarvis-mode');
+    
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        if (!message) return;
+        
+        // Clear input
+        messageInput.value = '';
+        
+        // Add user message
+        addUserMessage(message);
+        
+        // Show typing indicator
+        typingIndicator.classList.remove('hidden');
+        scrollToBottom();
+        
+        try {
+            // Choose endpoint based on Jarvis mode
+            const endpoint = jarvisMode.checked 
+                ? '/api/gemini/jarvis/chat/html'
+                : '/api/gemini/chat/html';
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    model: modelSelector.value,
+                    system_prompt: systemPrompt.value || null,
+                    enable_grounding: enableGrounding.checked,
+                    session_id: sessionId,
+                    file_ids: getAttachedFileIds()
+                })
+            });
+            
+            const html = await response.text();
+            
+            // Hide typing indicator
+            typingIndicator.classList.add('hidden');
+            
+            // Parse session ID from response if needed
+            if (!sessionId) {
+                // Generate a local session ID if not returned
+                sessionId = 'session_' + Date.now();
+                localStorage.setItem('gemini_session_id', sessionId);
+            }
+            
+            // Add AI response (the HTML already contains both user and assistant messages)
+            // We only need the assistant part since we already added user message
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const assistantDiv = tempDiv.querySelector('.flex.justify-start');
+            if (assistantDiv) {
+                chatMessages.appendChild(assistantDiv);
+            }
+            
+            scrollToBottom();
+            
+        } catch (error) {
+            typingIndicator.classList.add('hidden');
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'flex justify-start mb-4';
+            errorDiv.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-2 max-w-[80%]">
+                    <p class="text-red-600">Error: ${error.message}</p>
+                </div>
+            `;
+            chatMessages.appendChild(errorDiv);
+            scrollToBottom();
+        }
+    });
+    
+    // New chat
+    newChatBtn.addEventListener('click', () => {
+        sessionId = null;
+        localStorage.removeItem('gemini_session_id');
+        
+        // Clear chat messages except welcome
+        chatMessages.innerHTML = `
+            <div class="flex justify-center">
+                <div class="bg-gray-50 rounded-lg px-6 py-4 max-w-lg text-center">
+                    <div class="text-4xl mb-2">✨</div>
+                    <h3 class="font-semibold text-gray-800 mb-1">Welcome to Gemini AI</h3>
+                    <p class="text-sm text-gray-600">
+                        Ask me anything about sales, research, or have me help with content. 
+                        Enable Web Grounding for factual, cited responses.
+                    </p>
+                </div>
+            </div>
+        `;
+        
+        // Clear attached files
+        document.getElementById('attached-files').innerHTML = '';
+    });
+    
+    // File picker modal
+    attachFilesBtn.addEventListener('click', () => {
+        filePickerModal.classList.remove('hidden');
+    });
+    
+    closePicker.addEventListener('click', () => {
+        filePickerModal.classList.add('hidden');
+    });
+    
+    donePicking.addEventListener('click', () => {
+        filePickerModal.classList.add('hidden');
+    });
+    
+    // Close modal on backdrop click
+    filePickerModal.addEventListener('click', (e) => {
+        if (e.target === filePickerModal) {
+            filePickerModal.classList.add('hidden');
+        }
+    });
+    
+    // Focus input on load
+    messageInput.focus();
+</script>
+{% endblock %}

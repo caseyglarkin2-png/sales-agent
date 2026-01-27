@@ -226,6 +226,8 @@ from src.routes import sequences_routes as sequences_v2_routes
 # from src.routes import roi_calculator_routes
 from src.routes import contact_queue
 from src.routes import forms as forms_routes
+from src.routes import gemini_api  # Sprint 34: Gemini AI Portal
+from src.routes import drive_api  # Sprint 35: Google Drive Integration
 # REMOVED Sprint 22 Task 5 - Unused route
 # from src.routes import proposal_templates_routes
 # REMOVED Sprint 22 Task 5 - Unused route
@@ -328,6 +330,8 @@ app.include_router(circuit_breakers.router)  # Sprint 6: Circuit breaker monitor
 app.include_router(ops.router)  # Ops: Sentry test and admin operations
 app.include_router(command_queue.router)  # CaseyOS: Command Queue API v0
 app.include_router(ui.router)  # CaseyOS: Unified UI (Sprint 24)
+app.include_router(gemini_api.router)  # Sprint 34: Gemini AI Portal
+app.include_router(drive_api.router)  # Sprint 35: Google Drive Integration
 app.include_router(signals_routes.router)  # CaseyOS: Signals API (Sprint 8)
 app.include_router(hubspot_signals.router)  # CaseyOS: HubSpot Signal Ingestion (Sprint 3)
 app.include_router(hubspot_webhooks.router)  # HubSpot CRM Real-Time Webhooks

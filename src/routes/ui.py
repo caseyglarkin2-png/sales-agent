@@ -22,3 +22,21 @@ async def dashboard(request: Request):
     Main Dashboard (formerly Jarvis)
     """
     return templates.TemplateResponse("dashboard.html", {"request": request, "active_tab": "dashboard"})
+
+
+@router.get("/caseyos/gemini", response_class=HTMLResponse)
+async def gemini_portal(request: Request):
+    """
+    Gemini AI Portal - Sprint 34
+    Interactive chat with Gemini AI, model selection, grounding support.
+    """
+    return templates.TemplateResponse("gemini.html", {"request": request, "active_tab": "gemini"})
+
+
+@router.get("/caseyos/drive", response_class=HTMLResponse)
+async def drive_browser(request: Request):
+    """
+    Google Drive Browser - Sprint 35
+    Browse and search Google Drive files.
+    """
+    return templates.TemplateResponse("drive.html", {"request": request, "active_tab": "drive"})

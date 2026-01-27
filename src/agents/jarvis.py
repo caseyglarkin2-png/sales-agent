@@ -652,6 +652,357 @@ class JarvisAgent(BaseAgent):
             if info["domain"] == domain
         ]
 
+    # =========================================================================
+    # Sprint 36: Gemini Tool Integration
+    # =========================================================================
+    
+    def get_tool_definitions(self) -> List[Dict[str, Any]]:
+        """
+        Get Gemini-compatible tool definitions for agent capabilities.
+        
+        Returns tool definitions that Gemini can use to call Jarvis actions.
+        """
+        return [
+            {
+                "name": "search_drive",
+                "description": "Search Google Drive for files and documents",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query (company name, topic, etc.)"
+                        },
+                        "file_types": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "File types to search: document, spreadsheet, presentation, pdf"
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "name": "draft_email",
+                "description": "Draft an email to a contact",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email": {
+                            "type": "string",
+                            "description": "Recipient email address"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "description": "Email subject line"
+                        },
+                        "context": {
+                            "type": "string",
+                            "description": "Context for the email (what it should be about)"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "description": "Tone: professional, friendly, urgent, casual"
+                        }
+                    },
+                    "required": ["to_email", "context"]
+                }
+            },
+            {
+                "name": "search_hubspot",
+                "description": "Search HubSpot CRM for contacts, companies, or deals",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query (name, email, company)"
+                        },
+                        "object_type": {
+                            "type": "string",
+                            "description": "Object to search: contact, company, deal"
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "name": "get_contact_info",
+                "description": "Get detailed information about a contact",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "Contact email address"
+                        }
+                    },
+                    "required": ["email"]
+                }
+            },
+            {
+                "name": "check_calendar",
+                "description": "Check calendar availability",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "start_date": {
+                            "type": "string",
+                            "description": "Start date (YYYY-MM-DD)"
+                        },
+                        "end_date": {
+                            "type": "string",
+                            "description": "End date (YYYY-MM-DD)"
+                        }
+                    },
+                    "required": ["start_date"]
+                }
+            },
+            {
+                "name": "schedule_meeting",
+                "description": "Schedule a meeting on the calendar",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "Meeting title"
+                        },
+                        "attendees": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Attendee email addresses"
+                        },
+                        "datetime": {
+                            "type": "string",
+                            "description": "Meeting datetime (ISO format)"
+                        },
+                        "duration_minutes": {
+                            "type": "integer",
+                            "description": "Meeting duration in minutes"
+                        }
+                    },
+                    "required": ["title", "attendees", "datetime"]
+                }
+            },
+            {
+                "name": "research_company",
+                "description": "Research a company for sales context",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "company_name": {
+                            "type": "string",
+                            "description": "Company name to research"
+                        },
+                        "depth": {
+                            "type": "string",
+                            "description": "Research depth: quick, standard, deep"
+                        }
+                    },
+                    "required": ["company_name"]
+                }
+            }
+        ]
+    
+    async def handle_tool_call(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Handle a tool call from Gemini.
+        
+        Routes the tool call to the appropriate agent and returns results.
+        
+        Args:
+            tool_name: Name of the tool being called
+            tool_args: Arguments passed to the tool
+            
+        Returns:
+            Result dict from the agent execution
+        """
+        logger.info(f"Jarvis handling tool call: {tool_name} with args: {tool_args}")
+        
+        try:
+            if tool_name == "search_drive":
+                agent = self._agents.get("asset_hunter")
+                if agent:
+                    return await agent.execute({
+                        "action": "search",
+                        "query": tool_args.get("query"),
+                        "file_types": tool_args.get("file_types"),
+                    })
+                return {"status": "error", "error": "Asset hunter agent not available"}
+            
+            elif tool_name == "draft_email":
+                agent = self._agents.get("draft_writer")
+                if agent:
+                    return await agent.execute({
+                        "action": "draft",
+                        "to_email": tool_args.get("to_email"),
+                        "subject": tool_args.get("subject"),
+                        "context": tool_args.get("context"),
+                        "tone": tool_args.get("tone", "professional"),
+                    })
+                return {"status": "error", "error": "Draft writer agent not available"}
+            
+            elif tool_name == "search_hubspot":
+                agent = self._agents.get("research")
+                if agent:
+                    return await agent.execute({
+                        "action": "search_crm",
+                        "query": tool_args.get("query"),
+                        "object_type": tool_args.get("object_type", "contact"),
+                    })
+                return {"status": "error", "error": "Research agent not available"}
+            
+            elif tool_name == "get_contact_info":
+                agent = self._agents.get("research")
+                if agent:
+                    return await agent.execute({
+                        "action": "get_contact",
+                        "email": tool_args.get("email"),
+                    })
+                return {"status": "error", "error": "Research agent not available"}
+            
+            elif tool_name == "check_calendar":
+                agent = self._agents.get("meeting_slot")
+                if agent:
+                    return await agent.execute({
+                        "action": "check_availability",
+                        "start_date": tool_args.get("start_date"),
+                        "end_date": tool_args.get("end_date"),
+                    })
+                return {"status": "error", "error": "Meeting slot agent not available"}
+            
+            elif tool_name == "schedule_meeting":
+                agent = self._agents.get("meeting_slot")
+                if agent:
+                    return await agent.execute({
+                        "action": "schedule",
+                        "title": tool_args.get("title"),
+                        "attendees": tool_args.get("attendees"),
+                        "datetime": tool_args.get("datetime"),
+                        "duration_minutes": tool_args.get("duration_minutes", 30),
+                    })
+                return {"status": "error", "error": "Meeting slot agent not available"}
+            
+            elif tool_name == "research_company":
+                agent = self._agents.get("research")
+                if agent:
+                    return await agent.execute({
+                        "action": "company_intel",
+                        "company_name": tool_args.get("company_name"),
+                        "depth": tool_args.get("depth", "standard"),
+                    })
+                return {"status": "error", "error": "Research agent not available"}
+            
+            else:
+                return {"status": "error", "error": f"Unknown tool: {tool_name}"}
+                
+        except Exception as e:
+            logger.error(f"Tool call error for {tool_name}: {e}")
+            return {"status": "error", "error": str(e)}
+    
+    async def ask_with_tools(
+        self,
+        query: str,
+        context: Optional[Dict[str, Any]] = None,
+        max_tool_calls: int = 5,
+    ) -> Dict[str, Any]:
+        """
+        Ask Jarvis with automatic tool calling support.
+        
+        Uses Gemini to decide when to call tools and orchestrates
+        the multi-step conversation.
+        
+        Args:
+            query: User query
+            context: Additional context
+            max_tool_calls: Maximum tool calls per request
+            
+        Returns:
+            Final response with all tool results incorporated
+        """
+        from src.connectors.gemini import get_gemini
+        
+        gemini = get_gemini()
+        tools = self.get_tool_definitions()
+        
+        system_instruction = """You are Jarvis, the AI orchestrator for CaseyOS - a B2B GTM command center.
+You have access to tools for:
+- Searching Google Drive for documents and proposals
+- Drafting emails to contacts
+- Searching HubSpot CRM for contacts, companies, and deals
+- Checking and scheduling calendar events
+- Researching companies
+
+When a user asks a question, decide if you need to use any tools to answer it.
+If the question can be answered directly, respond without tools.
+If you need information from Drive, CRM, or calendar, use the appropriate tool.
+
+Be concise and action-oriented in your responses."""
+
+        tool_results = []
+        current_prompt = query
+        
+        for i in range(max_tool_calls):
+            result = await gemini.generate_with_tools(
+                prompt=current_prompt,
+                tools=tools,
+                system_instruction=system_instruction,
+            )
+            
+            if result["type"] == "text":
+                # Final text response
+                return {
+                    "status": "success",
+                    "response": result["content"],
+                    "tool_calls": tool_results,
+                }
+            
+            elif result["type"] == "tool_call":
+                # Execute the tool
+                tool_name = result["name"]
+                tool_args = result["args"]
+                
+                tool_result = await self.handle_tool_call(tool_name, tool_args)
+                tool_results.append({
+                    "tool": tool_name,
+                    "args": tool_args,
+                    "result": tool_result,
+                })
+                
+                # Continue conversation with tool result
+                result = await gemini.continue_with_tool_result(
+                    original_prompt=query,
+                    tool_name=tool_name,
+                    tool_result=tool_result,
+                    tools=tools,
+                    system_instruction=system_instruction,
+                )
+                
+                if result["type"] == "text":
+                    return {
+                        "status": "success",
+                        "response": result["content"],
+                        "tool_calls": tool_results,
+                    }
+                    
+            elif result["type"] == "error":
+                return {
+                    "status": "error",
+                    "error": result["message"],
+                    "tool_calls": tool_results,
+                }
+        
+        return {
+            "status": "error",
+            "error": f"Max tool calls ({max_tool_calls}) exceeded",
+            "tool_calls": tool_results,
+        }
+
 
 # Singleton instance
 _jarvis_instance: Optional[JarvisAgent] = None

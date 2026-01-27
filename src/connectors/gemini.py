@@ -987,6 +987,176 @@ Return as JSON."""
         except json.JSONDecodeError:
             return {"response": response.text}
 
+    # =========================================================================
+    # Sprint 36: Tool/Function Calling Support
+    # =========================================================================
+    
+    async def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        model: Optional[GeminiModel] = None,
+        system_instruction: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Generate with function/tool calling support.
+        
+        Enables Gemini to decide when to call tools and returns
+        either a text response or a tool call request.
+        
+        Args:
+            prompt: User prompt
+            tools: List of tool definitions in Gemini format
+            model: Model to use
+            system_instruction: System context
+            
+        Returns:
+            Dict with either:
+            - {"type": "text", "content": "response text"}
+            - {"type": "tool_call", "name": "tool_name", "args": {...}}
+        """
+        model_name = (model or self.default_model).value
+        
+        body: Dict[str, Any] = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "tools": [{"functionDeclarations": tools}],
+            "generationConfig": {
+                "temperature": 0.3,  # Lower for tool calling
+                "maxOutputTokens": 2048,
+            },
+        }
+        
+        if system_instruction:
+            body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        
+        client = await self._get_client()
+        
+        try:
+            response = await client.post(
+                self._get_endpoint(model_name),
+                json=body,
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            candidates = data.get("candidates", [])
+            if not candidates:
+                return {"type": "error", "message": "No candidates in response"}
+            
+            candidate = candidates[0]
+            content = candidate.get("content", {})
+            parts = content.get("parts", [])
+            
+            # Check for function call
+            for part in parts:
+                if "functionCall" in part:
+                    fc = part["functionCall"]
+                    logger.info(f"Gemini requested tool call: {fc.get('name')}")
+                    return {
+                        "type": "tool_call",
+                        "name": fc.get("name"),
+                        "args": fc.get("args", {}),
+                    }
+            
+            # Text response
+            text = "".join(p.get("text", "") for p in parts if "text" in p)
+            return {"type": "text", "content": text}
+            
+        except Exception as e:
+            logger.error(f"Gemini tool call error: {e}")
+            return {"type": "error", "message": str(e)}
+    
+    async def continue_with_tool_result(
+        self,
+        original_prompt: str,
+        tool_name: str,
+        tool_result: Any,
+        tools: List[Dict[str, Any]],
+        model: Optional[GeminiModel] = None,
+        system_instruction: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Continue generation after providing a tool result.
+        
+        Args:
+            original_prompt: The original user prompt
+            tool_name: Name of the tool that was called
+            tool_result: Result from executing the tool
+            tools: Tool definitions
+            model: Model to use
+            system_instruction: System context
+            
+        Returns:
+            Next response (text or another tool call)
+        """
+        model_name = (model or self.default_model).value
+        
+        # Build conversation with tool result
+        contents = [
+            {"role": "user", "parts": [{"text": original_prompt}]},
+            {
+                "role": "model",
+                "parts": [{"functionCall": {"name": tool_name, "args": {}}}]
+            },
+            {
+                "role": "function",
+                "parts": [{
+                    "functionResponse": {
+                        "name": tool_name,
+                        "response": {"result": tool_result}
+                    }
+                }]
+            }
+        ]
+        
+        body: Dict[str, Any] = {
+            "contents": contents,
+            "tools": [{"functionDeclarations": tools}],
+            "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": 2048,
+            },
+        }
+        
+        if system_instruction:
+            body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        
+        client = await self._get_client()
+        
+        try:
+            response = await client.post(
+                self._get_endpoint(model_name),
+                json=body,
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            candidates = data.get("candidates", [])
+            if not candidates:
+                return {"type": "error", "message": "No candidates in response"}
+            
+            candidate = candidates[0]
+            content = candidate.get("content", {})
+            parts = content.get("parts", [])
+            
+            # Check for another function call
+            for part in parts:
+                if "functionCall" in part:
+                    fc = part["functionCall"]
+                    return {
+                        "type": "tool_call",
+                        "name": fc.get("name"),
+                        "args": fc.get("args", {}),
+                    }
+            
+            # Text response
+            text = "".join(p.get("text", "") for p in parts if "text" in p)
+            return {"type": "text", "content": text}
+            
+        except Exception as e:
+            logger.error(f"Gemini continue error: {e}")
+            return {"type": "error", "message": str(e)}
+
 
 # Singleton instance
 _gemini_instance: Optional[GeminiConnector] = None

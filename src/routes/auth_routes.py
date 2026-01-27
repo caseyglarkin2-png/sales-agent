@@ -744,10 +744,21 @@ async def google_oauth_callback(
     state: Optional[str] = Query(None),
     error: Optional[str] = Query(None)
 ):
-    """Handle Google OAuth callback - exchange code for tokens"""
+    """Handle Google OAuth callback - exchange code for tokens
+    
+    DEPRECATED (Sprint 33): This route is deprecated. 
+    Use /auth/callback via web_auth.py instead.
+    This route will be removed in Sprint 35.
+    """
     import os
     import httpx
     from fastapi.responses import HTMLResponse
+    
+    # Log deprecation warning
+    logger.warning(
+        "DEPRECATED: /auth/google/callback is deprecated. "
+        "Use /auth/callback instead. This route will be removed in Sprint 35."
+    )
     
     if error:
         return HTMLResponse(f"""
