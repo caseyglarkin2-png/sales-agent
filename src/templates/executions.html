@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Execution History - CaseyOS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">⚡ Execution History</h1>
+                <p class="mt-1 text-sm text-gray-500" id="exec-subtitle">
+                    Track agent executions, success rates, and performance
+                </p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Auto Refresh Toggle -->
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="auto-refresh" class="sr-only peer" checked>
+                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <span class="ms-3 text-sm font-medium text-gray-700">Auto-refresh</span>
+                </label>
+                <button onclick="refreshExecutions()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4" id="stats-grid">
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-gray-900" id="stat-total">--</div>
+            <div class="text-sm text-gray-500">Total (24h)</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-green-600" id="stat-success">--</div>
+            <div class="text-sm text-gray-500">Successful</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-red-600" id="stat-failed">--</div>
+            <div class="text-sm text-gray-500">Failed</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-yellow-600" id="stat-running">--</div>
+            <div class="text-sm text-gray-500">Running</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-indigo-600" id="stat-rate">--%</div>
+            <div class="text-sm text-gray-500">Success Rate</div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-white shadow rounded-lg p-4">
+        <div class="flex flex-wrap gap-4 items-center">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Status</label>
+                <select id="filter-status" onchange="refreshExecutions()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All</option>
+                    <option value="running">Running</option>
+                    <option value="success">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="timed_out">Timed Out</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Domain</label>
+                <select id="filter-domain" onchange="refreshExecutions()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All Domains</option>
+                    <option value="sales">Sales</option>
+                    <option value="content">Content</option>
+                    <option value="research">Research</option>
+                    <option value="fulfillment">Fulfillment</option>
+                    <option value="ops">Operations</option>
+                </select>
+            </div>
+            <div class="flex-grow"></div>
+            <div class="text-sm text-gray-500" id="last-updated">
+                Last updated: --
+            </div>
+        </div>
+    </div>
+
+    <!-- Executions Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Domain</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trigger</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Started</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="executions-body" class="bg-white divide-y divide-gray-200">
+                <!-- Loading state -->
+                <tr id="loading-row">
+                    <td colspan="7" class="px-6 py-12 text-center">
+                        <div class="flex items-center justify-center space-x-3">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                            <span class="text-gray-500">Loading executions...</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Execution Detail Modal -->
+    <div id="exec-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3" id="modal-status-icon">⚡</span>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900" id="modal-agent-name">Agent Name</h2>
+                            <span class="text-sm text-gray-500" id="modal-execution-id">Execution #--</span>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <!-- Status Badge -->
+                <div class="mb-4">
+                    <span id="modal-status-badge" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+                        Status
+                    </span>
+                </div>
+
+                <!-- Metadata Grid -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="text-xs text-gray-500">Domain</label>
+                        <p class="font-medium" id="modal-domain">--</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Trigger Source</label>
+                        <p class="font-medium" id="modal-trigger">--</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Duration</label>
+                        <p class="font-medium" id="modal-duration">--</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Started At</label>
+                        <p class="font-medium" id="modal-started">--</p>
+                    </div>
+                </div>
+
+                <!-- Input Context -->
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Input Context</h3>
+                    <pre class="bg-gray-50 rounded-lg p-3 text-xs overflow-x-auto" id="modal-input">--</pre>
+                </div>
+
+                <!-- Output Result (if success) -->
+                <div class="mb-4" id="modal-output-section">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Output Result</h3>
+                    <pre class="bg-green-50 rounded-lg p-3 text-xs overflow-x-auto" id="modal-output">--</pre>
+                </div>
+
+                <!-- Error (if failed) -->
+                <div class="mb-4 hidden" id="modal-error-section">
+                    <h3 class="text-sm font-semibold text-red-700 mb-2">Error Details</h3>
+                    <div class="bg-red-50 rounded-lg p-3 text-xs">
+                        <p class="text-red-700 font-medium mb-2" id="modal-error">--</p>
+                        <details>
+                            <summary class="cursor-pointer text-red-600 hover:text-red-800">View Traceback</summary>
+                            <pre class="mt-2 text-red-600 overflow-x-auto" id="modal-traceback">--</pre>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- Retry Button (if failed) -->
+                <div class="hidden" id="modal-retry-section">
+                    <button onclick="retryExecution()" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                        🔄 Retry This Execution
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // State
+    let autoRefreshInterval = null;
+    let currentExecutionId = null;
+    const API_BASE = '/api/agents';
+
+    // Status styling
+    const STATUS_STYLES = {
+        'pending': { icon: '⏳', bg: 'bg-gray-100', text: 'text-gray-800' },
+        'running': { icon: '🔄', bg: 'bg-yellow-100', text: 'text-yellow-800' },
+        'success': { icon: '✅', bg: 'bg-green-100', text: 'text-green-800' },
+        'failed': { icon: '❌', bg: 'bg-red-100', text: 'text-red-800' },
+        'timed_out': { icon: '⏱️', bg: 'bg-orange-100', text: 'text-orange-800' },
+        'cancelled': { icon: '🚫', bg: 'bg-gray-100', text: 'text-gray-800' },
+    };
+
+    // Domain colors
+    const DOMAIN_COLORS = {
+        'sales': 'bg-indigo-100 text-indigo-800',
+        'content': 'bg-purple-100 text-purple-800',
+        'research': 'bg-blue-100 text-blue-800',
+        'fulfillment': 'bg-green-100 text-green-800',
+        'ops': 'bg-gray-100 text-gray-800',
+        'data_hygiene': 'bg-emerald-100 text-emerald-800',
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        refreshExecutions();
+        setupAutoRefresh();
+    });
+
+    function setupAutoRefresh() {
+        const checkbox = document.getElementById('auto-refresh');
+        if (checkbox.checked) {
+            autoRefreshInterval = setInterval(refreshExecutions, 10000); // Every 10 seconds
+        }
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                autoRefreshInterval = setInterval(refreshExecutions, 10000);
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    }
+
+    async function refreshExecutions() {
+        try {
+            // Get filters
+            const status = document.getElementById('filter-status').value;
+            const domain = document.getElementById('filter-domain').value;
+
+            // Fetch executions
+            let url = `${API_BASE}/executions/all?limit=100`;
+            if (status) url += `&status=${status}`;
+            if (domain) url += `&domain=${domain}`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // Render executions
+            renderExecutions(data.executions || []);
+
+            // Update last updated
+            document.getElementById('last-updated').textContent = 
+                `Last updated: ${new Date().toLocaleTimeString()}`;
+
+            // Fetch and update stats
+            fetchStats();
+        } catch (error) {
+            console.error('Error fetching executions:', error);
+        }
+    }
+
+    async function fetchStats() {
+        try {
+            // We'll aggregate from the all-executions endpoint for now
+            const response = await fetch(`${API_BASE}/executions/all?limit=200`);
+            const data = await response.json();
+            const executions = data.executions || [];
+
+            // Calculate stats
+            let success = 0, failed = 0, running = 0, total = executions.length;
+            executions.forEach(e => {
+                if (e.status === 'success') success++;
+                else if (e.status === 'failed') failed++;
+                else if (e.status === 'running') running++;
+            });
+
+            const rate = total > 0 ? Math.round(success / total * 100) : 0;
+
+            // Update UI
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-success').textContent = success;
+            document.getElementById('stat-failed').textContent = failed;
+            document.getElementById('stat-running').textContent = running;
+            document.getElementById('stat-rate').textContent = rate + '%';
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    }
+
+    function renderExecutions(executions) {
+        const tbody = document.getElementById('executions-body');
+        
+        if (executions.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                        No executions found. Trigger an agent to see execution history.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = executions.map(exec => {
+            const style = STATUS_STYLES[exec.status] || STATUS_STYLES['pending'];
+            const domainStyle = DOMAIN_COLORS[exec.domain] || 'bg-gray-100 text-gray-800';
+            const duration = exec.duration_ms 
+                ? `${(exec.duration_ms / 1000).toFixed(2)}s` 
+                : exec.status === 'running' ? '...' : '--';
+            const startedAt = exec.started_at 
+                ? new Date(exec.started_at).toLocaleString() 
+                : '--';
+
+            return `
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="showExecutionDetail(${exec.id})">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${style.bg} ${style.text}">
+                            ${style.icon} ${exec.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="font-medium text-gray-900">${exec.agent_name}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${domainStyle}">
+                            ${exec.domain}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${exec.trigger_source || 'unknown'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${duration}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${startedAt}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="event.stopPropagation(); showExecutionDetail(${exec.id})" 
+                                class="text-indigo-600 hover:text-indigo-900">
+                            View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function showExecutionDetail(executionId) {
+        currentExecutionId = executionId;
+        
+        // Fetch full execution details
+        try {
+            const response = await fetch(`${API_BASE}/executions/all?limit=200`);
+            const data = await response.json();
+            const exec = data.executions.find(e => e.id === executionId);
+            
+            if (!exec) {
+                alert('Execution not found');
+                return;
+            }
+
+            // Populate modal
+            const style = STATUS_STYLES[exec.status] || STATUS_STYLES['pending'];
+            
+            document.getElementById('modal-status-icon').textContent = style.icon;
+            document.getElementById('modal-agent-name').textContent = exec.agent_name;
+            document.getElementById('modal-execution-id').textContent = `Execution #${exec.id}`;
+            
+            const badge = document.getElementById('modal-status-badge');
+            badge.textContent = exec.status;
+            badge.className = `inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${style.bg} ${style.text}`;
+            
+            document.getElementById('modal-domain').textContent = exec.domain;
+            document.getElementById('modal-trigger').textContent = exec.trigger_source || '--';
+            document.getElementById('modal-duration').textContent = exec.duration_ms 
+                ? `${(exec.duration_ms / 1000).toFixed(2)} seconds` 
+                : '--';
+            document.getElementById('modal-started').textContent = exec.started_at 
+                ? new Date(exec.started_at).toLocaleString() 
+                : '--';
+            
+            // Input context
+            document.getElementById('modal-input').textContent = 
+                exec.input_context ? JSON.stringify(exec.input_context, null, 2) : 'No input context';
+            
+            // Output or error sections
+            const outputSection = document.getElementById('modal-output-section');
+            const errorSection = document.getElementById('modal-error-section');
+            const retrySection = document.getElementById('modal-retry-section');
+            
+            if (exec.status === 'success' && exec.output_result) {
+                outputSection.classList.remove('hidden');
+                errorSection.classList.add('hidden');
+                retrySection.classList.add('hidden');
+                document.getElementById('modal-output').textContent = 
+                    JSON.stringify(exec.output_result, null, 2);
+            } else if (exec.status === 'failed' || exec.status === 'timed_out') {
+                outputSection.classList.add('hidden');
+                errorSection.classList.remove('hidden');
+                retrySection.classList.remove('hidden');
+                document.getElementById('modal-error').textContent = exec.error_message || 'Unknown error';
+                document.getElementById('modal-traceback').textContent = exec.error_traceback || 'No traceback available';
+            } else {
+                outputSection.classList.add('hidden');
+                errorSection.classList.add('hidden');
+                retrySection.classList.add('hidden');
+            }
+            
+            // Show modal
+            document.getElementById('exec-modal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error fetching execution detail:', error);
+            alert('Error loading execution details');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('exec-modal').classList.add('hidden');
+        currentExecutionId = null;
+    }
+
+    async function retryExecution() {
+        if (!currentExecutionId) return;
+        
+        // TODO: Implement retry - will need to get agent name and input context
+        // and call the execute endpoint again
+        alert('Retry functionality will be added in Sprint 42.7');
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // Close modal on outside click
+    document.getElementById('exec-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeModal();
+    });
+</script>
+{% endblock %}

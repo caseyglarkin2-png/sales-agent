@@ -63,3 +63,12 @@ async def agents_hub(request: Request):
     Full functionality coming in Sprint 41.
     """
     return templates.TemplateResponse("agents.html", {"request": request, "active_tab": "agents"})
+
+
+@router.get("/caseyos/executions", response_class=HTMLResponse)
+async def executions_history(request: Request):
+    """
+    Execution History - Sprint 42
+    Shows agent execution history with status, duration, and results.
+    """
+    return templates.TemplateResponse("executions.html", {"request": request, "active_tab": "executions"})
