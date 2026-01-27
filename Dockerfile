@@ -22,6 +22,6 @@ RUN chmod +x start.sh
 
 EXPOSE 8000
 
-# Cache bust: 20260123-v2
+# Cache bust: 20260127-v1 - Gemini Portal + Drive Integration
 # Use startup script for proper PORT handling
 CMD ["./start.sh"]
