@@ -31,6 +31,7 @@ class AgentDomain(str, Enum):
     CONTRACTS = "contracts"
     OPS = "ops"
     RESEARCH = "research"
+    DATA_HYGIENE = "data_hygiene"
 
 
 class JarvisAgent(BaseAgent):
@@ -113,6 +114,9 @@ class JarvisAgent(BaseAgent):
         
         # Initialize Research agents
         await self._init_research_agents()
+        
+        # Initialize Data Hygiene agents (Sprint 41)
+        await self._init_data_hygiene_agents()
         
         self._initialized = True
         logger.info(f"Jarvis initialized with {len(self._agents)} agents")
@@ -204,6 +208,24 @@ class JarvisAgent(BaseAgent):
             ValidationAgent(),
             domain=AgentDomain.SALES,
             capabilities=["compliance_check", "tone_analysis", "pii_detection"]
+        )
+        
+        # Sprint 41: Additional sales agents
+        from src.agents.outcome_reporter import OutcomeReporterAgent
+        from src.agents.market_trend_monitor import MarketTrendMonitorAgent
+        
+        self._register_agent(
+            "outcome_reporter",
+            OutcomeReporterAgent(),
+            domain=AgentDomain.SALES,
+            capabilities=["engagement_metrics", "conversion_funnel", "agent_performance"]
+        )
+        
+        self._register_agent(
+            "market_trends",
+            MarketTrendMonitorAgent(),
+            domain=AgentDomain.OPS,
+            capabilities=["monitor_thought_leaders", "detect_trends", "generate_insights"]
         )
 
     async def _init_content_agents(self) -> None:
@@ -356,6 +378,56 @@ class JarvisAgent(BaseAgent):
             DeepResearchAgent(),
             domain=AgentDomain.RESEARCH,
             capabilities=["deep_dive_drive", "analyze_large_docs", "treasure_trove_search"]
+        )
+
+    async def _init_data_hygiene_agents(self) -> None:
+        """Initialize data hygiene domain agents (Sprint 41).
+        
+        Critical for ensuring we don't look like idiots when sending emails:
+        - Validate contact data before sends
+        - Detect duplicates to avoid double-emails
+        - Monitor data freshness
+        - Orchestrate enrichment
+        """
+        from src.agents.data_hygiene.contact_validation import ContactValidationAgent
+        from src.agents.data_hygiene.duplicate_watcher import DuplicateWatcherAgent
+        from src.agents.data_hygiene.enrichment_orchestrator import EnrichmentOrchestratorAgent
+        from src.agents.data_hygiene.data_decay import DataDecayAgent
+        from src.agents.data_hygiene.sync_health import SyncHealthAgent
+        
+        self._register_agent(
+            "contact_validation",
+            ContactValidationAgent(),
+            domain=AgentDomain.DATA_HYGIENE,
+            capabilities=["validate_email", "normalize_phone", "standardize_title", "check_required_fields"]
+        )
+        
+        self._register_agent(
+            "duplicate_watcher",
+            DuplicateWatcherAgent(),
+            domain=AgentDomain.DATA_HYGIENE,
+            capabilities=["detect_duplicates", "fuzzy_match", "merge_recommendations"]
+        )
+        
+        self._register_agent(
+            "enrichment_orchestrator",
+            EnrichmentOrchestratorAgent(),
+            domain=AgentDomain.DATA_HYGIENE,
+            capabilities=["enrich_from_clearbit", "enrich_from_apollo", "manage_credits"]
+        )
+        
+        self._register_agent(
+            "data_decay",
+            DataDecayAgent(),
+            domain=AgentDomain.DATA_HYGIENE,
+            capabilities=["detect_stale_contacts", "flag_bounces", "prioritize_refresh"]
+        )
+        
+        self._register_agent(
+            "sync_health",
+            SyncHealthAgent(),
+            domain=AgentDomain.DATA_HYGIENE,
+            capabilities=["monitor_sync", "detect_failures", "track_rate_limits"]
         )
 
     def _register_agent(
@@ -605,7 +677,25 @@ class JarvisAgent(BaseAgent):
 
         # Deep Research
         if any(word in query_lower for word in ["drive", "deep dive", "treasure trove", "contract", "files", "pesti", "yardflow"]):
-            agents.append("deep_research") 
+            agents.append("deep_research")
+        
+        # Data Hygiene routing (Sprint 41)
+        if any(word in query_lower for word in ["validate", "validation", "check email", "invalid", "bad data"]):
+            agents.append("contact_validation")
+        if any(word in query_lower for word in ["duplicate", "dupe", "merge", "same person", "already have"]):
+            agents.append("duplicate_watcher")
+        if any(word in query_lower for word in ["enrich", "clearbit", "apollo", "zoominfo", "fill in", "missing data"]):
+            agents.append("enrichment_orchestrator")
+        if any(word in query_lower for word in ["stale", "decay", "old contact", "outdated", "bounced", "zombie"]):
+            agents.append("data_decay")
+        if any(word in query_lower for word in ["sync", "hubspot sync", "sync health", "rate limit", "sync error"]):
+            agents.append("sync_health")
+        
+        # New sales agents
+        if any(word in query_lower for word in ["outcome", "metrics", "report", "performance", "conversion"]):
+            agents.append("outcome_reporter")
+        if any(word in query_lower for word in ["trend", "market trend", "thought leader", "industry news"]):
+            agents.append("market_trends")
         
         return list(set(agents))  # Dedupe
 
