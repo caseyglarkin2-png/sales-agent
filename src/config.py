@@ -78,9 +78,9 @@ class Settings(BaseSettings):
     google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID", description="Google OAuth Client ID")
     google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET", description="Google OAuth Client Secret")
     google_redirect_uri: str = Field(
-        default="http://localhost:8000/auth/google/callback",
+        default="http://localhost:8000/auth/callback",
         alias="GOOGLE_REDIRECT_URI",
-        description="Google OAuth Redirect URI",
+        description="Google OAuth Redirect URI - must match /auth/callback route in web_auth.py",
     )
 
     # HubSpot

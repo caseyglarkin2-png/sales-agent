@@ -68,8 +68,8 @@ ENV_VARS = {
     },
     "GOOGLE_REDIRECT_URI": {
         "category": VarCategory.REQUIRED,
-        "description": "Google OAuth 2.0 Redirect URI",
-        "example": "http://localhost:8000/auth/google/callback",
+        "description": "Google OAuth 2.0 Redirect URI - must end with /auth/callback",
+        "example": "http://localhost:8000/auth/callback",
     },
     "HUBSPOT_API_KEY": {
         "category": VarCategory.REQUIRED,

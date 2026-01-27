@@ -204,7 +204,7 @@ API_LOG_LEVEL=INFO
 ```bash
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
-GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/callback
 ```
 
 ### HubSpot Integration

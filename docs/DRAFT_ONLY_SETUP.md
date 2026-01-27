@@ -139,7 +139,7 @@ API_PORT=8000
 # Required (for full functionality)
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-xxx
-GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/callback
 HUBSPOT_API_KEY=pat-na1-xxx
 OPENAI_API_KEY=sk-xxx
 
