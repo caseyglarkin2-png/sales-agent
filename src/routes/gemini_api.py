@@ -1,6 +1,8 @@
 """Gemini AI Chat API endpoints.
 
 Sprint 34: Gemini Portal Foundation
+Sprint 39B: Persistent conversation memory via MemoryService
+
 Provides API endpoints for Gemini AI chat interactions.
 """
 from datetime import datetime
@@ -16,6 +18,7 @@ from src.db import get_db, Base, SafeJSON
 from src.connectors.gemini import GeminiConnector, GeminiModel, GeminiResponse
 from src.auth.decorators import get_current_user_optional
 from src.models.user import User
+from src.services.memory_service import MemoryService
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -179,6 +182,7 @@ AVAILABLE_MODELS = [
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
     user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
@@ -188,24 +192,53 @@ async def chat(
     - Model selection
     - Google Search grounding
     - System prompts
-    - Chat history (via session_id)
+    - Chat history (via session_id) - Now persisted with MemoryService (Sprint 39B)
     - File context (via file_ids)
     """
     # Initialize connector
     connector = GeminiConnector()
+    memory_service = MemoryService(db)
     
-    # Get or create session
+    # Get user ID for memory
+    user_id = user.email if user else "anonymous"
+    
+    # Get or create session - try persistent memory first
     session_id = request.session_id or str(uuid4())
+    
+    # Get history from persistent memory if available
+    try:
+        # Get or create a Jarvis session for memory persistence
+        session = await memory_service.get_or_create_session(
+            user_id=user_id,
+            session_name=f"gemini_{session_id[:8]}"
+        )
+        
+        # Recall recent messages from persistent memory
+        memories = await memory_service.recall(
+            session_id=str(session.id),
+            limit=10
+        )
+        
+        # Convert memories to chat context
+        context_parts = []
+        for mem in reversed(memories):  # Oldest first
+            context_parts.append(f"{mem.role}: {mem.content}")
+        
+        logger.info(f"Recalled {len(memories)} messages from persistent memory")
+        
+    except Exception as e:
+        logger.warning(f"Memory service unavailable, falling back to in-memory: {e}")
+        # Fallback to in-memory sessions
+        if session_id not in _chat_sessions:
+            _chat_sessions[session_id] = []
+        history = _chat_sessions[session_id]
+        context_parts = [f"{msg.role}: {msg.content}" for msg in history[-10:]]
+        session = None
+    
+    # Initialize in-memory history for fallback
     if session_id not in _chat_sessions:
         _chat_sessions[session_id] = []
-    
     history = _chat_sessions[session_id]
-    
-    # Build context from history
-    context_parts = []
-    if history:
-        for msg in history[-10:]:  # Last 10 messages for context
-            context_parts.append(f"{msg.role}: {msg.content}")
     
     # Get system prompt
     system_prompt = request.system_prompt
@@ -243,7 +276,7 @@ User: {request.message}"""
             enable_grounding=request.enable_grounding,
         )
         
-        # Store messages in history
+        # Store messages in in-memory history
         history.append(ChatMessage(
             role="user",
             content=request.message,
@@ -255,6 +288,29 @@ User: {request.message}"""
             sources=result.grounding_sources,
             timestamp=datetime.utcnow()
         ))
+        
+        # Also store in persistent memory if available (Sprint 39B)
+        if session:
+            try:
+                await memory_service.remember(
+                    session_id=str(session.id),
+                    content=request.message,
+                    role="user",
+                    metadata={"model": request.model, "grounding": request.enable_grounding},
+                    importance=50,
+                    generate_embedding=False  # Skip embedding for chat messages
+                )
+                await memory_service.remember(
+                    session_id=str(session.id),
+                    content=result.text,
+                    role="assistant",
+                    metadata={"sources": result.grounding_sources, "tokens": result.usage.get("total_tokens", 0)},
+                    importance=50,
+                    generate_embedding=False
+                )
+                logger.info(f"Messages saved to persistent memory for session {session.id}")
+            except Exception as e:
+                logger.warning(f"Failed to persist messages: {e}")
         
         return ChatResponse(
             response=result.text,
