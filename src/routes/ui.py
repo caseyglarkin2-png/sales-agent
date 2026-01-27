@@ -16,6 +16,19 @@ async def queue_dashboard(request: Request):
     """
     return templates.TemplateResponse("queue.html", {"request": request, "active_tab": "queue"})
 
+
+@router.get("/caseyos/queue/{item_id}", response_class=HTMLResponse)
+async def queue_item_detail(request: Request, item_id: str):
+    """
+    Queue Item Detail Page - Sprint 40
+    Shows full item details with draft editing capability.
+    """
+    return templates.TemplateResponse("queue_detail.html", {
+        "request": request, 
+        "active_tab": "queue",
+        "item_id": item_id,
+    })
+
 @router.get("/caseyos", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """

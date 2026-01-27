@@ -109,6 +109,7 @@ class CommandQueueItemUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     priority_score: Optional[float] = Field(None, ge=0, le=100)
+    action_context: Optional[Dict[str, Any]] = Field(None, description="Draft content and action parameters")
 
 
 class CommandQueueItemResponse(BaseModel):
