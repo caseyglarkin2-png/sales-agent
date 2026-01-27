@@ -11,62 +11,73 @@
         padding: 1.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .detail-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 1.5rem;
     }
-    
+
     .priority-badge {
         font-size: 1.25rem;
         font-weight: 700;
         padding: 0.5rem 1rem;
         border-radius: 0.5rem;
     }
-    
-    .priority-high { background: #fef2f2; color: #dc2626; }
-    .priority-medium { background: #fffbeb; color: #d97706; }
-    .priority-low { background: #f0fdf4; color: #16a34a; }
-    
+
+    .priority-high {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .priority-medium {
+        background: #fffbeb;
+        color: #d97706;
+    }
+
+    .priority-low {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
     .meta-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
-    
+
     .meta-item {
         padding: 1rem;
         background: #f9fafb;
         border-radius: 0.5rem;
     }
-    
+
     .meta-label {
         font-size: 0.75rem;
         text-transform: uppercase;
         color: #6b7280;
         margin-bottom: 0.25rem;
     }
-    
+
     .meta-value {
         font-size: 0.9375rem;
         color: #111827;
         font-weight: 500;
     }
-    
+
     .draft-section {
         margin-top: 1.5rem;
     }
-    
+
     .draft-section h3 {
         font-size: 1rem;
         font-weight: 600;
         margin-bottom: 0.75rem;
         color: #374151;
     }
-    
+
     .draft-input {
         width: 100%;
         padding: 0.75rem;
@@ -75,27 +86,27 @@
         font-size: 0.9375rem;
         transition: border-color 0.15s, box-shadow 0.15s;
     }
-    
+
     .draft-input:focus {
         outline: none;
         border-color: #4f46e5;
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
-    
+
     .draft-textarea {
         min-height: 200px;
         font-family: inherit;
         line-height: 1.5;
         resize: vertical;
     }
-    
+
     .action-buttons {
         display: flex;
         gap: 0.75rem;
         margin-top: 1.5rem;
         flex-wrap: wrap;
     }
-    
+
     .btn {
         padding: 0.625rem 1rem;
         border-radius: 0.375rem;
@@ -105,44 +116,44 @@
         border: 1px solid transparent;
         transition: all 0.15s;
     }
-    
+
     .btn-primary {
         background: #4f46e5;
         color: white;
     }
-    
+
     .btn-primary:hover {
         background: #4338ca;
     }
-    
+
     .btn-success {
         background: #10b981;
         color: white;
     }
-    
+
     .btn-success:hover {
         background: #059669;
     }
-    
+
     .btn-danger {
         background: #ef4444;
         color: white;
     }
-    
+
     .btn-danger:hover {
         background: #dc2626;
     }
-    
+
     .btn-secondary {
         background: white;
         color: #374151;
         border-color: #d1d5db;
     }
-    
+
     .btn-secondary:hover {
         background: #f9fafb;
     }
-    
+
     .reasoning-box {
         background: #f0f9ff;
         border: 1px solid #bfdbfe;
@@ -150,14 +161,14 @@
         padding: 1rem;
         margin-top: 1rem;
     }
-    
+
     .reasoning-box .label {
         font-size: 0.75rem;
         text-transform: uppercase;
         color: #3b82f6;
         margin-bottom: 0.5rem;
     }
-    
+
     .toast {
         position: fixed;
         bottom: 1rem;
@@ -166,27 +177,32 @@
         color: white;
         padding: 0.75rem 1.5rem;
         border-radius: 0.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         z-index: 100;
         opacity: 0;
         transform: translateY(20px);
         transition: all 0.3s;
     }
-    
+
     .toast.show {
         opacity: 1;
         transform: translateY(0);
     }
-    
-    .toast.success { background: #059669; }
-    .toast.error { background: #dc2626; }
-    
+
+    .toast.success {
+        background: #059669;
+    }
+
+    .toast.error {
+        background: #dc2626;
+    }
+
     .loading {
         text-align: center;
         padding: 3rem;
         color: #6b7280;
     }
-    
+
     .spinner {
         display: inline-block;
         width: 2rem;
@@ -196,11 +212,13 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
-    
+
     @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
-    
+
     .back-link {
         display: inline-flex;
         align-items: center;
@@ -209,7 +227,7 @@
         margin-bottom: 1rem;
         font-size: 0.875rem;
     }
-    
+
     .back-link:hover {
         color: #374151;
     }
@@ -222,13 +240,13 @@
     <a href="/caseyos/queue" class="back-link">
         ← Back to Queue
     </a>
-    
+
     <!-- Loading state -->
     <div id="loading" class="loading">
         <div class="spinner"></div>
         <p>Loading item...</p>
     </div>
-    
+
     <!-- Content (hidden until loaded) -->
     <div id="content" style="display: none;">
         <!-- Header -->
@@ -240,7 +258,7 @@
                 </div>
                 <div id="priority-badge" class="priority-badge"></div>
             </div>
-            
+
             <!-- Meta grid -->
             <div class="meta-grid">
                 <div class="meta-item">
@@ -268,33 +286,33 @@
                     <div class="meta-value" id="meta-created">-</div>
                 </div>
             </div>
-            
+
             <!-- Reasoning -->
             <div id="reasoning-section" class="reasoning-box" style="display: none;">
                 <div class="label">💡 Why This Action</div>
                 <p id="reasoning-text"></p>
             </div>
         </div>
-        
+
         <!-- Draft Editor (for email actions) -->
         <div id="draft-section" class="detail-card" style="display: none;">
             <h2 class="text-lg font-semibold mb-4">📧 Draft Email</h2>
-            
+
             <div class="draft-section">
                 <h3>To</h3>
                 <input type="email" id="draft-recipient" class="draft-input" placeholder="recipient@example.com">
             </div>
-            
+
             <div class="draft-section">
                 <h3>Subject</h3>
                 <input type="text" id="draft-subject" class="draft-input" placeholder="Email subject">
             </div>
-            
+
             <div class="draft-section">
                 <h3>Body</h3>
                 <textarea id="draft-body" class="draft-input draft-textarea" placeholder="Email body..."></textarea>
             </div>
-            
+
             <div class="action-buttons">
                 <button onclick="saveDraft()" class="btn btn-primary">
                     💾 Save Draft
@@ -304,7 +322,7 @@
                 </button>
             </div>
         </div>
-        
+
         <!-- Action Buttons -->
         <div class="detail-card">
             <h2 class="text-lg font-semibold mb-4">Actions</h2>
@@ -333,18 +351,18 @@
     const itemId = '{{ item_id }}';
     const API_BASE = '/api/command-queue';
     let currentItem = null;
-    
+
     // Initialize
     document.addEventListener('DOMContentLoaded', loadItem);
-    
+
     async function loadItem() {
         try {
             const res = await fetch(`${API_BASE}/${itemId}?enrich=true`);
             if (!res.ok) throw new Error('Item not found');
-            
+
             currentItem = await res.json();
             renderItem(currentItem);
-            
+
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
         } catch (err) {
@@ -357,12 +375,12 @@
             `;
         }
     }
-    
+
     function renderItem(item) {
         // Title and description
         document.getElementById('item-title').textContent = item.title;
         document.getElementById('item-description').textContent = item.description || '';
-        
+
         // Priority badge
         const priorityBadge = document.getElementById('priority-badge');
         const score = Math.round(item.priority_score);
@@ -374,29 +392,29 @@
         } else {
             priorityBadge.className = 'priority-badge priority-low';
         }
-        
+
         // Meta items
-        const contactText = item.contact_name 
+        const contactText = item.contact_name
             ? `👤 ${item.contact_name}${item.contact_email ? ' (' + item.contact_email + ')' : ''}`
             : (item.contact_id || '-');
         document.getElementById('meta-contact').textContent = contactText;
-        
+
         document.getElementById('meta-action-type').textContent = formatActionType(item.action_type);
         document.getElementById('meta-domain').textContent = (item.domain || 'sales').toUpperCase();
         document.getElementById('meta-status').textContent = item.status.replace('_', ' ').toUpperCase();
         document.getElementById('meta-due-by').textContent = item.due_by ? new Date(item.due_by).toLocaleDateString() : '-';
         document.getElementById('meta-created').textContent = new Date(item.created_at).toLocaleDateString();
-        
+
         // Reasoning
         if (item.reasoning) {
             document.getElementById('reasoning-section').style.display = 'block';
             document.getElementById('reasoning-text').textContent = item.reasoning;
         }
-        
+
         // Draft section for email actions
         if (item.action_type === 'send_email' || item.action_type === 'follow_up') {
             document.getElementById('draft-section').style.display = 'block';
-            
+
             // Populate from action_context if available
             const ctx = item.action_context || {};
             document.getElementById('draft-recipient').value = ctx.recipient || item.contact_email || '';
@@ -404,7 +422,7 @@
             document.getElementById('draft-body').value = ctx.body || ctx.draft_body || '';
         }
     }
-    
+
     function formatActionType(type) {
         const map = {
             'send_email': '📧 Send Email',
@@ -417,12 +435,12 @@
         };
         return map[type] || type.replace(/_/g, ' ');
     }
-    
+
     async function saveDraft() {
         const recipient = document.getElementById('draft-recipient').value;
         const subject = document.getElementById('draft-subject').value;
         const body = document.getElementById('draft-body').value;
-        
+
         // Build updated action_context
         const updatedContext = {
             ...currentItem.action_context,
@@ -430,7 +448,7 @@
             subject: subject,
             body: body,
         };
-        
+
         try {
             const res = await fetch(`${API_BASE}/${itemId}`, {
                 method: 'PATCH',
@@ -439,7 +457,7 @@
                     action_context: updatedContext,
                 })
             });
-            
+
             if (res.ok) {
                 showToast('Draft saved!', 'success');
                 currentItem.action_context = updatedContext;
@@ -450,12 +468,12 @@
             showToast('Failed to save draft', 'error');
         }
     }
-    
+
     function previewEmail() {
         const subject = document.getElementById('draft-subject').value;
         const body = document.getElementById('draft-body').value;
         const recipient = document.getElementById('draft-recipient').value;
-        
+
         // Open preview in new window
         const preview = window.open('', '_blank', 'width=600,height=500');
         preview.document.write(`
@@ -469,7 +487,7 @@
             </html>
         `);
     }
-    
+
     async function executeAction(preview = false) {
         try {
             const res = await fetch(`${API_BASE}/${itemId}/execute`, {
@@ -477,7 +495,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ preview: preview })
             });
-            
+
             if (res.ok) {
                 const data = await res.json();
                 if (preview) {
@@ -493,7 +511,7 @@
             showToast('Failed to execute action', 'error');
         }
     }
-    
+
     async function completeItem() {
         try {
             const res = await fetch(`${API_BASE}/${itemId}/complete`, { method: 'POST' });
@@ -507,7 +525,7 @@
             showToast('Failed to complete item', 'error');
         }
     }
-    
+
     async function skipItem() {
         try {
             const res = await fetch(`${API_BASE}/${itemId}/skip`, { method: 'POST' });
@@ -521,7 +539,7 @@
             showToast('Failed to skip item', 'error');
         }
     }
-    
+
     function showToast(message, type = 'success') {
         const toast = document.getElementById('toast');
         toast.textContent = message;

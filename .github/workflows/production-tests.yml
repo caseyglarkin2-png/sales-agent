@@ -10,6 +10,11 @@ on:
   repository_dispatch:
     types: [railway-deployed]
 
+# Required for creating issues on failure
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   test-production:
     name: Test Production Deployment
