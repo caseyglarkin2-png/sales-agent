@@ -27,6 +27,10 @@ from src.models.memory import (
     ConversationMemory,
     MemorySummary,
 )
+from src.models.agent_execution import (
+    AgentExecution,
+    ExecutionStatus,
+)
 
 __all__ = [
     "Prospect",
@@ -51,4 +55,7 @@ __all__ = [
     "JarvisSession",
     "ConversationMemory",
     "MemorySummary",
+    # Agent execution tracking (Sprint 42)
+    "AgentExecution",
+    "ExecutionStatus",
 ]
