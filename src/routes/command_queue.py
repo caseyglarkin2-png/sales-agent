@@ -19,6 +19,7 @@ from src.models.command_queue import CommandQueueItem, ActionType, QueueItemStat
 from src.auth.decorators import get_current_user_optional, get_current_user
 from src.models.user import User
 from src.telemetry import log_event
+from src.services.contact_enrichment import get_contact_enrichment_service
 
 
 # =============================================================================
@@ -128,6 +129,11 @@ class CommandQueueItemResponse(BaseModel):
     deal_id: Optional[str]
     company_id: Optional[str]
     
+    # Enriched contact fields (Sprint 39B)
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_company: Optional[str] = None
+    
     due_by: Optional[datetime]
     snoozed_until: Optional[datetime]
     completed_at: Optional[datetime]
@@ -170,8 +176,20 @@ class SnoozeRequest(BaseModel):
 router = APIRouter(prefix="/api/command-queue", tags=["Command Queue"])
 
 
-def _to_response(item: CommandQueueItem) -> CommandQueueItemResponse:
-    """Convert DB model to response schema."""
+def _to_response(
+    item: CommandQueueItem,
+    contact_name: Optional[str] = None,
+    contact_email: Optional[str] = None,
+    contact_company: Optional[str] = None,
+) -> CommandQueueItemResponse:
+    """Convert DB model to response schema.
+    
+    Args:
+        item: The database model
+        contact_name: Enriched contact name (Sprint 39B)
+        contact_email: Enriched contact email (Sprint 39B)
+        contact_company: Enriched contact company (Sprint 39B)
+    """
     return CommandQueueItemResponse(
         id=item.id,
         title=item.title,
@@ -186,6 +204,9 @@ def _to_response(item: CommandQueueItem) -> CommandQueueItemResponse:
         contact_id=item.contact_id,
         deal_id=item.deal_id,
         company_id=item.company_id,
+        contact_name=contact_name,
+        contact_email=contact_email,
+        contact_company=contact_company,
         due_by=item.due_by,
         snoozed_until=item.snoozed_until,
         completed_at=item.completed_at,
@@ -362,6 +383,7 @@ class TodayMovesResponse(BaseModel):
 async def get_todays_moves(
     domain: Optional[str] = Query(None, description="Filter by domain: sales, marketing, cs"),
     limit: int = Query(10, ge=1, le=50),
+    enrich: bool = Query(True, description="Enrich items with HubSpot contact info"),
     db: AsyncSession = Depends(get_db),
     user: Optional[User] = Depends(get_current_user_optional),
 ) -> TodayMovesResponse:
@@ -369,6 +391,11 @@ async def get_todays_moves(
     
     Returns the top N prioritized actions for today, ranked by APS.
     Supports domain filtering for Sales, Marketing, and CS tabs.
+    
+    Args:
+        domain: Filter by domain (sales, marketing, cs)
+        limit: Maximum number of items to return
+        enrich: Whether to enrich items with HubSpot contact info (Sprint 39B)
     """
     # Build query for pending items, sorted by priority
     now = datetime.utcnow()
@@ -397,7 +424,31 @@ async def get_todays_moves(
     result = await db.execute(stmt)
     items = result.scalars().all()
     
-    responses = [_to_response(item) for item in items]
+    # Enrich with contact info from HubSpot (Sprint 39B)
+    if enrich and items:
+        enrichment_service = get_contact_enrichment_service()
+        # Build dict of contact_id -> ContactInfo
+        contact_ids = {item.contact_id for item in items if item.contact_id}
+        contact_map = {}
+        for contact_id in contact_ids:
+            try:
+                info = await enrichment_service.get_contact_info(contact_id)
+                contact_map[contact_id] = info
+            except Exception:
+                pass  # Skip failed enrichments
+        
+        # Convert with enrichment
+        responses = []
+        for item in items:
+            info = contact_map.get(item.contact_id) if item.contact_id else None
+            responses.append(_to_response(
+                item,
+                contact_name=info.name if info else None,
+                contact_email=info.email if info else None,
+                contact_company=info.company if info else None,
+            ))
+    else:
+        responses = [_to_response(item) for item in items]
     
     return TodayMovesResponse(
         items=responses,

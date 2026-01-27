@@ -816,7 +816,8 @@
                   <div class="queue-meta">
                     <span class="priority-badge ${priorityClass}">${Math.round(item.priority_score)}</span>
                     ${item.due_by ? `<span>📅 ${formatDate(item.due_by)}</span>` : ''}
-                    ${item.contact_id ? `<span>👤 Contact</span>` : ''}
+                    ${item.contact_id ? `<span title="${item.contact_email || item.contact_id}">👤 ${escapeHtml(item.contact_name || 'Contact')}</span>` : ''}
+                    ${item.contact_company ? `<span>🏢 ${escapeHtml(item.contact_company)}</span>` : ''}
                     ${item.deal_id ? `<span>💰 Deal</span>` : ''}
                   </div>
                 </div>
