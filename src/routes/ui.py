@@ -40,3 +40,13 @@ async def drive_browser(request: Request):
     Browse and search Google Drive files.
     """
     return templates.TemplateResponse("drive.html", {"request": request, "active_tab": "drive"})
+
+
+@router.get("/caseyos/agents", response_class=HTMLResponse)
+async def agents_hub(request: Request):
+    """
+    Agent Hub - Sprint 39A
+    Shows all 38 specialized agents organized by category.
+    Full functionality coming in Sprint 41.
+    """
+    return templates.TemplateResponse("agents.html", {"request": request, "active_tab": "agents"})

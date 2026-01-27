@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Agents - CaseyOS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">🤖 Agent Hub</h1>
+                <p class="mt-1 text-sm text-gray-500">
+                    38 specialized agents ready to assist with sales, content, research, and operations.
+                </p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <span class="h-2 w-2 mr-2 bg-green-400 rounded-full"></span>
+                    All Systems Online
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Categories Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Sales Agents -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center mb-4">
+                <span class="text-2xl mr-3">💼</span>
+                <h2 class="text-lg font-semibold text-gray-900">Sales</h2>
+                <span class="ml-auto bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded">12 agents</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-indigo-400 rounded-full mr-2"></span>
+                    Prospecting Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-indigo-400 rounded-full mr-2"></span>
+                    Nurturing Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-indigo-400 rounded-full mr-2"></span>
+                    Draft Writer Agent
+                </li>
+                <li class="flex items-center text-gray-400">
+                    <span class="h-1.5 w-1.5 bg-gray-300 rounded-full mr-2"></span>
+                    +9 more...
+                </li>
+            </ul>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">Coming in Sprint 41</span>
+            </div>
+        </div>
+
+        <!-- Content Agents -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center mb-4">
+                <span class="text-2xl mr-3">✍️</span>
+                <h2 class="text-lg font-semibold text-gray-900">Content</h2>
+                <span class="ml-auto bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded">4 agents</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-purple-400 rounded-full mr-2"></span>
+                    Content Repurpose Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-purple-400 rounded-full mr-2"></span>
+                    Social Content Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-purple-400 rounded-full mr-2"></span>
+                    Email Template Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-purple-400 rounded-full mr-2"></span>
+                    Blog Writer Agent
+                </li>
+            </ul>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">Coming in Sprint 41</span>
+            </div>
+        </div>
+
+        <!-- Research Agents -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center mb-4">
+                <span class="text-2xl mr-3">🔍</span>
+                <h2 class="text-lg font-semibold text-gray-900">Research</h2>
+                <span class="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">5 agents</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-blue-400 rounded-full mr-2"></span>
+                    Research Deep Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-blue-400 rounded-full mr-2"></span>
+                    Company Intel Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-blue-400 rounded-full mr-2"></span>
+                    Market Analysis Agent
+                </li>
+                <li class="flex items-center text-gray-400">
+                    <span class="h-1.5 w-1.5 bg-gray-300 rounded-full mr-2"></span>
+                    +2 more...
+                </li>
+            </ul>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">Coming in Sprint 41</span>
+            </div>
+        </div>
+
+        <!-- Operations Agents -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center mb-4">
+                <span class="text-2xl mr-3">⚙️</span>
+                <h2 class="text-lg font-semibold text-gray-900">Operations</h2>
+                <span class="ml-auto bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">3 agents</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-gray-400 rounded-full mr-2"></span>
+                    Calendar Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-gray-400 rounded-full mr-2"></span>
+                    Task Router Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-gray-400 rounded-full mr-2"></span>
+                    Priority Queue Agent
+                </li>
+            </ul>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">Coming in Sprint 41</span>
+            </div>
+        </div>
+
+        <!-- Contracts Agents -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center mb-4">
+                <span class="text-2xl mr-3">📄</span>
+                <h2 class="text-lg font-semibold text-gray-900">Contracts</h2>
+                <span class="ml-auto bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded">3 agents</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-amber-400 rounded-full mr-2"></span>
+                    Proposal Generator Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-amber-400 rounded-full mr-2"></span>
+                    Contract Review Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-amber-400 rounded-full mr-2"></span>
+                    Pricing Agent
+                </li>
+            </ul>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">Coming in Sprint 41</span>
+            </div>
+        </div>
+
+        <!-- Data Hygiene Agents -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center mb-4">
+                <span class="text-2xl mr-3">🧹</span>
+                <h2 class="text-lg font-semibold text-gray-900">Data Hygiene</h2>
+                <span class="ml-auto bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded">5 agents</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-emerald-400 rounded-full mr-2"></span>
+                    Duplicate Finder Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-emerald-400 rounded-full mr-2"></span>
+                    Data Enrichment Agent
+                </li>
+                <li class="flex items-center">
+                    <span class="h-1.5 w-1.5 bg-emerald-400 rounded-full mr-2"></span>
+                    Contact Validator Agent
+                </li>
+                <li class="flex items-center text-gray-400">
+                    <span class="h-1.5 w-1.5 bg-gray-300 rounded-full mr-2"></span>
+                    +2 more...
+                </li>
+            </ul>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">Coming in Sprint 41</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Coming Soon Banner -->
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold">Agent Hub - Coming in Sprint 41</h3>
+                <p class="mt-1 text-indigo-100">
+                    Full agent registry with search, filtering, and direct invocation from the UI.
+                    Access all 38 agents through a unified interface.
+                </p>
+            </div>
+            <div class="hidden sm:block">
+                <a href="/caseyos/gemini" 
+                   class="inline-flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors">
+                    ✨ Try Jarvis Now
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-gray-900">38</div>
+            <div class="text-sm text-gray-500">Total Agents</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-gray-900">6</div>
+            <div class="text-sm text-gray-500">Categories</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-green-600">12</div>
+            <div class="text-sm text-gray-500">Sales Focus</div>
+        </div>
+        <div class="bg-white rounded-lg p-4 shadow">
+            <div class="text-2xl font-bold text-indigo-600">1</div>
+            <div class="text-sm text-gray-500">Master (Jarvis)</div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
