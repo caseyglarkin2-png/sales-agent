@@ -81,3 +81,12 @@ async def signals_stream(request: Request):
     Shows real-time signal ingestion from forms, HubSpot, Gmail.
     """
     return templates.TemplateResponse("signals.html", {"request": request, "active_tab": "signals"})
+
+
+@router.get("/caseyos/overview", response_class=HTMLResponse)
+async def overview_dashboard(request: Request):
+    """
+    Overview Dashboard - Sprint 43.5
+    Real-time stats bar, pipeline health, agent performance, activity feed.
+    """
+    return templates.TemplateResponse("overview.html", {"request": request, "active_tab": "overview"})

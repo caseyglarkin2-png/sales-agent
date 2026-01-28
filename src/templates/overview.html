@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}CaseyOS - Overview Dashboard{% endblock %}
+
+{% block head %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.15);
+    }
+    .stage-bar {
+        transition: width 0.5s ease-out;
+    }
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .pulse-dot {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Overview Dashboard</h1>
+            <p class="text-gray-500 text-sm">Real-time sales intelligence at a glance</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="last-updated" class="text-sm text-gray-400"></span>
+            <button id="refresh-btn" 
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
+                    hx-get="/api/dashboard/today"
+                    hx-trigger="click"
+                    hx-swap="none">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats Bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" id="stats-bar">
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-sm">Pending</span>
+                <span class="text-2xl">⏳</span>
+            </div>
+            <p id="stat-pending" class="text-3xl font-bold text-gray-900 mt-2">-</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-sm">Approved Today</span>
+                <span class="text-2xl">✅</span>
+            </div>
+            <p id="stat-approved" class="text-3xl font-bold text-green-600 mt-2">-</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-sm">Executed</span>
+                <span class="text-2xl">🚀</span>
+            </div>
+            <p id="stat-executed" class="text-3xl font-bold text-blue-600 mt-2">-</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-sm">Failed</span>
+                <span class="text-2xl">❌</span>
+            </div>
+            <p id="stat-failed" class="text-3xl font-bold text-red-600 mt-2">-</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-sm">Success Rate</span>
+                <span class="text-2xl">📈</span>
+            </div>
+            <p id="stat-success-rate" class="text-3xl font-bold text-indigo-600 mt-2">-</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-sm">Signals</span>
+                <span class="text-2xl">📡</span>
+            </div>
+            <p id="stat-signals" class="text-3xl font-bold text-purple-600 mt-2">-</p>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Priority Queue (Left) -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm h-full">
+                <div class="p-4 border-b border-gray-100">
+                    <h2 class="font-semibold text-gray-900 flex items-center gap-2">
+                        <span class="text-lg">🎯</span> Priority Queue
+                    </h2>
+                    <p class="text-sm text-gray-500">Top 5 by priority score</p>
+                </div>
+                <div id="priority-queue" class="p-4 space-y-3">
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="animate-pulse">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline Health (Center) -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm h-full">
+                <div class="p-4 border-b border-gray-100">
+                    <h2 class="font-semibold text-gray-900 flex items-center gap-2">
+                        <span class="text-lg">🏗️</span> Pipeline Health
+                    </h2>
+                    <p class="text-sm text-gray-500">Deal stages overview</p>
+                </div>
+                <div id="pipeline-health" class="p-4">
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="animate-pulse">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity (Right) -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm h-full">
+                <div class="p-4 border-b border-gray-100">
+                    <h2 class="font-semibold text-gray-900 flex items-center gap-2">
+                        <span class="text-lg">📜</span> Recent Activity
+                    </h2>
+                    <p class="text-sm text-gray-500">Latest actions</p>
+                </div>
+                <div id="recent-activity" class="p-4 space-y-3 max-h-96 overflow-y-auto">
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="animate-pulse">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Performance -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm">
+        <div class="p-4 border-b border-gray-100">
+            <h2 class="font-semibold text-gray-900 flex items-center gap-2">
+                <span class="text-lg">🤖</span> Agent Performance
+            </h2>
+            <p class="text-sm text-gray-500">Success rates by agent</p>
+        </div>
+        <div id="agent-performance" class="p-4">
+            <div class="text-center py-8 text-gray-400">
+                <div class="animate-pulse">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- At-Risk Deals Alert -->
+    <div id="at-risk-section" class="hidden">
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">⚠️</span>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-amber-800">At-Risk Deals</h3>
+                    <p class="text-sm text-amber-700 mb-3">These deals haven't been touched in 30+ days</p>
+                    <div id="at-risk-deals" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+    // Auto-refresh every 60 seconds
+    setInterval(loadDashboard, 60000);
+});
+
+async function loadDashboard() {
+    try {
+        const [todayRes, priorityRes, activityRes, agentRes, pipelineRes] = await Promise.allSettled([
+            fetch('/api/dashboard/today'),
+            fetch('/api/dashboard/priority-queue'),
+            fetch('/api/dashboard/recent-activity'),
+            fetch('/api/dashboard/agent-performance'),
+            fetch('/api/dashboard/pipeline-health')
+        ]);
+
+        // Update stats bar
+        if (todayRes.status === 'fulfilled' && todayRes.value.ok) {
+            const data = await todayRes.value.json();
+            document.getElementById('stat-pending').textContent = data.pending_actions || 0;
+            document.getElementById('stat-approved').textContent = data.approved_today || 0;
+            document.getElementById('stat-executed').textContent = data.executed_today || 0;
+            document.getElementById('stat-failed').textContent = data.failed_today || 0;
+            document.getElementById('stat-success-rate').textContent = 
+                data.success_rate ? (data.success_rate * 100).toFixed(0) + '%' : 'N/A';
+            document.getElementById('stat-signals').textContent = data.signals_today || 0;
+        }
+
+        // Update priority queue
+        if (priorityRes.status === 'fulfilled' && priorityRes.value.ok) {
+            const data = await priorityRes.value.json();
+            renderPriorityQueue(data.items || []);
+        }
+
+        // Update recent activity
+        if (activityRes.status === 'fulfilled' && activityRes.value.ok) {
+            const data = await activityRes.value.json();
+            renderRecentActivity(data.activities || []);
+        }
+
+        // Update agent performance
+        if (agentRes.status === 'fulfilled' && agentRes.value.ok) {
+            const data = await agentRes.value.json();
+            renderAgentPerformance(data.agents || []);
+        }
+
+        // Update pipeline health
+        if (pipelineRes.status === 'fulfilled' && pipelineRes.value.ok) {
+            const data = await pipelineRes.value.json();
+            renderPipelineHealth(data);
+        }
+
+        // Update timestamp
+        document.getElementById('last-updated').textContent = 
+            'Updated: ' + new Date().toLocaleTimeString();
+
+    } catch (err) {
+        console.error('Dashboard load error:', err);
+    }
+}
+
+function renderPriorityQueue(items) {
+    const container = document.getElementById('priority-queue');
+    if (!items.length) {
+        container.innerHTML = `
+            <div class="text-center py-6 text-gray-400">
+                <span class="text-3xl mb-2 block">🎉</span>
+                <p>Queue is clear!</p>
+            </div>`;
+        return;
+    }
+    
+    container.innerHTML = items.map((item, i) => `
+        <div class="fade-in p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition cursor-pointer"
+             onclick="window.location='/caseyos/queue/${item.id}'">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-medium text-indigo-600">#${i + 1}</span>
+                <span class="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
+                    Score: ${(item.priority_score || 0).toFixed(1)}
+                </span>
+            </div>
+            <p class="text-sm font-medium text-gray-800 truncate">${item.action_type || 'Action'}</p>
+            <p class="text-xs text-gray-500">${item.agent_name || 'Unknown agent'}</p>
+        </div>
+    `).join('');
+}
+
+function renderRecentActivity(activities) {
+    const container = document.getElementById('recent-activity');
+    if (!activities.length) {
+        container.innerHTML = `
+            <div class="text-center py-6 text-gray-400">
+                <p>No recent activity</p>
+            </div>`;
+        return;
+    }
+
+    const icons = {
+        'approved': '✅',
+        'rejected': '❌',
+        'executed': '🚀',
+        'created': '📝',
+        'failed': '⚠️'
+    };
+
+    container.innerHTML = activities.map(act => `
+        <div class="fade-in flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg transition">
+            <span class="text-lg">${icons[act.action] || '📋'}</span>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-800">${act.description || act.action || 'Activity'}</p>
+                <p class="text-xs text-gray-400">${formatTimeAgo(act.timestamp)}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderAgentPerformance(agents) {
+    const container = document.getElementById('agent-performance');
+    if (!agents.length) {
+        container.innerHTML = `
+            <div class="text-center py-6 text-gray-400">
+                <p>No agent data yet</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            ${agents.map(agent => {
+                const rate = agent.success_rate || 0;
+                const color = rate >= 0.9 ? 'green' : rate >= 0.7 ? 'yellow' : 'red';
+                return `
+                <div class="fade-in p-4 bg-gray-50 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-800">${agent.agent_name}</span>
+                        <span class="text-${color}-600 font-bold">${(rate * 100).toFixed(0)}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="stage-bar bg-${color}-500 h-2 rounded-full" style="width: ${rate * 100}%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>${agent.total_executions || 0} total</span>
+                        <span>${agent.success_count || 0} success</span>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function renderPipelineHealth(data) {
+    const container = document.getElementById('pipeline-health');
+    
+    if (!data || !data.stages || !data.stages.length) {
+        container.innerHTML = `
+            <div class="text-center py-6 text-gray-400">
+                <span class="text-3xl mb-2 block">🔌</span>
+                <p>Connect HubSpot to see pipeline</p>
+            </div>`;
+        return;
+    }
+
+    const maxValue = Math.max(...data.stages.map(s => s.value || 0), 1);
+    
+    container.innerHTML = `
+        <div class="space-y-3">
+            ${data.stages.map(stage => `
+                <div class="fade-in">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-700">${stage.label}</span>
+                        <span class="text-gray-500">${stage.count} deals • $${(stage.value / 1000).toFixed(0)}k</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-3">
+                        <div class="stage-bar bg-gradient-to-r from-indigo-400 to-indigo-600 h-3 rounded-full" 
+                             style="width: ${((stage.value || 0) / maxValue) * 100}%"></div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
+            <span class="text-gray-500">${data.total_deals || 0} total deals</span>
+            <span class="font-semibold text-gray-800">$${((data.total_value || 0) / 1000).toFixed(0)}k pipeline</span>
+        </div>
+    `;
+
+    // Show at-risk deals if any
+    if (data.at_risk_count > 0 && data.at_risk_deals?.length) {
+        const section = document.getElementById('at-risk-section');
+        section.classList.remove('hidden');
+        document.getElementById('at-risk-deals').innerHTML = data.at_risk_deals.map(deal => `
+            <div class="flex items-center justify-between p-2 bg-white rounded border border-amber-100">
+                <div>
+                    <span class="text-sm font-medium text-gray-800">${deal.name}</span>
+                    <span class="text-xs text-gray-500 ml-2">${deal.stage}</span>
+                </div>
+                <span class="text-xs text-amber-600">${deal.days_stale} days stale</span>
+            </div>
+        `).join('');
+    }
+}
+
+function formatTimeAgo(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+}
+
+// Refresh button handler
+document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+</script>
+{% endblock %}

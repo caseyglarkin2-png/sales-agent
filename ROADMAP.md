@@ -1,7 +1,7 @@
 # CaseyOS Roadmap v3.0
 
 > **Last Updated:** January 2026  
-> **Current Sprint:** 42 (Agent Orchestration & Execution)  
+> **Current Sprint:** 43 (Dashboard Intelligence & Metrics)  
 > **Production URL:** https://web-production-a6ccf.up.railway.app
 
 ---
