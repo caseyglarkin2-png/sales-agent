@@ -108,3 +108,12 @@ async def voice_profiles(request: Request):
     Manage writing style and tone profiles for AI-generated content.
     """
     return templates.TemplateResponse("voice_profiles.html", {"request": request, "active_tab": "voice"})
+
+
+@router.get("/caseyos/memory", response_class=HTMLResponse)
+async def memory_browser(request: Request):
+    """
+    Memory Browser - Sprint 45
+    View and search Jarvis conversation sessions and context.
+    """
+    return templates.TemplateResponse("memory.html", {"request": request, "active_tab": "memory"})
