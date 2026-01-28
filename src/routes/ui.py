@@ -90,3 +90,21 @@ async def overview_dashboard(request: Request):
     Real-time stats bar, pipeline health, agent performance, activity feed.
     """
     return templates.TemplateResponse("overview.html", {"request": request, "active_tab": "overview"})
+
+
+@router.get("/caseyos/voice-training", response_class=HTMLResponse)
+async def voice_training(request: Request):
+    """
+    Voice Training - Sprint 44
+    Upload and manage training samples for voice profile generation.
+    """
+    return templates.TemplateResponse("voice_training.html", {"request": request, "active_tab": "voice"})
+
+
+@router.get("/caseyos/voice-profiles", response_class=HTMLResponse)
+async def voice_profiles(request: Request):
+    """
+    Voice Profiles - Sprint 44
+    Manage writing style and tone profiles for AI-generated content.
+    """
+    return templates.TemplateResponse("voice_profiles.html", {"request": request, "active_tab": "voice"})

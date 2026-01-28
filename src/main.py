@@ -97,6 +97,10 @@ from src.routes import queue as queue_routes
 from src.routes import custom_fields_routes
 from src.routes import tags_routes
 from src.routes import content_ingest as content_ingest_routes
+from src.routes import content_repurpose as content_repurpose_routes
+from src.routes import customer_health_routes
+from src.routes import pricing_engine_routes
+from src.routes import proposal_generator_routes
 # REMOVED Sprint 22 Task 5 - Unused route
 # from src.routes import automation_routes
 from src.routes import notification_prefs_routes
@@ -485,6 +489,11 @@ app.include_router(commands_routes.router)
     # REMOVED Sprint 22 Task 5 - Unused route
     # app.include_router(revenue_intelligence_routes.router)
 app.include_router(customer_success_routes.router)
+# Sprint 43 - Wire missing routes
+app.include_router(content_repurpose_routes.router)
+app.include_router(customer_health_routes.router)
+app.include_router(pricing_engine_routes.router)
+app.include_router(proposal_generator_routes.router)
     # REMOVED Sprint 22 Task 5 - Unused route
     # app.include_router(email_templates_v2_routes.router)
     # REMOVED Sprint 22 Task 5 - Unused route
