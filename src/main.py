@@ -5,7 +5,7 @@ import os
 # Force rebuild: v2.0.1
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.config import get_settings
@@ -662,66 +662,39 @@ async def health_check() -> JSONResponse:
 
 
 @app.get("/", tags=["Root"])
-async def root() -> FileResponse:
-    """Serve operator dashboard."""
-    dashboard_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
-    if os.path.exists(dashboard_path):
-        return FileResponse(dashboard_path)
-    return JSONResponse(
-        {
-            "service": "sales-agent",
-            "version": "0.1.0",
-            "status": "running",
-            "environment": settings.api_env,
-            "dashboard": "/static/index.html",
-            "docs": "/docs",
-        }
-    )
+async def root() -> RedirectResponse:
+    """Redirect to CaseyOS dashboard."""
+    return RedirectResponse(url="/caseyos", status_code=302)
 
 
 @app.get("/dashboard", tags=["Dashboard"])
-async def dashboard():
-    """Operator dashboard."""
-    dashboard_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
-    if os.path.exists(dashboard_path):
-        return FileResponse(dashboard_path)
-    return JSONResponse({"error": "Dashboard not found"}, status_code=404)
+async def dashboard() -> RedirectResponse:
+    """Redirect to CaseyOS dashboard."""
+    return RedirectResponse(url="/caseyos", status_code=302)
 
 
 @app.get("/voice-profiles", tags=["Dashboard"])
-async def voice_profiles_page():
-    """Voice profiles management page."""
-    page_path = os.path.join(os.path.dirname(__file__), "static", "voice-profiles.html")
-    if os.path.exists(page_path):
-        return FileResponse(page_path)
-    return JSONResponse({"error": "Page not found"}, status_code=404)
+async def voice_profiles_page() -> RedirectResponse:
+    """Redirect to CaseyOS voice page."""
+    return RedirectResponse(url="/caseyos/voice", status_code=302)
 
 
 @app.get("/agents", tags=["Dashboard"])
-async def agents_page():
-    """Agents visibility page."""
-    page_path = os.path.join(os.path.dirname(__file__), "static", "agents.html")
-    if os.path.exists(page_path):
-        return FileResponse(page_path)
-    return JSONResponse({"error": "Page not found"}, status_code=404)
+async def agents_page() -> RedirectResponse:
+    """Redirect to CaseyOS agents page."""
+    return RedirectResponse(url="/caseyos/agents", status_code=302)
 
 
 @app.get("/jarvis", tags=["Dashboard"])
-async def jarvis_page():
-    """JARVIS voice approval interface."""
-    page_path = os.path.join(os.path.dirname(__file__), "static", "jarvis.html")
-    if os.path.exists(page_path):
-        return FileResponse(page_path)
-    return JSONResponse({"error": "Page not found"}, status_code=404)
+async def jarvis_page() -> RedirectResponse:
+    """Redirect to CaseyOS agents page."""
+    return RedirectResponse(url="/caseyos/agents", status_code=302)
 
 
 @app.get("/admin", tags=["Dashboard"])
-async def admin_page():
-    """Admin panel page."""
-    page_path = os.path.join(os.path.dirname(__file__), "static", "admin.html")
-    if os.path.exists(page_path):
-        return FileResponse(page_path)
-    return JSONResponse({"error": "Page not found"}, status_code=404)
+async def admin_page() -> RedirectResponse:
+    """Redirect to CaseyOS admin page."""
+    return RedirectResponse(url="/caseyos/admin", status_code=302)
 
 
 @app.get("/api/status", tags=["Health"])
