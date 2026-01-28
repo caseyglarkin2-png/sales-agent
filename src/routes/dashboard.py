@@ -158,3 +158,34 @@ async def get_recent_activity(
         "activities": activities,
         "count": len(activities),
     }
+
+
+@router.get("/pipeline-health")
+async def get_pipeline_health() -> Dict[str, Any]:
+    """
+    Get HubSpot pipeline health summary.
+    
+    Sprint 43.4: Returns deal stages with counts, values, and at-risk deals.
+    """
+    from src.connectors.hubspot import get_hubspot_connector
+    
+    connector = get_hubspot_connector()
+    if not connector:
+        return {
+            "error": "HubSpot not configured",
+            "stages": [],
+            "total_deals": 0,
+            "total_value": 0,
+        }
+    
+    try:
+        summary = await connector.get_pipeline_summary()
+        return summary
+    except Exception as e:
+        logger.error(f"Error fetching pipeline health: {e}")
+        return {
+            "error": str(e),
+            "stages": [],
+            "total_deals": 0,
+            "total_value": 0,
+        }

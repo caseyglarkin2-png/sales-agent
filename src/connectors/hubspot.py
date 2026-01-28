@@ -763,6 +763,145 @@ class HubSpotConnector:
                 logger.error(f"Error updating deal {deal_id}: {e}")
                 return None
 
+    async def get_pipeline_stages(self, pipeline_id: str = "default") -> List[Dict[str, Any]]:
+        """Get pipeline stages with metadata.
+        
+        Args:
+            pipeline_id: HubSpot pipeline ID (default: "default")
+            
+        Returns:
+            List of stage dicts with label, displayOrder, etc.
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v3/pipelines/deals/{pipeline_id}/stages",
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("results", [])
+            except Exception as e:
+                logger.error(f"Error fetching pipeline stages: {e}")
+                return []
+
+    async def get_deals_by_stage(self, limit: int = 100) -> Dict[str, List[Dict[str, Any]]]:
+        """Get all deals grouped by stage.
+        
+        Args:
+            limit: Max deals to fetch per request
+            
+        Returns:
+            Dict mapping stage_id -> list of deals
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v3/objects/deals",
+                    headers=self.headers,
+                    params={
+                        "limit": limit,
+                        "properties": "dealname,dealstage,amount,closedate,hs_lastmodifieddate",
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                # Group by stage
+                by_stage: Dict[str, List[Dict[str, Any]]] = {}
+                for deal in data.get("results", []):
+                    props = deal.get("properties", {})
+                    stage = props.get("dealstage", "unknown")
+                    if stage not in by_stage:
+                        by_stage[stage] = []
+                    by_stage[stage].append({
+                        "id": deal.get("id"),
+                        "name": props.get("dealname", "Unknown"),
+                        "amount": float(props.get("amount") or 0),
+                        "close_date": props.get("closedate"),
+                        "last_modified": props.get("hs_lastmodifieddate"),
+                    })
+                
+                return by_stage
+            except Exception as e:
+                logger.error(f"Error fetching deals by stage: {e}")
+                return {}
+
+    async def get_pipeline_summary(self, pipeline_id: str = "default") -> Dict[str, Any]:
+        """Get pipeline health summary with stage counts and values.
+        
+        Args:
+            pipeline_id: HubSpot pipeline ID
+            
+        Returns:
+            Pipeline summary with stages, counts, values, and at-risk deals
+        """
+        from datetime import datetime, timedelta
+        
+        stages = await self.get_pipeline_stages(pipeline_id)
+        deals_by_stage = await self.get_deals_by_stage()
+        
+        # Build stage summary
+        stage_summaries = []
+        total_value = 0.0
+        total_deals = 0
+        at_risk_deals = []
+        
+        # Create a lookup for stage labels
+        stage_labels = {s.get("id"): s.get("label", s.get("id")) for s in stages}
+        stage_order = {s.get("id"): s.get("displayOrder", 0) for s in stages}
+        
+        thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        
+        for stage_id, deals in deals_by_stage.items():
+            stage_value = sum(d.get("amount", 0) for d in deals)
+            stage_count = len(deals)
+            total_value += stage_value
+            total_deals += stage_count
+            
+            # Check for stale deals (no activity in 30 days)
+            for deal in deals:
+                last_mod = deal.get("last_modified", "")
+                if last_mod and last_mod < thirty_days_ago:
+                    # Calculate days stale handling timezone-aware datetimes
+                    days_stale = 0
+                    if last_mod:
+                        try:
+                            last_mod_dt = datetime.fromisoformat(last_mod.replace("Z", "+00:00"))
+                            # Make both naive for comparison
+                            if last_mod_dt.tzinfo is not None:
+                                last_mod_dt = last_mod_dt.replace(tzinfo=None)
+                            days_stale = (datetime.utcnow() - last_mod_dt).days
+                        except (ValueError, TypeError):
+                            days_stale = 0
+                    at_risk_deals.append({
+                        "id": deal["id"],
+                        "name": deal["name"],
+                        "stage": stage_labels.get(stage_id, stage_id),
+                        "amount": deal["amount"],
+                        "days_stale": days_stale,
+                    })
+            
+            stage_summaries.append({
+                "id": stage_id,
+                "label": stage_labels.get(stage_id, stage_id),
+                "order": stage_order.get(stage_id, 0),
+                "count": stage_count,
+                "value": stage_value,
+            })
+        
+        # Sort by pipeline order
+        stage_summaries.sort(key=lambda x: x["order"])
+        
+        return {
+            "pipeline_id": pipeline_id,
+            "stages": stage_summaries,
+            "total_deals": total_deals,
+            "total_value": total_value,
+            "at_risk_deals": at_risk_deals[:10],  # Limit to top 10
+            "at_risk_count": len(at_risk_deals),
+        }
+
 
 _hubspot_connector: Optional["HubSpotConnector"] = None
 
