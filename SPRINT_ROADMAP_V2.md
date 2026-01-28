@@ -1500,6 +1500,449 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 
 ---
 
+## Sprint 44: Voice Training UI & Missing Route Wiring ✅ COMPLETE
+**Goal**: Wire Voice Training UI and surface all unregistered routes.
+**Demo**: `/caseyos/voice-training` and `/caseyos/voice-profiles` show functional UI.
+**Status**: Completed 2026-01-28
+
+### Task 44.1: Wire Unregistered Routes ✅
+**Files**: `src/main.py`
+**Wired**: content_repurpose_routes, customer_health_routes, pricing_engine_routes, proposal_generator_routes
+
+### Task 44.2: Voice Training UI ✅
+**Files**: `src/templates/voice_training.html`, `src/routes/ui.py`
+**Features**: Multi-source upload (File, Drive, HubSpot, YouTube)
+
+### Task 44.3: Voice Profiles UI ✅
+**Files**: `src/templates/voice_profiles.html`, `src/routes/ui.py`
+**Features**: Profile CRUD, active profile selector, settings modal
+
+### Task 44.4: Navigation Update ✅
+**Files**: `src/templates/base.html`
+**Added**: 🎭 Voice tab pointing to voice-training
+
+---
+
+## Sprint 45: Memory & Context Visibility
+**Goal**: Surface Jarvis memory system in CaseyOS UI for debugging and insight.
+**Demo**: `/caseyos/memory` shows conversation sessions, context, and search.
+
+### Task 45.1: Memory Sessions List Page
+**Description**: Create UI to view all memory sessions with metadata.
+**Files**: `src/templates/memory.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/memory` shows paginated session list
+**Tests**: `tests/unit/test_memory_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `memory.html` extending base.html
+- [ ] Show session ID, created_at, message count, last_updated
+- [ ] Filter by date range
+- [ ] Add route `/caseyos/memory` with `active_tab="memory"`
+- [ ] Commit: "feat(ui): add memory sessions list page"
+
+### Task 45.2: Memory Session Detail View
+**Description**: Drill into a session to see all stored context and messages.
+**Files**: `src/templates/memory_detail.html`, `src/routes/ui.py`
+**Validation**: Click session → see full context tree
+**Tests**: `tests/unit/test_memory_detail.py`
+**Acceptance Criteria**:
+- [ ] Create detail template with JSON tree view
+- [ ] Show all messages in session
+- [ ] Display context variables
+- [ ] Add route `/caseyos/memory/{session_id}`
+- [ ] Commit: "feat(ui): add memory session detail view"
+
+### Task 45.3: Memory Search UI
+**Description**: Search across all memory for specific context/keywords.
+**Files**: `src/templates/memory.html`
+**Validation**: Type query → see matching context entries
+**Tests**: `tests/unit/test_memory_search_ui.py`
+**Acceptance Criteria**:
+- [ ] Add search input with HTMX
+- [ ] Call `/api/memory/search` endpoint
+- [ ] Display results with session links
+- [ ] Highlight matched terms
+- [ ] Commit: "feat(ui): add memory search functionality"
+
+### Task 45.4: Navigation Update - Memory Tab
+**Description**: Add Memory tab to CaseyOS navigation.
+**Files**: `src/templates/base.html`
+**Validation**: 🧠 Memory tab visible in nav
+**Acceptance Criteria**:
+- [ ] Add Memory tab between Overview and Voice
+- [ ] Set active_tab="memory" styling
+- [ ] Commit: "feat(ui): add Memory tab to navigation"
+
+---
+
+## Sprint 46: Integrations Hub UI
+**Goal**: Surface integration status and connection management in CaseyOS.
+**Demo**: `/caseyos/integrations` shows all connected apps with health status.
+
+### Task 46.1: Integrations Status Page
+**Description**: Create UI showing all integration connection statuses.
+**Files**: `src/templates/integrations.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/integrations` shows Gmail, HubSpot, Drive status
+**Tests**: `tests/unit/test_integrations_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `integrations.html` extending base.html
+- [ ] Call `/api/integrations/status` for data
+- [ ] Show connection status with icons (✅/❌/⚠️)
+- [ ] Display last sync time per integration
+- [ ] Add route `/caseyos/integrations`
+- [ ] Commit: "feat(ui): add integrations status page"
+
+### Task 46.2: Integration Connect/Disconnect Actions
+**Description**: Enable connecting/disconnecting integrations via UI.
+**Files**: `src/templates/integrations.html`
+**Validation**: Click Connect → OAuth flow → returns with connected status
+**Tests**: `tests/unit/test_integration_actions.py`
+**Acceptance Criteria**:
+- [ ] Add Connect button for disconnected integrations
+- [ ] Add Disconnect button with confirmation modal
+- [ ] Show spinner during OAuth redirect
+- [ ] Update status after action
+- [ ] Commit: "feat(ui): add integration connect/disconnect actions"
+
+### Task 46.3: Integration Detail Cards
+**Description**: Expandable cards showing integration-specific details.
+**Files**: `src/templates/integrations.html`
+**Validation**: Click card → see contacts synced, emails sent, etc.
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] HubSpot: show contacts, deals, last sync
+- [ ] Gmail: show sent count, quota remaining
+- [ ] Drive: show connected folders
+- [ ] Add collapsible detail sections
+- [ ] Commit: "feat(ui): add integration detail cards"
+
+### Task 46.4: Navigation Update - Integrations Tab
+**Description**: Add Integrations tab to CaseyOS navigation.
+**Files**: `src/templates/base.html`
+**Validation**: 🔌 Integrations tab visible in nav
+**Acceptance Criteria**:
+- [ ] Add Integrations tab after Voice
+- [ ] Set active_tab="integrations" styling
+- [ ] Commit: "feat(ui): add Integrations tab to navigation"
+
+---
+
+## Sprint 47: Notifications Center
+**Goal**: Surface in-app notifications with read/unread and action capabilities.
+**Demo**: Bell icon shows notification count, click opens notification panel.
+
+### Task 47.1: Notification Bell Component
+**Description**: Add notification bell to global nav with unread count badge.
+**Files**: `src/templates/base.html`
+**Validation**: Bell shows count, updates via polling
+**Tests**: `tests/unit/test_notification_badge.py`
+**Acceptance Criteria**:
+- [ ] Add bell icon to nav header
+- [ ] Show unread count badge
+- [ ] Poll `/api/jarvis/notifications` every 30s
+- [ ] Animate on new notifications
+- [ ] Commit: "feat(ui): add notification bell with badge"
+
+### Task 47.2: Notification Dropdown Panel
+**Description**: Dropdown showing recent notifications with quick actions.
+**Files**: `src/templates/base.html`, `src/static/notifications.js`
+**Validation**: Click bell → dropdown with last 10 notifications
+**Tests**: `tests/unit/test_notification_dropdown.py`
+**Acceptance Criteria**:
+- [ ] Create dropdown component
+- [ ] Show notification title, time, type icon
+- [ ] Mark as read on click
+- [ ] "View All" link to full page
+- [ ] Commit: "feat(ui): add notification dropdown panel"
+
+### Task 47.3: Full Notifications Page
+**Description**: Dedicated page for viewing and managing all notifications.
+**Files**: `src/templates/notifications.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/notifications` shows all with filters
+**Tests**: `tests/unit/test_notifications_page.py`
+**Acceptance Criteria**:
+- [ ] Create `notifications.html` extending base.html
+- [ ] Filter by read/unread, type
+- [ ] Bulk mark as read
+- [ ] Delete old notifications
+- [ ] Add route `/caseyos/notifications`
+- [ ] Commit: "feat(ui): add full notifications page"
+
+### Task 47.4: Notification Actions
+**Description**: Enable action buttons directly from notifications.
+**Files**: `src/templates/notifications.html`
+**Validation**: "Approve" button on approval notification → executes approval
+**Tests**: `tests/unit/test_notification_actions.py`
+**Acceptance Criteria**:
+- [ ] Render action buttons based on notification type
+- [ ] Call appropriate API on click
+- [ ] Update notification status after action
+- [ ] Show success/error toast
+- [ ] Commit: "feat(ui): add notification action buttons"
+
+---
+
+## Sprint 48: Analytics Dashboard
+**Goal**: Surface system analytics and performance metrics in CaseyOS.
+**Demo**: `/caseyos/analytics` shows send metrics, error rates, recovery stats.
+
+### Task 48.1: Analytics Overview Page
+**Description**: Create analytics dashboard with key system metrics.
+**Files**: `src/templates/analytics.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/analytics` shows charts and KPIs
+**Tests**: `tests/unit/test_analytics_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `analytics.html` extending base.html
+- [ ] Call `/api/analytics/metrics` for data
+- [ ] Show: emails sent, approval rate, avg response time
+- [ ] Add Chart.js or similar for visualizations
+- [ ] Add route `/caseyos/analytics`
+- [ ] Commit: "feat(ui): add analytics overview page"
+
+### Task 48.2: Error Tracking Panel
+**Description**: Show recent errors and failure patterns.
+**Files**: `src/templates/analytics.html`
+**Validation**: Errors section shows last 24h failures
+**Tests**: `tests/unit/test_error_tracking_ui.py`
+**Acceptance Criteria**:
+- [ ] Call `/api/analytics/errors` endpoint
+- [ ] Show error count by type
+- [ ] List recent errors with stack trace preview
+- [ ] Link to recovery actions
+- [ ] Commit: "feat(ui): add error tracking panel"
+
+### Task 48.3: Mode Distribution Chart
+**Description**: Show breakdown of system modes over time.
+**Files**: `src/templates/analytics.html`
+**Validation**: Pie chart shows draft-only vs live send percentages
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Call `/api/analytics/mode-distribution`
+- [ ] Render pie chart with draft-only, live, paused
+- [ ] Show historical trend line
+- [ ] Commit: "feat(ui): add mode distribution chart"
+
+### Task 48.4: Recovery Dashboard
+**Description**: Show auto-recovery stats and manual retry options.
+**Files**: `src/templates/analytics.html`
+**Validation**: Recovery section shows success rate, pending retries
+**Tests**: `tests/unit/test_recovery_ui.py`
+**Acceptance Criteria**:
+- [ ] Call `/api/analytics/recovery/stats`
+- [ ] Show auto-recovery success rate
+- [ ] List failed items eligible for retry
+- [ ] Add "Retry All" button
+- [ ] Commit: "feat(ui): add recovery dashboard"
+
+---
+
+## Sprint 49: Gemini Workflow UI
+**Goal**: Surface workflow templates and execution UI in Gemini portal.
+**Demo**: Select "Account Research" workflow → see step progress → get results.
+
+### Task 49.1: Workflow Selector Dropdown
+**Description**: Add workflow template selector to Gemini UI.
+**Files**: `src/templates/gemini.html`
+**Validation**: Dropdown shows 6 workflow templates
+**Tests**: `tests/unit/test_workflow_selector.py`
+**Acceptance Criteria**:
+- [ ] Fetch workflows from `/api/gemini/workflows`
+- [ ] Add dropdown next to model selector
+- [ ] Show workflow name and description
+- [ ] Enable quick-start from selector
+- [ ] Commit: "feat(ui): add workflow selector to Gemini"
+
+### Task 49.2: Workflow Execution Modal
+**Description**: Modal to configure and start workflow execution.
+**Files**: `src/templates/gemini.html`
+**Validation**: Click workflow → modal with input fields → execute
+**Tests**: `tests/unit/test_workflow_modal.py`
+**Acceptance Criteria**:
+- [ ] Create modal component
+- [ ] Render input fields based on workflow.required_context
+- [ ] Validate inputs before submit
+- [ ] Call `/api/gemini/workflows/{id}/execute`
+- [ ] Commit: "feat(ui): add workflow execution modal"
+
+### Task 49.3: Multi-Step Progress Display
+**Description**: Show step-by-step progress during workflow execution.
+**Files**: `src/templates/gemini.html`
+**Validation**: "Step 2/4: Researching competitors..." updates live
+**Tests**: `tests/unit/test_workflow_progress.py`
+**Acceptance Criteria**:
+- [ ] Add progress bar component
+- [ ] Poll for execution status
+- [ ] Show current step name and number
+- [ ] Display intermediate results as they complete
+- [ ] Commit: "feat(ui): add workflow progress display"
+
+### Task 49.4: Workflow History Panel
+**Description**: Show recent workflow executions in sidebar.
+**Files**: `src/templates/gemini.html`
+**Validation**: Sidebar shows last 10 workflow runs
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add collapsible history panel
+- [ ] Show workflow name, status, timestamp
+- [ ] Click to view results
+- [ ] Re-run button for completed workflows
+- [ ] Commit: "feat(ui): add workflow history panel"
+
+---
+
+## Sprint 50: Settings & Configuration UI
+**Goal**: Surface system settings and user preferences in CaseyOS.
+**Demo**: `/caseyos/settings` allows toggling features and viewing config.
+
+### Task 50.1: Settings Page Layout
+**Description**: Create settings page with tabbed sections.
+**Files**: `src/templates/settings.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/settings` shows organized settings
+**Tests**: `tests/unit/test_settings_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `settings.html` extending base.html
+- [ ] Add tabs: General, Notifications, Integrations, Advanced
+- [ ] Add route `/caseyos/settings`
+- [ ] Commit: "feat(ui): add settings page layout"
+
+### Task 50.2: Feature Flags Toggle
+**Description**: Enable toggling feature flags from UI.
+**Files**: `src/templates/settings.html`
+**Validation**: Toggle switch → feature enabled/disabled
+**Tests**: `tests/unit/test_feature_toggle_ui.py`
+**Acceptance Criteria**:
+- [ ] Fetch flags from `/api/admin/flags`
+- [ ] Render toggle switches
+- [ ] POST to update flag state
+- [ ] Show success toast
+- [ ] Commit: "feat(ui): add feature flags toggle"
+
+### Task 50.3: System Mode Selector
+**Description**: UI to switch between draft-only, review, and live modes.
+**Files**: `src/templates/settings.html`
+**Validation**: Select mode → system behavior changes
+**Tests**: `tests/unit/test_mode_selector_ui.py`
+**Acceptance Criteria**:
+- [ ] Show current mode prominently
+- [ ] Radio buttons for mode selection
+- [ ] Warning modal for live mode
+- [ ] Update via `/api/admin/mode`
+- [ ] Commit: "feat(ui): add system mode selector"
+
+### Task 50.4: Notification Preferences
+**Description**: User preferences for notification channels and frequency.
+**Files**: `src/templates/settings.html`
+**Validation**: Toggle email notifications → preference saved
+**Tests**: `tests/unit/test_notification_prefs_ui.py`
+**Acceptance Criteria**:
+- [ ] Fetch prefs from `/api/notification-prefs`
+- [ ] Checkboxes for email, in-app, Slack
+- [ ] Frequency selector (immediate, hourly, daily)
+- [ ] Save preferences
+- [ ] Commit: "feat(ui): add notification preferences"
+
+---
+
+## Sprint 51: Admin & Ops Dashboard
+**Goal**: Surface admin controls and operations visibility.
+**Demo**: `/caseyos/admin` shows system health, kill switch, and audit log.
+
+### Task 51.1: Admin Dashboard Page
+**Description**: Create admin-only dashboard with system controls.
+**Files**: `src/templates/admin.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/admin` shows health and controls
+**Tests**: `tests/unit/test_admin_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `admin.html` extending base.html
+- [ ] Require admin role (or show warning)
+- [ ] Show Celery worker status, Redis connection, DB health
+- [ ] Add route `/caseyos/admin`
+- [ ] Commit: "feat(ui): add admin dashboard page"
+
+### Task 51.2: Emergency Kill Switch
+**Description**: Big red button to pause all outbound sends.
+**Files**: `src/templates/admin.html`
+**Validation**: Click kill switch → all sends paused
+**Tests**: `tests/unit/test_kill_switch_ui.py`
+**Acceptance Criteria**:
+- [ ] Large prominent kill switch button
+- [ ] Confirmation modal with warning
+- [ ] Call `/api/admin/emergency-stop`
+- [ ] Show resume button after activation
+- [ ] Commit: "feat(ui): add emergency kill switch"
+
+### Task 51.3: Audit Log Viewer
+**Description**: View recent audit log entries for compliance.
+**Files**: `src/templates/admin.html`
+**Validation**: Audit section shows last 50 actions
+**Tests**: `tests/unit/test_audit_log_ui.py`
+**Acceptance Criteria**:
+- [ ] Fetch from `/api/audit/logs`
+- [ ] Show action, user, timestamp, details
+- [ ] Filter by action type
+- [ ] Export button for CSV
+- [ ] Commit: "feat(ui): add audit log viewer"
+
+### Task 51.4: Circuit Breaker Status
+**Description**: Show circuit breaker states for external services.
+**Files**: `src/templates/admin.html`
+**Validation**: Cards show Gmail, HubSpot, LLM circuit states
+**Tests**: `tests/unit/test_circuit_breaker_ui.py`
+**Acceptance Criteria**:
+- [ ] Fetch from `/api/circuit-breakers`
+- [ ] Show state (closed/open/half-open) per service
+- [ ] Show failure count and last failure time
+- [ ] Reset button for manual recovery
+- [ ] Commit: "feat(ui): add circuit breaker status"
+
+---
+
+## Sprint 52: Legacy Cleanup & Polish
+**Goal**: Remove deprecated files, fix UI inconsistencies, update versions.
+**Demo**: Clean codebase, no legacy static HTML, consistent UI.
+
+### Task 52.1: Remove Legacy Static HTML
+**Description**: Delete deprecated SPA HTML files.
+**Files**: `src/static/*.html`
+**Validation**: Only `manifest.json`, `sw.js`, `icons/` remain
+**Acceptance Criteria**:
+- [ ] Backup to `archive/legacy_spa/`
+- [ ] Delete: admin.html, agent-hub.html, agents.html, index.html
+- [ ] Delete: integrations.html, operator-dashboard.html, queue-item-detail.html
+- [ ] Delete: voice-profiles.html, voice-training.html
+- [ ] Commit: "chore: remove deprecated static HTML"
+
+### Task 52.2: Remove Deprecated Route Files
+**Description**: Delete route files no longer in use.
+**Files**: `src/routes/ui_command_queue.py`, `src/routes/caseyos_ui.py`
+**Validation**: App starts without errors
+**Acceptance Criteria**:
+- [ ] Remove route files
+- [ ] Remove imports from `main.py`
+- [ ] Verify no broken imports
+- [ ] Commit: "chore: remove deprecated route files"
+
+### Task 52.3: Update Version Numbers
+**Description**: Update version in base.html footer and package files.
+**Files**: `src/templates/base.html`, `pyproject.toml`
+**Validation**: Footer shows "CaseyOS v4.0"
+**Acceptance Criteria**:
+- [ ] Update base.html footer version
+- [ ] Update pyproject.toml version
+- [ ] Update README badges
+- [ ] Commit: "chore: bump version to 4.0"
+
+### Task 52.4: Navigation Polish
+**Description**: Ensure consistent navigation across all pages.
+**Files**: `src/templates/base.html`
+**Validation**: All tabs work, active states correct
+**Acceptance Criteria**:
+- [ ] Verify all active_tab values match
+- [ ] Add missing icons to tabs
+- [ ] Fix mobile responsive nav
+- [ ] Commit: "chore: polish navigation"
+
+---
+
 ## Test Strategy Per Sprint
 
 ### Sprint 39 Tests
@@ -1533,6 +1976,137 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 - [ ] `tests/unit/test_workflow_templates.py` - template execution
 - [ ] `tests/unit/test_conversation_memory.py` - history persistence
 - [ ] `tests/e2e/test_multi_step_workflow.py` - full workflow execution
+
+### Sprint 44 Tests ✅ COMPLETE
+- [x] Voice training UI visual verification
+- [x] Voice profiles CRUD flow
+- [x] Route wiring verification
+
+### Sprint 45 Tests
+- [ ] `tests/unit/test_memory_ui.py` - session list rendering
+- [ ] `tests/unit/test_memory_detail.py` - detail view with context
+- [ ] `tests/unit/test_memory_search_ui.py` - search functionality
+
+### Sprint 46 Tests
+- [ ] `tests/unit/test_integrations_ui.py` - status page rendering
+- [ ] `tests/unit/test_integration_actions.py` - connect/disconnect flow
+- [ ] Visual verification of integration cards
+
+### Sprint 47 Tests
+- [ ] `tests/unit/test_notification_badge.py` - badge count updates
+- [ ] `tests/unit/test_notification_dropdown.py` - dropdown rendering
+- [ ] `tests/unit/test_notifications_page.py` - full page with filters
+- [ ] `tests/unit/test_notification_actions.py` - action execution
+
+### Sprint 48 Tests
+- [ ] `tests/unit/test_analytics_ui.py` - dashboard rendering
+- [ ] `tests/unit/test_error_tracking_ui.py` - error list display
+- [ ] `tests/unit/test_recovery_ui.py` - recovery stats and retry
+
+### Sprint 49 Tests
+- [ ] `tests/unit/test_workflow_selector.py` - dropdown population
+- [ ] `tests/unit/test_workflow_modal.py` - input validation
+- [ ] `tests/unit/test_workflow_progress.py` - step progress updates
+
+### Sprint 50 Tests
+- [ ] `tests/unit/test_settings_ui.py` - settings page layout
+- [ ] `tests/unit/test_feature_toggle_ui.py` - flag toggling
+- [ ] `tests/unit/test_mode_selector_ui.py` - mode switching
+- [ ] `tests/unit/test_notification_prefs_ui.py` - preference saving
+
+### Sprint 51 Tests
+- [ ] `tests/unit/test_admin_ui.py` - admin dashboard rendering
+- [ ] `tests/unit/test_kill_switch_ui.py` - emergency stop
+- [ ] `tests/unit/test_audit_log_ui.py` - log viewing and export
+- [ ] `tests/unit/test_circuit_breaker_ui.py` - status display
+
+### Sprint 52 Tests
+- [ ] Verify app starts after file removal
+- [ ] Verify all nav tabs work
+- [ ] Visual regression testing
+
+---
+
+## Appendix: Gap Analysis Summary (2026-01-28)
+
+### API Endpoints Without UI (High Priority)
+
+| API Route File | Endpoints | Gap Status |
+|----------------|-----------|------------|
+| `memory.py` | /sessions, /memory/{id}, /memory/search | Sprint 45 |
+| `integrations_api.py` | /status, /available, /{app_name}/connect | Sprint 46 |
+| `notifications.py` | /notifications, /mark-read | Sprint 47 |
+| `analytics_api.py` | /metrics, /errors, /trends, /recovery/* | Sprint 48 |
+| `admin.py` | /flags, /mode, /emergency-stop | Sprint 50-51 |
+
+### Jinja2 Templates Status
+
+| Template | Route | Status |
+|----------|-------|--------|
+| `base.html` | - | ✅ Active |
+| `dashboard.html` | /caseyos | ✅ Active |
+| `queue.html` | /caseyos/queue | ✅ Active |
+| `queue_detail.html` | /caseyos/queue/{id} | ✅ Active |
+| `gemini.html` | /caseyos/gemini | ✅ Active |
+| `drive.html` | /caseyos/drive | ✅ Active |
+| `agents.html` | /caseyos/agents | ✅ Active |
+| `executions.html` | /caseyos/executions | ✅ Active |
+| `signals.html` | /caseyos/signals | ✅ Active |
+| `overview.html` | /caseyos/overview | ✅ Active |
+| `voice_training.html` | /caseyos/voice-training | ✅ Active |
+| `voice_profiles.html` | /caseyos/voice-profiles | ✅ Active |
+| `memory.html` | /caseyos/memory | 🔲 Sprint 45 |
+| `integrations.html` | /caseyos/integrations | 🔲 Sprint 46 |
+| `notifications.html` | /caseyos/notifications | 🔲 Sprint 47 |
+| `analytics.html` | /caseyos/analytics | 🔲 Sprint 48 |
+| `settings.html` | /caseyos/settings | 🔲 Sprint 50 |
+| `admin.html` | /caseyos/admin | 🔲 Sprint 51 |
+
+### Legacy Static HTML (To Remove in Sprint 52)
+
+| File | Replacement |
+|------|-------------|
+| `admin.html` | `admin.html` (Jinja2) |
+| `agent-hub.html` | `agents.html` (Jinja2) |
+| `agents.html` | `agents.html` (Jinja2) |
+| `index.html` | `dashboard.html` (Jinja2) |
+| `integrations.html` | `integrations.html` (Jinja2) |
+| `operator-dashboard.html` | `overview.html` (Jinja2) |
+| `queue-item-detail.html` | `queue_detail.html` (Jinja2) |
+| `voice-profiles.html` | `voice_profiles.html` (Jinja2) |
+| `voice-training.html` | `voice_training.html` (Jinja2) |
+
+### Navigation Tabs Status
+
+| Tab | Icon | Route | Status |
+|-----|------|-------|--------|
+| Dashboard | - | /caseyos | ✅ |
+| Command Queue | - | /caseyos/queue | ✅ |
+| Gemini | ✨ | /caseyos/gemini | ✅ |
+| Drive | 📁 | /caseyos/drive | ✅ |
+| Agents | 🤖 | /caseyos/agents | ✅ |
+| Executions | ⚡ | /caseyos/executions | ✅ |
+| Signals | 📡 | /caseyos/signals | ✅ |
+| Overview | 📊 | /caseyos/overview | ✅ |
+| Voice | 🎭 | /caseyos/voice-training | ✅ |
+| Memory | 🧠 | /caseyos/memory | 🔲 Sprint 45 |
+| Integrations | 🔌 | /caseyos/integrations | 🔲 Sprint 46 |
+| Analytics | 📈 | /caseyos/analytics | 🔲 Sprint 48 |
+| Settings | ⚙️ | /caseyos/settings | 🔲 Sprint 50 |
+| Admin | 🔒 | /caseyos/admin | 🔲 Sprint 51 |
+
+### Services & Agents Visibility
+
+| Component | API Exposed | UI Surfaced |
+|-----------|-------------|-------------|
+| DashboardMetricsService | ✅ Sprint 43 | ✅ Overview |
+| ContextService | ✅ Sprint 43 | 🔲 Gemini workflows |
+| MemoryService | ✅ Sprint 15 | 🔲 Sprint 45 |
+| NotificationService | ✅ Present | 🔲 Sprint 47 |
+| ExecutionService | ✅ Sprint 42 | ✅ Executions page |
+| SignalService | ✅ Sprint 8 | ✅ Signals page |
+| VoiceService | ✅ Present | ✅ Voice Training |
+| APSCalculator | ✅ Internal | ✅ Queue display |
 
 ---
 
@@ -1574,5 +2148,5 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 ---
 
 *Generated: 2026-01-27*
-*Version: 2.2*
-*Updated: Added Sprints 33-38 for OAuth fix, Gemini Portal, Drive integration, Jarvis weaving*
+*Version: 2.3*
+*Updated: 2026-01-28 - Added Sprints 44-52 for UI gap closure, Gap Analysis Appendix*
