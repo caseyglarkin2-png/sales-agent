@@ -162,3 +162,12 @@ async def settings_page(request: Request):
     System settings, operation mode, auto-approval rules, notifications.
     """
     return templates.TemplateResponse("settings.html", {"request": request, "active_tab": "settings"})
+
+
+@router.get("/caseyos/admin", response_class=HTMLResponse)
+async def admin_dashboard(request: Request):
+    """
+    Admin & Ops Dashboard - Sprint 51
+    System monitoring, Celery tasks, database stats, approved recipients.
+    """
+    return templates.TemplateResponse("admin.html", {"request": request, "active_tab": "admin"})

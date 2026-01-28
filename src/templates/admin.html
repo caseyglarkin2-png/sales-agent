@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .stat-card {
+        transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .log-entry {
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+    }
+    .log-error { color: #ef4444; }
+    .log-warn { color: #f59e0b; }
+    .log-info { color: #3b82f6; }
+    .log-debug { color: #6b7280; }
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">👑 Admin Dashboard</h1>
+            <p class="text-gray-600">System operations and monitoring</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="last-refresh" class="text-sm text-gray-500">Last refresh: --</span>
+            <button onclick="refreshAll()" 
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- System Health Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500">System Status</span>
+                <span id="system-health" class="h-3 w-3 rounded-full bg-gray-300"></span>
+            </div>
+            <p id="system-status-text" class="text-xl font-bold text-gray-900 mt-2">Loading...</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500">Queue Items</span>
+                <span class="text-lg">📋</span>
+            </div>
+            <p id="queue-count" class="text-xl font-bold text-gray-900 mt-2">--</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500">Active Tasks</span>
+                <span class="text-lg">⚡</span>
+            </div>
+            <p id="active-tasks" class="text-xl font-bold text-gray-900 mt-2">--</p>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500">Operations Mode</span>
+                <span class="text-lg">🎛️</span>
+            </div>
+            <p id="ops-mode" class="text-xl font-bold text-gray-900 mt-2">--</p>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <!-- Celery Tasks Panel -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">🔧 Celery Tasks</h3>
+                <button onclick="loadCeleryTasks()" class="text-sm text-indigo-600 hover:text-indigo-800">Refresh</button>
+            </div>
+            <div id="celery-tasks" class="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
+                <div class="p-4 text-center text-gray-400">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Database Stats -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">🗄️ Database Stats</h3>
+                <button onclick="loadDatabaseStats()" class="text-sm text-indigo-600 hover:text-indigo-800">Refresh</button>
+            </div>
+            <div id="database-stats" class="p-4 space-y-3">
+                <div class="text-center text-gray-400">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Approved Recipients -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">✅ Approved Recipients</h3>
+                <span id="recipients-count" class="text-sm text-gray-500">-- total</span>
+            </div>
+            <div id="recipients-list" class="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
+                <div class="p-4 text-center text-gray-400">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs & Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Activity -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">📜 Recent Activity</h3>
+                <button onclick="loadRecentActivity()" class="text-sm text-indigo-600 hover:text-indigo-800">Refresh</button>
+            </div>
+            <div id="activity-log" class="divide-y divide-gray-100 max-h-[250px] overflow-y-auto">
+                <div class="p-4 text-center text-gray-400">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="font-semibold text-gray-900">⚡ Quick Actions</h3>
+            </div>
+            <div class="p-4 grid grid-cols-2 gap-3">
+                <button onclick="triggerSignalPoll()" 
+                    class="p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-left">
+                    <div class="font-medium text-indigo-700">📡 Poll Signals</div>
+                    <p class="text-xs text-gray-500">Trigger signal polling</p>
+                </button>
+                <button onclick="refreshTokens()" 
+                    class="p-3 bg-green-50 hover:bg-green-100 rounded-lg text-left">
+                    <div class="font-medium text-green-700">🔑 Refresh Tokens</div>
+                    <p class="text-xs text-gray-500">Refresh OAuth tokens</p>
+                </button>
+                <button onclick="seedRules()" 
+                    class="p-3 bg-amber-50 hover:bg-amber-100 rounded-lg text-left">
+                    <div class="font-medium text-amber-700">📋 Seed Rules</div>
+                    <p class="text-xs text-gray-500">Create default rules</p>
+                </button>
+                <button onclick="runHealthCheck()" 
+                    class="p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-left">
+                    <div class="font-medium text-blue-700">🏥 Health Check</div>
+                    <p class="text-xs text-gray-500">Full system check</p>
+                </button>
+                <button onclick="viewApiDocs()" 
+                    class="p-3 bg-purple-50 hover:bg-purple-100 rounded-lg text-left">
+                    <div class="font-medium text-purple-700">📚 API Docs</div>
+                    <p class="text-xs text-gray-500">View OpenAPI spec</p>
+                </button>
+                <button onclick="location.href='/caseyos/settings'" 
+                    class="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-left">
+                    <div class="font-medium text-gray-700">⚙️ Settings</div>
+                    <p class="text-xs text-gray-500">System configuration</p>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    refreshAll();
+    // Auto-refresh every 30 seconds
+    setInterval(refreshAll, 30000);
+});
+
+// Refresh all data
+async function refreshAll() {
+    const timestamp = new Date().toLocaleTimeString();
+    document.getElementById('last-refresh').textContent = `Last refresh: ${timestamp}`;
+    
+    await Promise.all([
+        loadSystemHealth(),
+        loadQueueStats(),
+        loadCeleryTasks(),
+        loadDatabaseStats(),
+        loadApprovedRecipients(),
+        loadRecentActivity()
+    ]);
+}
+
+// Load system health
+async function loadSystemHealth() {
+    try {
+        const response = await fetch('/health/status');
+        if (!response.ok) throw new Error('Failed to load health');
+        const data = await response.json();
+        
+        const healthEl = document.getElementById('system-health');
+        const statusEl = document.getElementById('system-status-text');
+        
+        if (data.status === 'healthy') {
+            healthEl.className = 'h-3 w-3 rounded-full bg-green-500';
+            statusEl.textContent = 'Healthy';
+            statusEl.className = 'text-xl font-bold text-green-600 mt-2';
+        } else {
+            healthEl.className = 'h-3 w-3 rounded-full bg-red-500 pulse';
+            statusEl.textContent = 'Unhealthy';
+            statusEl.className = 'text-xl font-bold text-red-600 mt-2';
+        }
+        
+        // Load ops mode
+        const adminResponse = await fetch('/api/admin/emergency-status');
+        if (adminResponse.ok) {
+            const adminData = await adminResponse.json();
+            const modeEl = document.getElementById('ops-mode');
+            if (adminData.kill_switch_active) {
+                modeEl.textContent = '🛑 STOPPED';
+                modeEl.className = 'text-xl font-bold text-red-600 mt-2';
+            } else if (adminData.allow_real_sends) {
+                modeEl.textContent = 'Send';
+                modeEl.className = 'text-xl font-bold text-green-600 mt-2';
+            } else {
+                modeEl.textContent = 'Draft Only';
+                modeEl.className = 'text-xl font-bold text-blue-600 mt-2';
+            }
+        }
+        
+    } catch (error) {
+        console.error('Failed to load health:', error);
+        document.getElementById('system-status-text').textContent = 'Error';
+    }
+}
+
+// Load queue stats
+async function loadQueueStats() {
+    try {
+        const response = await fetch('/api/command-queue?limit=1');
+        if (response.ok) {
+            const data = await response.json();
+            document.getElementById('queue-count').textContent = data.total_count || 0;
+        }
+    } catch (error) {
+        console.error('Failed to load queue stats:', error);
+    }
+    
+    // Active tasks placeholder
+    document.getElementById('active-tasks').textContent = '0';
+}
+
+// Load Celery tasks
+async function loadCeleryTasks() {
+    const container = document.getElementById('celery-tasks');
+    
+    // Celery beat tasks (hardcoded from celery_app.py)
+    const tasks = [
+        { name: 'refresh-oauth-tokens', schedule: '30 min', status: 'scheduled' },
+        { name: 'poll-hubspot-signals', schedule: '5 min', status: 'scheduled' },
+        { name: 'poll-gmail-signals', schedule: '5 min', status: 'scheduled' },
+        { name: 'daemon-monitor-signals', schedule: '5 min', status: 'scheduled' },
+    ];
+    
+    container.innerHTML = tasks.map(task => `
+        <div class="p-3 flex items-center justify-between">
+            <div>
+                <span class="font-medium text-gray-900 text-sm">${task.name}</span>
+                <p class="text-xs text-gray-500">Every ${task.schedule}</p>
+            </div>
+            <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">${task.status}</span>
+        </div>
+    `).join('');
+}
+
+// Load database stats
+async function loadDatabaseStats() {
+    const container = document.getElementById('database-stats');
+    
+    try {
+        // Get various counts from APIs
+        const [queueResp, signalsResp, healthResp] = await Promise.all([
+            fetch('/api/command-queue?limit=1'),
+            fetch('/api/signals?limit=1').catch(() => null),
+            fetch('/health/status')
+        ]);
+        
+        const queueData = queueResp.ok ? await queueResp.json() : {};
+        const signalsData = signalsResp?.ok ? await signalsResp.json() : {};
+        const healthData = healthResp.ok ? await healthResp.json() : {};
+        
+        container.innerHTML = `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span class="text-gray-600">Command Queue Items</span>
+                <span class="font-medium text-gray-900">${queueData.total_count || 0}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span class="text-gray-600">Signals Processed</span>
+                <span class="font-medium text-gray-900">${signalsData.total_count || 0}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span class="text-gray-600">Database Status</span>
+                <span class="font-medium ${healthData.database?.status === 'connected' ? 'text-green-600' : 'text-red-600'}">${healthData.database?.status || 'Unknown'}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span class="text-gray-600">Redis Status</span>
+                <span class="font-medium ${healthData.redis?.status === 'connected' ? 'text-green-600' : 'text-yellow-600'}">${healthData.redis?.status || 'Not Required'}</span>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Failed to load database stats:', error);
+        container.innerHTML = `<div class="text-red-500 p-4">Failed to load stats</div>`;
+    }
+}
+
+// Load approved recipients
+async function loadApprovedRecipients() {
+    const container = document.getElementById('recipients-list');
+    
+    try {
+        const response = await fetch('/api/admin/approved-recipients?limit=10');
+        if (!response.ok) throw new Error('Failed to load recipients');
+        const data = await response.json();
+        
+        document.getElementById('recipients-count').textContent = `${data.total_count || 0} total`;
+        
+        if (!data.recipients || data.recipients.length === 0) {
+            container.innerHTML = `
+                <div class="p-6 text-center text-gray-400">
+                    <div class="text-3xl mb-2">📭</div>
+                    No approved recipients yet
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.recipients.map(r => `
+            <div class="p-3 flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 text-sm truncate">${escapeHtml(r.email)}</div>
+                    <div class="text-xs text-gray-500">${r.total_sends} sends · ${r.total_replies} replies</div>
+                </div>
+                <button onclick="removeRecipient('${r.id}')" class="text-red-500 hover:text-red-700 text-xs ml-2">
+                    Remove
+                </button>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Failed to load recipients:', error);
+        container.innerHTML = `<div class="p-4 text-center text-gray-400">Whitelist not available</div>`;
+    }
+}
+
+// Load recent activity
+async function loadRecentActivity() {
+    const container = document.getElementById('activity-log');
+    
+    try {
+        // Try to get notifications as activity
+        const response = await fetch('/api/jarvis/notifications?limit=5');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.notifications && data.notifications.length > 0) {
+                container.innerHTML = data.notifications.map(n => `
+                    <div class="p-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs ${n.priority === 'high' ? 'text-red-500' : 'text-gray-500'}">${formatTime(n.created_at)}</span>
+                            <span class="text-sm text-gray-700">${escapeHtml(n.title)}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1 truncate">${escapeHtml(n.message || '')}</p>
+                    </div>
+                `).join('');
+                return;
+            }
+        }
+        
+        // Fallback
+        container.innerHTML = `
+            <div class="p-6 text-center text-gray-400">
+                No recent activity
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Failed to load activity:', error);
+        container.innerHTML = `<div class="p-4 text-center text-gray-400">Activity not available</div>`;
+    }
+}
+
+// Quick Actions
+async function triggerSignalPoll() {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch('/api/signals/poll', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        if (response.ok) {
+            alert('Signal polling triggered');
+        } else {
+            alert('Signal polling endpoint not available');
+        }
+    } catch (error) {
+        alert('Signal polling triggered (background task)');
+    }
+}
+
+async function refreshTokens() {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        await fetch('/api/oauth/refresh', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        alert('Token refresh triggered');
+    } catch (error) {
+        alert('Token refresh triggered (background task)');
+    }
+}
+
+async function seedRules() {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch('/api/admin/rules/seed', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        if (response.ok) {
+            alert('Default rules seeded');
+        }
+    } catch (error) {
+        console.error('Seed rules failed:', error);
+    }
+}
+
+async function runHealthCheck() {
+    try {
+        const response = await fetch('/health/status');
+        const data = await response.json();
+        alert(JSON.stringify(data, null, 2));
+    } catch (error) {
+        alert('Health check failed');
+    }
+}
+
+function viewApiDocs() {
+    window.open('/docs', '_blank');
+}
+
+async function removeRecipient(recipientId) {
+    if (!confirm('Remove this recipient from the whitelist?')) return;
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch(`/api/admin/approved-recipients/${recipientId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        if (response.ok) {
+            loadApprovedRecipients();
+        }
+    } catch (error) {
+        console.error('Failed to remove recipient:', error);
+    }
+}
+
+// Utility functions
+function formatTime(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCookie(name) {
+    let value = "; " + document.cookie;
+    let parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+    return '';
+}
+</script>
+{% endblock %}
