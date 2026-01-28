@@ -72,3 +72,12 @@ async def executions_history(request: Request):
     Shows agent execution history with status, duration, and results.
     """
     return templates.TemplateResponse("executions.html", {"request": request, "active_tab": "executions"})
+
+
+@router.get("/caseyos/signals", response_class=HTMLResponse)
+async def signals_stream(request: Request):
+    """
+    Signals Stream - Sprint 8 UI
+    Shows real-time signal ingestion from forms, HubSpot, Gmail.
+    """
+    return templates.TemplateResponse("signals.html", {"request": request, "active_tab": "signals"})
