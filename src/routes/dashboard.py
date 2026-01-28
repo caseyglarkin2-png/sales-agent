@@ -2,13 +2,17 @@
 Dashboard Routes.
 
 API endpoints for dashboard metrics and real-time stats.
+Sprint 43: Dashboard Intelligence & Metrics
 """
 
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.dashboard import get_dashboard_aggregator
+from src.db import get_db
+from src.services.dashboard_metrics import DashboardMetricsService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -82,4 +86,75 @@ async def refresh_metrics() -> Dict[str, Any]:
     return {
         "status": "success",
         "metrics": metrics.to_dict(),
+    }
+
+
+# =============================================================================
+# Sprint 43: Dashboard Intelligence Endpoints
+# =============================================================================
+
+@router.get("/today")
+async def get_today_metrics(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Get today's key metrics for dashboard.
+    
+    Sprint 43.1: Central metrics endpoint returning:
+    - pending_actions: Count of items awaiting approval
+    - approved_today: Count of items approved today
+    - sent_today: Count of items sent today
+    - failed_today: Count of failed executions today
+    - agent_executions_24h: Total agent runs in last 24h
+    - success_rate: Percentage of successful executions
+    """
+    service = DashboardMetricsService(db)
+    return await service.get_today_metrics()
+
+
+@router.get("/priority-queue")
+async def get_priority_queue(
+    limit: int = 5,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Get top priority queue items by APS score.
+    
+    Sprint 43.2: Returns top items for quick action.
+    """
+    service = DashboardMetricsService(db)
+    items = await service.get_top_priority_items(limit=limit)
+    return {
+        "items": items,
+        "count": len(items),
+    }
+
+
+@router.get("/agent-performance")
+async def get_agent_performance(
+    hours: int = 24,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Get agent performance summary.
+    
+    Sprint 43.3: Returns most active, highest success rate, and most failed agents.
+    """
+    service = DashboardMetricsService(db)
+    return await service.get_agent_performance(hours=hours)
+
+
+@router.get("/recent-activity")
+async def get_recent_activity(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Get recent activity feed combining queue and executions.
+    
+    Sprint 43: Live activity stream for dashboard.
+    """
+    service = DashboardMetricsService(db)
+    activities = await service.get_recent_activity(limit=limit)
+    return {
+        "activities": activities,
+        "count": len(activities),
     }
