@@ -892,6 +892,315 @@ class JarvisAgent(BaseAgent):
                     },
                     "required": ["company_name"]
                 }
+            },
+            # Sprint 43: Expanded agent tool definitions
+            {
+                "name": "analyze_account",
+                "description": "Deep analysis of an account for strategic planning and stakeholder mapping",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "company_name": {
+                            "type": "string",
+                            "description": "Company name to analyze"
+                        },
+                        "include_stakeholders": {
+                            "type": "boolean",
+                            "description": "Include stakeholder mapping"
+                        }
+                    },
+                    "required": ["company_name"]
+                }
+            },
+            {
+                "name": "score_lead",
+                "description": "Score a lead based on fit and engagement signals",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "Lead email address"
+                        },
+                        "context": {
+                            "type": "string",
+                            "description": "Additional context about the lead"
+                        }
+                    },
+                    "required": ["email"]
+                }
+            },
+            {
+                "name": "generate_proposal",
+                "description": "Generate a sales proposal document",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "company_name": {
+                            "type": "string",
+                            "description": "Target company name"
+                        },
+                        "deal_value": {
+                            "type": "number",
+                            "description": "Estimated deal value"
+                        },
+                        "products": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Products/services to include"
+                        }
+                    },
+                    "required": ["company_name"]
+                }
+            },
+            {
+                "name": "create_meeting_agenda",
+                "description": "Generate a meeting agenda based on context and participants",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "meeting_type": {
+                            "type": "string",
+                            "description": "Type: discovery, demo, negotiation, check-in"
+                        },
+                        "company_name": {
+                            "type": "string",
+                            "description": "Company for the meeting"
+                        },
+                        "duration_minutes": {
+                            "type": "integer",
+                            "description": "Meeting duration"
+                        }
+                    },
+                    "required": ["meeting_type", "company_name"]
+                }
+            },
+            {
+                "name": "handle_objection",
+                "description": "Generate response to a sales objection",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "objection_text": {
+                            "type": "string",
+                            "description": "The objection raised by the prospect"
+                        },
+                        "context": {
+                            "type": "string",
+                            "description": "Deal/conversation context"
+                        }
+                    },
+                    "required": ["objection_text"]
+                }
+            },
+            {
+                "name": "repurpose_content",
+                "description": "Transform content into different formats (blog, social, email, etc.)",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "source_content": {
+                            "type": "string",
+                            "description": "Original content to repurpose"
+                        },
+                        "target_format": {
+                            "type": "string",
+                            "description": "Target format: linkedin_post, twitter_thread, blog, email_sequence"
+                        }
+                    },
+                    "required": ["source_content", "target_format"]
+                }
+            },
+            {
+                "name": "schedule_social_post",
+                "description": "Schedule a social media post",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "platform": {
+                            "type": "string",
+                            "description": "Platform: linkedin, twitter, facebook"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Post content"
+                        },
+                        "schedule_time": {
+                            "type": "string",
+                            "description": "When to post (ISO datetime or 'now')"
+                        }
+                    },
+                    "required": ["platform", "content"]
+                }
+            },
+            {
+                "name": "enrich_contact",
+                "description": "Enrich a contact with additional data from external sources",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "description": "Contact email to enrich"
+                        },
+                        "sources": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Data sources: linkedin, clearbit, zoominfo"
+                        }
+                    },
+                    "required": ["email"]
+                }
+            },
+            {
+                "name": "find_duplicates",
+                "description": "Find duplicate contacts or companies in CRM",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "object_type": {
+                            "type": "string",
+                            "description": "Object type: contact, company, deal"
+                        },
+                        "threshold": {
+                            "type": "number",
+                            "description": "Similarity threshold (0-1)"
+                        }
+                    },
+                    "required": ["object_type"]
+                }
+            },
+            {
+                "name": "analyze_competitors",
+                "description": "Analyze competitor mentions and market positioning",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "competitor_name": {
+                            "type": "string",
+                            "description": "Competitor to analyze"
+                        },
+                        "aspects": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Aspects: pricing, features, positioning, news"
+                        }
+                    },
+                    "required": ["competitor_name"]
+                }
+            },
+            {
+                "name": "get_deal_forecast",
+                "description": "Get forecast and win probability for deals",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "deal_id": {
+                            "type": "string",
+                            "description": "Specific deal ID to forecast"
+                        },
+                        "pipeline_id": {
+                            "type": "string",
+                            "description": "Pipeline to forecast (for all deals)"
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "create_contract",
+                "description": "Generate a contract or agreement document",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "template_type": {
+                            "type": "string",
+                            "description": "Template: nda, msa, sow, order_form"
+                        },
+                        "company_name": {
+                            "type": "string",
+                            "description": "Customer company name"
+                        },
+                        "terms": {
+                            "type": "object",
+                            "description": "Contract terms (value, duration, etc.)"
+                        }
+                    },
+                    "required": ["template_type", "company_name"]
+                }
+            },
+            {
+                "name": "track_deliverable",
+                "description": "Track status of a project deliverable",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "deal_id": {
+                            "type": "string",
+                            "description": "Deal ID"
+                        },
+                        "deliverable_type": {
+                            "type": "string",
+                            "description": "Type: proposal, contract, demo, poc"
+                        }
+                    },
+                    "required": ["deal_id"]
+                }
+            },
+            {
+                "name": "get_market_trends",
+                "description": "Get current market trends and news for an industry",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "industry": {
+                            "type": "string",
+                            "description": "Industry to analyze"
+                        },
+                        "keywords": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Additional keywords to track"
+                        }
+                    },
+                    "required": ["industry"]
+                }
+            },
+            {
+                "name": "get_queue_status",
+                "description": "Get current status of the action queue",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "status_filter": {
+                            "type": "string",
+                            "description": "Filter by status: pending, approved, sent"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Number of items to return"
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "approve_action",
+                "description": "Approve a pending action in the queue",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action_id": {
+                            "type": "string",
+                            "description": "ID of the action to approve"
+                        },
+                        "comment": {
+                            "type": "string",
+                            "description": "Optional approval comment"
+                        }
+                    },
+                    "required": ["action_id"]
+                }
             }
         ]
     

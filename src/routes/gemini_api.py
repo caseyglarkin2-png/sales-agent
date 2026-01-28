@@ -2,11 +2,12 @@
 
 Sprint 34: Gemini Portal Foundation
 Sprint 39B: Persistent conversation memory via MemoryService
+Sprint 43: Workflow Templates & Multi-Agent Orchestration
 
 Provides API endpoints for Gemini AI chat interactions.
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -463,3 +464,155 @@ async def jarvis_chat_html(
         '''
         return HTMLResponse(content=error_html, status_code=500)
 
+
+# =========================================================================
+# Sprint 43.3: Workflow Templates
+# =========================================================================
+
+@router.get("/workflows")
+async def list_workflows(category: Optional[str] = None):
+    """List available workflow templates."""
+    from src.agents.workflows import list_workflow_templates, get_workflow_categories
+    
+    workflows = list_workflow_templates(category)
+    categories = get_workflow_categories()
+    
+    return {
+        "workflows": [w.to_dict() for w in workflows],
+        "categories": categories,
+        "total": len(workflows),
+    }
+
+
+@router.get("/workflows/{workflow_id}")
+async def get_workflow(workflow_id: str):
+    """Get a specific workflow template."""
+    from src.agents.workflows import get_workflow_template
+    
+    workflow = get_workflow_template(workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_id}")
+    
+    return workflow.to_dict()
+
+
+@router.post("/workflows/{workflow_id}/execute")
+async def execute_workflow(
+    workflow_id: str,
+    inputs: Dict[str, Any],
+    user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Execute a workflow template with given inputs.
+    
+    This creates a workflow context, executes each step in sequence,
+    and returns the final result.
+    """
+    from src.agents.workflows import get_workflow_template
+    from src.services.context_service import get_context_service
+    from src.agents.jarvis import get_jarvis
+    
+    workflow = get_workflow_template(workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_id}")
+    
+    # Validate required inputs
+    missing = [r for r in workflow.required_inputs if r not in inputs]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required inputs: {missing}"
+        )
+    
+    # Create workflow context
+    context_service = get_context_service()
+    ctx = await context_service.create_context(initial_data=inputs)
+    
+    jarvis = get_jarvis()
+    step_results = []
+    
+    for i, step in enumerate(workflow.steps):
+        # Check condition if present
+        if step.condition:
+            condition_met = inputs.get(step.condition) or ctx.shared_context.get(step.condition)
+            if not condition_met and step.optional:
+                step_results.append({
+                    "step": i + 1,
+                    "agent": step.agent_name,
+                    "action": step.action,
+                    "skipped": True,
+                    "reason": f"Condition not met: {step.condition}",
+                })
+                continue
+        
+        # Build input from mapping
+        step_input = {}
+        for param, source in step.input_mapping.items():
+            if source.startswith("'") and source.endswith("'"):
+                # Literal value
+                step_input[param] = source[1:-1]
+            elif source.startswith("_"):
+                # Reference to shared context
+                step_input[param] = ctx.shared_context.get(source[1:], "")
+            else:
+                # Reference to inputs or context
+                step_input[param] = inputs.get(source) or ctx.shared_context.get(source, "")
+        
+        # Execute step via Jarvis
+        try:
+            import time
+            start_time = time.time()
+            
+            result = await jarvis.route_intent(
+                intent=step.action,
+                context=step_input,
+            )
+            
+            duration_ms = int((time.time() - start_time) * 1000)
+            
+            # Update context with result
+            await context_service.update_context(
+                workflow_id=str(ctx.workflow_id),
+                agent_name=step.agent_name,
+                input_data=step_input,
+                output_data=result,
+                success=True,
+                duration_ms=duration_ms,
+            )
+            
+            step_results.append({
+                "step": i + 1,
+                "agent": step.agent_name,
+                "action": step.action,
+                "success": True,
+                "duration_ms": duration_ms,
+                "output": result,
+            })
+            
+        except Exception as e:
+            logger.error(f"Step {i + 1} failed: {e}")
+            if not step.optional:
+                await context_service.complete_context(str(ctx.workflow_id), "failed")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Workflow failed at step {i + 1}: {str(e)}"
+                )
+            step_results.append({
+                "step": i + 1,
+                "agent": step.agent_name,
+                "action": step.action,
+                "success": False,
+                "error": str(e),
+            })
+    
+    # Complete workflow
+    await context_service.complete_context(str(ctx.workflow_id), "completed")
+    
+    return {
+        "workflow_id": str(ctx.workflow_id),
+        "workflow_name": workflow.name,
+        "status": "completed",
+        "steps_completed": len([s for s in step_results if s.get("success")]),
+        "steps_total": len(workflow.steps),
+        "results": step_results,
+        "final_context": ctx.shared_context,
+    }
