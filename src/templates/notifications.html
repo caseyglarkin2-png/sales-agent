@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .notification-item {
+        transition: all 0.2s ease;
+    }
+    .notification-item:hover {
+        background-color: #f9fafb;
+    }
+    .notification-item.unread {
+        background-color: #eff6ff;
+        border-left: 3px solid #3b82f6;
+    }
+    .priority-high { border-left-color: #ef4444 !important; }
+    .priority-medium { border-left-color: #f59e0b !important; }
+    .priority-low { border-left-color: #22c55e !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">🔔 Notifications</h1>
+            <p class="text-gray-600">Stay updated on signals, approvals, and system events</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <!-- Unread Badge -->
+            <span id="unread-badge" class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                <span id="unread-count">0</span> unread
+            </span>
+            <!-- Actions -->
+            <button onclick="markAllRead()" 
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                ✓ Mark All Read
+            </button>
+            <button onclick="loadNotifications()" 
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex items-center space-x-4 mb-6">
+        <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-600">Show:</label>
+            <select id="filter-read" onchange="loadNotifications()" 
+                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+                <option value="unread">Unread only</option>
+                <option value="all">All</option>
+            </select>
+        </div>
+        <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-600">Priority:</label>
+            <select id="filter-priority" onchange="filterByPriority()" 
+                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+                <option value="all">All priorities</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+        </div>
+        <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-600">Type:</label>
+            <select id="filter-type" onchange="filterByType()" 
+                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+                <option value="all">All types</option>
+                <option value="signal">Signals</option>
+                <option value="approval">Approvals</option>
+                <option value="system">System</option>
+                <option value="agent">Agent</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Notification List -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1">
+        <div id="notifications-list" class="divide-y divide-gray-100 max-h-[calc(100vh-300px)] overflow-y-auto">
+            <!-- Loading -->
+            <div class="p-8 text-center text-gray-400">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                Loading notifications...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// State
+let allNotifications = [];
+const PRIORITY_ICONS = {
+    'high': '🔴',
+    'medium': '🟡',
+    'low': '🟢'
+};
+const TYPE_ICONS = {
+    'signal': '📡',
+    'approval': '✅',
+    'system': '⚙️',
+    'agent': '🤖',
+    'deal': '💰',
+    'contact': '👤'
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotifications();
+    // Poll for new notifications every 30 seconds
+    setInterval(loadNotifications, 30000);
+});
+
+// Load notifications
+async function loadNotifications() {
+    const includeRead = document.getElementById('filter-read').value === 'all';
+    const container = document.getElementById('notifications-list');
+    
+    try {
+        const response = await fetch(`/api/jarvis/notifications?include_read=${includeRead}&limit=50`);
+        const data = await response.json();
+        allNotifications = data.notifications || [];
+        
+        // Update unread count
+        const unreadCount = allNotifications.filter(n => !n.is_read).length;
+        document.getElementById('unread-count').textContent = unreadCount;
+        
+        renderNotifications();
+        
+    } catch (error) {
+        console.error('Failed to load notifications:', error);
+        container.innerHTML = `
+            <div class="p-8 text-center text-red-500">
+                Failed to load notifications. <button onclick="loadNotifications()" class="underline">Retry</button>
+            </div>
+        `;
+    }
+}
+
+// Render notifications with filters
+function renderNotifications() {
+    const container = document.getElementById('notifications-list');
+    const priorityFilter = document.getElementById('filter-priority').value;
+    const typeFilter = document.getElementById('filter-type').value;
+    
+    let filtered = allNotifications;
+    
+    // Apply priority filter
+    if (priorityFilter !== 'all') {
+        filtered = filtered.filter(n => n.priority === priorityFilter);
+    }
+    
+    // Apply type filter
+    if (typeFilter !== 'all') {
+        filtered = filtered.filter(n => n.type === typeFilter || n.notification_type === typeFilter);
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="p-12 text-center text-gray-400">
+                <div class="text-4xl mb-4">🔔</div>
+                <p class="text-lg font-medium text-gray-600">No notifications</p>
+                <p class="text-sm">You're all caught up!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = filtered.map(n => renderNotification(n)).join('');
+}
+
+// Render single notification
+function renderNotification(n) {
+    const priority = n.priority || 'low';
+    const type = n.type || n.notification_type || 'system';
+    const isUnread = !n.is_read;
+    
+    return `
+        <div class="notification-item p-4 ${isUnread ? 'unread priority-' + priority : ''}" 
+            data-id="${n.id}"
+            onclick="viewNotification('${n.id}')">
+            <div class="flex items-start space-x-4">
+                <!-- Icon -->
+                <div class="flex-shrink-0 text-2xl">
+                    ${TYPE_ICONS[type] || '📬'}
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="font-medium text-gray-900 ${isUnread ? '' : 'text-gray-600'}">${escapeHtml(n.title || 'Notification')}</h3>
+                        <span class="text-xs text-gray-400">${timeAgo(n.created_at)}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml(n.message || n.body || '')}</p>
+                    
+                    <!-- Tags -->
+                    <div class="mt-2 flex items-center space-x-2">
+                        <span class="text-xs px-2 py-0.5 rounded ${getPriorityClass(priority)}">${priority}</span>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">${type}</span>
+                        ${n.entity_type ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">${n.entity_type}</span>` : ''}
+                    </div>
+                    
+                    <!-- Actions -->
+                    ${n.actions && n.actions.length > 0 ? `
+                        <div class="mt-3 flex space-x-2">
+                            ${n.actions.map(a => `
+                                <button onclick="event.stopPropagation(); executeAction('${n.id}', '${a.action}')"
+                                    class="text-xs ${a.primary ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'} px-3 py-1 rounded hover:opacity-80 transition-opacity">
+                                    ${a.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Status -->
+                <div class="flex-shrink-0">
+                    ${isUnread ? `
+                        <button onclick="event.stopPropagation(); markRead('${n.id}')" 
+                            class="text-blue-500 hover:text-blue-700" title="Mark as read">
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" r="5"/>
+                            </svg>
+                        </button>
+                    ` : `
+                        <span class="text-gray-300">✓</span>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// View notification detail
+function viewNotification(id) {
+    const notification = allNotifications.find(n => n.id === id);
+    if (!notification) return;
+    
+    // Mark as read
+    if (!notification.is_read) {
+        markRead(id);
+    }
+    
+    // If has entity link, navigate there
+    if (notification.entity_type && notification.entity_id) {
+        const url = getEntityUrl(notification.entity_type, notification.entity_id);
+        if (url) {
+            window.location.href = url;
+            return;
+        }
+    }
+    
+    // Otherwise just show it's been viewed
+    console.log('Viewed notification:', notification);
+}
+
+// Mark notification as read
+async function markRead(id) {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        await fetch(`/api/jarvis/notifications/${id}/read`, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        
+        // Update local state
+        const notification = allNotifications.find(n => n.id === id);
+        if (notification) {
+            notification.is_read = true;
+        }
+        
+        renderNotifications();
+        updateUnreadCount();
+        
+    } catch (error) {
+        console.error('Failed to mark as read:', error);
+    }
+}
+
+// Mark all as read
+async function markAllRead() {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        await fetch('/api/jarvis/notifications/mark-all-read', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        
+        // Update local state
+        allNotifications.forEach(n => n.is_read = true);
+        renderNotifications();
+        updateUnreadCount();
+        
+    } catch (error) {
+        console.error('Failed to mark all as read:', error);
+        alert('Failed to mark all as read');
+    }
+}
+
+// Execute notification action
+async function executeAction(notificationId, action) {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch(`/api/jarvis/notifications/${notificationId}/action`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ action: action })
+        });
+        
+        if (response.ok) {
+            loadNotifications();
+        } else {
+            throw new Error('Action failed');
+        }
+        
+    } catch (error) {
+        console.error('Action failed:', error);
+        alert('Action failed. Please try again.');
+    }
+}
+
+// Filter helpers
+function filterByPriority() {
+    renderNotifications();
+}
+
+function filterByType() {
+    renderNotifications();
+}
+
+// Update unread count
+function updateUnreadCount() {
+    const unreadCount = allNotifications.filter(n => !n.is_read).length;
+    document.getElementById('unread-count').textContent = unreadCount;
+}
+
+// Get entity URL
+function getEntityUrl(entityType, entityId) {
+    switch (entityType) {
+        case 'queue_item':
+            return `/caseyos/queue/${entityId}`;
+        case 'signal':
+            return `/caseyos/signals`;
+        case 'execution':
+            return `/caseyos/executions`;
+        default:
+            return null;
+    }
+}
+
+// Utility functions
+function getPriorityClass(priority) {
+    switch (priority) {
+        case 'high': return 'bg-red-100 text-red-700';
+        case 'medium': return 'bg-amber-100 text-amber-700';
+        case 'low': return 'bg-green-100 text-green-700';
+        default: return 'bg-gray-100 text-gray-600';
+    }
+}
+
+function timeAgo(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return date.toLocaleDateString();
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCookie(name) {
+    let value = "; " + document.cookie;
+    let parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+    return '';
+}
+</script>
+{% endblock %}

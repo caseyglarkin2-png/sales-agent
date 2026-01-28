@@ -126,3 +126,12 @@ async def integrations_hub(request: Request):
     Connect and manage third-party app connections.
     """
     return templates.TemplateResponse("integrations.html", {"request": request, "active_tab": "integrations"})
+
+
+@router.get("/caseyos/notifications", response_class=HTMLResponse)
+async def notifications_center(request: Request):
+    """
+    Notifications Center - Sprint 47
+    View and manage notifications, signals, and system events.
+    """
+    return templates.TemplateResponse("notifications.html", {"request": request, "active_tab": "notifications"})
