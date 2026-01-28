@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - CaseyOS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .metric-card {
+        transition: all 0.2s ease;
+    }
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .trend-up { color: #22c55e; }
+    .trend-down { color: #ef4444; }
+    .trend-neutral { color: #9ca3af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">📈 Analytics</h1>
+            <p class="text-gray-600">System performance metrics and insights</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <!-- Time Window -->
+            <select id="time-window" onchange="loadAllData()" 
+                class="border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                <option value="hour">Last Hour</option>
+                <option value="day" selected>Last 24 Hours</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+            </select>
+            <button onclick="loadAllData()" 
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Key Metrics Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="metric-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Completion Rate</p>
+                    <p id="metric-completion" class="text-3xl font-bold text-gray-900">--%</p>
+                </div>
+                <div class="text-4xl">✅</div>
+            </div>
+            <p id="metric-completion-trend" class="text-sm mt-2 trend-neutral">Loading...</p>
+        </div>
+        
+        <div class="metric-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Throughput</p>
+                    <p id="metric-throughput" class="text-3xl font-bold text-gray-900">--</p>
+                </div>
+                <div class="text-4xl">⚡</div>
+            </div>
+            <p id="metric-throughput-trend" class="text-sm mt-2 trend-neutral">per hour</p>
+        </div>
+        
+        <div class="metric-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Error Rate</p>
+                    <p id="metric-errors" class="text-3xl font-bold text-gray-900">--%</p>
+                </div>
+                <div class="text-4xl">⚠️</div>
+            </div>
+            <p id="metric-errors-trend" class="text-sm mt-2 trend-neutral">Loading...</p>
+        </div>
+        
+        <div class="metric-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Avg Duration</p>
+                    <p id="metric-duration" class="text-3xl font-bold text-gray-900">--s</p>
+                </div>
+                <div class="text-4xl">⏱️</div>
+            </div>
+            <p id="metric-duration-trend" class="text-sm mt-2 trend-neutral">per task</p>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Performance Trend Chart -->
+        <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h3 class="font-semibold text-gray-900 mb-4">Performance Trend</h3>
+            <div style="height: 250px;">
+                <canvas id="trend-chart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Mode Distribution Chart -->
+        <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h3 class="font-semibold text-gray-900 mb-4">Mode Distribution</h3>
+            <div style="height: 250px;">
+                <canvas id="mode-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Error Analysis -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Error Analysis</h3>
+                <span id="error-count" class="text-sm text-gray-500">-- errors</span>
+            </div>
+            <div id="error-list" class="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
+                <div class="p-4 text-center text-gray-400">Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Recovery Stats -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Recovery Status</h3>
+                <button onclick="autoRecover()" class="text-sm bg-primary text-white px-3 py-1 rounded hover:bg-indigo-700">
+                    Auto-Recover
+                </button>
+            </div>
+            <div id="recovery-stats" class="p-4">
+                <div class="text-center text-gray-400">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Chart instances
+let trendChart = null;
+let modeChart = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    loadAllData();
+});
+
+// Initialize charts
+function initCharts() {
+    // Trend chart
+    const trendCtx = document.getElementById('trend-chart').getContext('2d');
+    trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Completion Rate',
+                data: [],
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 100 },
+                x: { display: true }
+            }
+        }
+    });
+    
+    // Mode distribution chart
+    const modeCtx = document.getElementById('mode-chart').getContext('2d');
+    modeChart = new Chart(modeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Draft Only', 'Live Send', 'Paused'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ['#60a5fa', '#22c55e', '#f59e0b']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' }
+            }
+        }
+    });
+}
+
+// Load all data
+async function loadAllData() {
+    const timeWindow = document.getElementById('time-window').value;
+    
+    await Promise.all([
+        loadMetrics(timeWindow),
+        loadTrends(timeWindow),
+        loadModeDistribution(timeWindow),
+        loadErrors(timeWindow),
+        loadRecoveryStats()
+    ]);
+}
+
+// Load workflow metrics
+async function loadMetrics(timeWindow) {
+    try {
+        const response = await fetch(`/api/analytics/metrics?time_window=${timeWindow}`);
+        if (!response.ok) throw new Error('Failed to load metrics');
+        const data = await response.json();
+        
+        document.getElementById('metric-completion').textContent = 
+            (data.completion_rate || 0).toFixed(1) + '%';
+        document.getElementById('metric-throughput').textContent = 
+            (data.throughput_per_hour || 0).toFixed(1);
+        document.getElementById('metric-errors').textContent = 
+            (data.error_rate || 0).toFixed(1) + '%';
+        document.getElementById('metric-duration').textContent = 
+            (data.avg_duration_seconds || 0).toFixed(1) + 's';
+        
+        // Update trends
+        updateTrendIndicator('metric-completion-trend', data.completion_trend);
+        updateTrendIndicator('metric-errors-trend', data.error_trend, true);
+        
+    } catch (error) {
+        console.error('Failed to load metrics:', error);
+        document.getElementById('metric-completion').textContent = '--';
+        document.getElementById('metric-throughput').textContent = '--';
+        document.getElementById('metric-errors').textContent = '--';
+        document.getElementById('metric-duration').textContent = '--';
+    }
+}
+
+// Load performance trends
+async function loadTrends(timeWindow) {
+    try {
+        const granularity = timeWindow === 'hour' ? 'hour' : (timeWindow === 'day' ? 'hour' : 'day');
+        const points = timeWindow === 'hour' ? 12 : (timeWindow === 'day' ? 24 : 7);
+        
+        const response = await fetch(`/api/analytics/trends/completion_rate?granularity=${granularity}&points=${points}`);
+        if (!response.ok) throw new Error('Failed to load trends');
+        const data = await response.json();
+        
+        // Update chart
+        trendChart.data.labels = data.labels || [];
+        trendChart.data.datasets[0].data = data.values || [];
+        trendChart.update();
+        
+    } catch (error) {
+        console.error('Failed to load trends:', error);
+        trendChart.data.labels = [];
+        trendChart.data.datasets[0].data = [];
+        trendChart.update();
+    }
+}
+
+// Load mode distribution
+async function loadModeDistribution(timeWindow) {
+    try {
+        const response = await fetch(`/api/analytics/mode-distribution?time_window=${timeWindow}`);
+        if (!response.ok) throw new Error('Failed to load distribution');
+        const data = await response.json();
+        
+        modeChart.data.datasets[0].data = [
+            data.draft_only || 0,
+            data.live_send || 0,
+            data.paused || 0
+        ];
+        modeChart.update();
+        
+    } catch (error) {
+        console.error('Failed to load mode distribution:', error);
+        modeChart.data.datasets[0].data = [0, 0, 0];
+        modeChart.update();
+    }
+}
+
+// Load error analysis
+async function loadErrors(timeWindow) {
+    const container = document.getElementById('error-list');
+    
+    try {
+        const response = await fetch(`/api/analytics/errors?time_window=${timeWindow}&limit=10`);
+        if (!response.ok) throw new Error('Failed to load errors');
+        const data = await response.json();
+        
+        document.getElementById('error-count').textContent = `${data.total_errors || 0} errors`;
+        
+        const errors = data.top_errors || [];
+        if (errors.length === 0) {
+            container.innerHTML = `
+                <div class="p-8 text-center text-gray-400">
+                    <div class="text-3xl mb-2">✨</div>
+                    No errors in this time period
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = errors.map(e => `
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-medium text-gray-900">${escapeHtml(e.error_type || 'Unknown')}</span>
+                    <span class="text-sm bg-red-100 text-red-700 px-2 py-0.5 rounded">${e.count} occurrences</span>
+                </div>
+                <p class="text-sm text-gray-600 truncate">${escapeHtml(e.message || '')}</p>
+                <p class="text-xs text-gray-400 mt-1">Last: ${timeAgo(e.last_occurrence)}</p>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Failed to load errors:', error);
+        container.innerHTML = `
+            <div class="p-4 text-center text-red-500">Failed to load errors</div>
+        `;
+    }
+}
+
+// Load recovery stats
+async function loadRecoveryStats() {
+    const container = document.getElementById('recovery-stats');
+    
+    try {
+        const response = await fetch('/api/analytics/recovery/stats');
+        if (!response.ok) throw new Error('Failed to load recovery stats');
+        const data = await response.json();
+        
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <p class="text-2xl font-bold text-gray-900">${data.pending_recovery || 0}</p>
+                    <p class="text-sm text-gray-500">Pending Recovery</p>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <p class="text-2xl font-bold text-gray-900">${(data.recovery_success_rate || 0).toFixed(0)}%</p>
+                    <p class="text-sm text-gray-500">Recovery Rate</p>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <p class="text-2xl font-bold text-gray-900">${data.auto_recovered || 0}</p>
+                    <p class="text-sm text-gray-500">Auto-Recovered</p>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <p class="text-2xl font-bold text-gray-900">${data.manual_intervention || 0}</p>
+                    <p class="text-sm text-gray-500">Manual Required</p>
+                </div>
+            </div>
+            ${data.pending_recovery > 0 ? `
+                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                    <strong>${data.pending_recovery}</strong> items eligible for auto-recovery
+                </div>
+            ` : ''}
+        `;
+        
+    } catch (error) {
+        console.error('Failed to load recovery stats:', error);
+        container.innerHTML = `
+            <div class="text-center text-gray-400 p-4">
+                Recovery stats unavailable
+            </div>
+        `;
+    }
+}
+
+// Auto-recover failed items
+async function autoRecover() {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch('/api/analytics/recovery/auto-recover', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            alert(`Recovered ${data.recovered || 0} items`);
+            loadAllData();
+        } else {
+            throw new Error('Recovery failed');
+        }
+    } catch (error) {
+        console.error('Auto-recovery failed:', error);
+        alert('Auto-recovery failed. Please try again.');
+    }
+}
+
+// Update trend indicator
+function updateTrendIndicator(elementId, trend, invertColors = false) {
+    const el = document.getElementById(elementId);
+    if (!trend || trend === 0) {
+        el.textContent = 'No change';
+        el.className = 'text-sm mt-2 trend-neutral';
+    } else if (trend > 0) {
+        el.textContent = `↑ ${trend.toFixed(1)}%`;
+        el.className = invertColors ? 'text-sm mt-2 trend-down' : 'text-sm mt-2 trend-up';
+    } else {
+        el.textContent = `↓ ${Math.abs(trend).toFixed(1)}%`;
+        el.className = invertColors ? 'text-sm mt-2 trend-up' : 'text-sm mt-2 trend-down';
+    }
+}
+
+// Utility functions
+function timeAgo(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    return Math.floor(seconds / 86400) + 'd ago';
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCookie(name) {
+    let value = "; " + document.cookie;
+    let parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+    return '';
+}
+</script>
+{% endblock %}

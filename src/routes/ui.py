@@ -135,3 +135,12 @@ async def notifications_center(request: Request):
     View and manage notifications, signals, and system events.
     """
     return templates.TemplateResponse("notifications.html", {"request": request, "active_tab": "notifications"})
+
+
+@router.get("/caseyos/analytics", response_class=HTMLResponse)
+async def analytics_dashboard(request: Request):
+    """
+    Analytics Dashboard - Sprint 48
+    System metrics, performance trends, error analysis, recovery stats.
+    """
+    return templates.TemplateResponse("analytics.html", {"request": request, "active_tab": "analytics"})
