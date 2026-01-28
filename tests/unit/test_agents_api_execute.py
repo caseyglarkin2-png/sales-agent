@@ -357,3 +357,159 @@ class TestCancelExecutionEndpoint:
                 )
 
         assert response.status_code == 404
+
+
+class TestRetryExecutionEndpoint:
+    """Test POST /api/agents/executions/{execution_id}/retry - Sprint 42.7."""
+
+    @pytest.mark.asyncio
+    async def test_retry_failed_execution_success(self):
+        """Retry should create new execution from failed one."""
+        from src.main import app
+        from src.models.agent_execution import AgentExecution
+
+        # Mock original failed execution
+        original_execution = MagicMock(spec=AgentExecution)
+        original_execution.id = 42
+        original_execution.agent_name = "ProspectingAgent"
+        original_execution.domain = "sales"
+        original_execution.status = ExecutionStatus.FAILED.value
+        original_execution.input_context = {"lead_id": 123}
+        original_execution.triggered_by = "user123"
+
+        # Mock new execution
+        new_execution = MagicMock(spec=AgentExecution)
+        new_execution.id = 43
+        new_execution.agent_name = "ProspectingAgent"
+        new_execution.domain = "sales"
+        new_execution.status = ExecutionStatus.PENDING.value
+        new_execution.trigger_source = "retry:42"
+        new_execution.triggered_by = "user123"
+        new_execution.created_at = datetime.utcnow()
+
+        # Mock agent meta
+        mock_registry = MagicMock()
+        agent_meta = MagicMock()
+        agent_meta.name = "ProspectingAgent"
+        agent_meta.class_name = "ProspectingAgent"
+        agent_meta.domain = "sales"
+        agent_meta.module_path = "src.agents.prospecting"
+        mock_registry.agents = {"ProspectingAgent": agent_meta}
+
+        mock_service = MagicMock()
+        mock_service.get_execution = AsyncMock(return_value=original_execution)
+        mock_service.start_execution = AsyncMock(return_value=new_execution)
+
+        with patch("src.routes.agents_api.get_agent_registry", return_value=mock_registry):
+            with patch("src.routes.agents_api.get_execution_service", return_value=mock_service):
+                with patch("src.routes.agents_api.queue_agent_execution", return_value="celery-task-id-123"):
+                    async with AsyncClient(
+                        transport=ASGITransport(app=app),
+                        base_url="http://test",
+                    ) as client:
+                        response = await client.post(
+                            "/api/agents/executions/42/retry",
+                            headers=get_csrf_headers(),
+                        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["execution_id"] == 43
+        assert "Retry" in data["message"]
+
+    @pytest.mark.asyncio
+    async def test_retry_execution_not_found(self):
+        """Retry non-existent execution should return 404."""
+        from src.main import app
+
+        mock_service = MagicMock()
+        mock_service.get_execution = AsyncMock(return_value=None)
+
+        with patch("src.routes.agents_api.get_execution_service", return_value=mock_service):
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                response = await client.post(
+                    "/api/agents/executions/999/retry",
+                    headers=get_csrf_headers(),
+                )
+
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_retry_success_execution_fails(self):
+        """Retry should fail for execution that succeeded."""
+        from src.main import app
+        from src.models.agent_execution import AgentExecution
+
+        # Mock successful execution (not retryable)
+        success_execution = MagicMock(spec=AgentExecution)
+        success_execution.id = 42
+        success_execution.status = ExecutionStatus.SUCCESS.value
+
+        mock_service = MagicMock()
+        mock_service.get_execution = AsyncMock(return_value=success_execution)
+
+        with patch("src.routes.agents_api.get_execution_service", return_value=mock_service):
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                response = await client.post(
+                    "/api/agents/executions/42/retry",
+                    headers=get_csrf_headers(),
+                )
+
+        assert response.status_code == 400
+        assert "Cannot retry" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_retry_timed_out_execution_success(self):
+        """Retry should work for timed out executions."""
+        from src.main import app
+        from src.models.agent_execution import AgentExecution
+
+        # Mock timed out execution
+        timed_out_execution = MagicMock(spec=AgentExecution)
+        timed_out_execution.id = 42
+        timed_out_execution.agent_name = "ProspectingAgent"
+        timed_out_execution.domain = "sales"
+        timed_out_execution.status = ExecutionStatus.TIMED_OUT.value
+        timed_out_execution.input_context = {}
+        timed_out_execution.triggered_by = None
+
+        new_execution = MagicMock(spec=AgentExecution)
+        new_execution.id = 43
+        new_execution.agent_name = "ProspectingAgent"
+        new_execution.domain = "sales"
+        new_execution.status = ExecutionStatus.PENDING.value
+        new_execution.trigger_source = "retry:42"
+        new_execution.triggered_by = None
+        new_execution.created_at = datetime.utcnow()
+
+        mock_registry = MagicMock()
+        agent_meta = MagicMock()
+        agent_meta.name = "ProspectingAgent"
+        agent_meta.class_name = "ProspectingAgent"
+        agent_meta.domain = "sales"
+        agent_meta.module_path = "src.agents.prospecting"
+        mock_registry.agents = {"ProspectingAgent": agent_meta}
+
+        mock_service = MagicMock()
+        mock_service.get_execution = AsyncMock(return_value=timed_out_execution)
+        mock_service.start_execution = AsyncMock(return_value=new_execution)
+
+        with patch("src.routes.agents_api.get_agent_registry", return_value=mock_registry):
+            with patch("src.routes.agents_api.get_execution_service", return_value=mock_service):
+                with patch("src.routes.agents_api.queue_agent_execution", return_value="celery-task-id"):
+                    async with AsyncClient(
+                        transport=ASGITransport(app=app),
+                        base_url="http://test",
+                    ) as client:
+                        response = await client.post(
+                            "/api/agents/executions/42/retry",
+                            headers=get_csrf_headers(),
+                        )
+
+        assert response.status_code == 200

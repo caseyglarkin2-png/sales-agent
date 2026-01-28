@@ -433,3 +433,77 @@ async def cancel_execution(
         "message": f"Execution cancelled: {reason}",
     }
 
+
+@router.post("/executions/{execution_id}/retry", response_model=ExecutionResponse)
+async def retry_execution(
+    execution_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retry a failed or timed out execution.
+    
+    Creates a new execution with the same agent and context.
+    Only works for executions with status: failed, timed_out, cancelled.
+    """
+    service = get_execution_service(db)
+    registry = get_agent_registry()
+    
+    # Get the original execution
+    original = await service.get_execution(execution_id)
+    if not original:
+        raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
+    
+    # Check if retryable
+    retryable_statuses = [
+        ExecutionStatus.FAILED.value, 
+        ExecutionStatus.TIMED_OUT.value, 
+        ExecutionStatus.CANCELLED.value,
+    ]
+    if original.status not in retryable_statuses:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot retry execution with status '{original.status}'. Only failed/timed_out/cancelled can be retried."
+        )
+    
+    # Find the agent in registry
+    agent_meta = None
+    for meta in registry.agents.values():
+        if meta.class_name == original.agent_name:
+            agent_meta = meta
+            break
+    
+    if not agent_meta:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Agent '{original.agent_name}' is no longer registered"
+        )
+    
+    # Create new execution
+    new_execution = await service.start_execution(
+        agent_name=agent_meta.class_name,
+        domain=agent_meta.domain,
+        input_context=original.input_context or {},
+        trigger_source=f"retry:{execution_id}",
+        triggered_by=original.triggered_by,
+    )
+    
+    # Queue for execution
+    task_id = queue_agent_execution(
+        execution_id=new_execution.id,
+        agent_class_name=agent_meta.class_name,
+        module_path=agent_meta.module_path,
+        context=original.input_context or {},
+    )
+    
+    logger.info(f"Retry execution {new_execution.id} created from {execution_id}")
+    
+    return ExecutionResponse(
+        execution_id=new_execution.id,
+        agent_name=agent_meta.name,
+        domain=agent_meta.domain,
+        status=new_execution.status,
+        trigger_source=new_execution.trigger_source,
+        triggered_by=new_execution.triggered_by,
+        created_at=new_execution.created_at,
+        message=f"Retry of execution #{execution_id} queued (task: {task_id[:8]}...)",
+    )

@@ -431,9 +431,58 @@
     async function retryExecution() {
         if (!currentExecutionId) return;
         
-        // TODO: Implement retry - will need to get agent name and input context
-        // and call the execute endpoint again
-        alert('Retry functionality will be added in Sprint 42.7');
+        const retryBtn = document.querySelector('#modal-retry-section button');
+        const originalText = retryBtn.textContent;
+        retryBtn.textContent = '⏳ Retrying...';
+        retryBtn.disabled = true;
+        
+        try {
+            const csrfToken = getCookie('csrf_token') || '';
+            const response = await fetch(`${API_BASE}/executions/${currentExecutionId}/retry`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Show success message
+                retryBtn.textContent = '✅ Retry Queued!';
+                retryBtn.className = 'w-full px-4 py-2 bg-green-600 text-white rounded-lg';
+                
+                // Refresh the executions list after a short delay
+                setTimeout(() => {
+                    closeModal();
+                    refreshExecutions();
+                }, 1500);
+            } else {
+                retryBtn.textContent = '❌ ' + (data.detail || 'Retry failed');
+                retryBtn.className = 'w-full px-4 py-2 bg-red-600 text-white rounded-lg';
+                setTimeout(() => {
+                    retryBtn.textContent = originalText;
+                    retryBtn.className = 'w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors';
+                    retryBtn.disabled = false;
+                }, 3000);
+            }
+        } catch (error) {
+            retryBtn.textContent = '❌ Network error';
+            retryBtn.className = 'w-full px-4 py-2 bg-red-600 text-white rounded-lg';
+            setTimeout(() => {
+                retryBtn.textContent = originalText;
+                retryBtn.className = 'w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors';
+                retryBtn.disabled = false;
+            }, 3000);
+        }
+    }
+
+    function getCookie(name) {
+        let value = "; " + document.cookie;
+        let parts = value.split("; " + name + "=");
+        if (parts.length == 2) return parts.pop().split(";").shift();
+        return '';
     }
 
     // Close modal on escape key

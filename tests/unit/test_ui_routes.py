@@ -63,6 +63,26 @@ class TestExecutionsUIRoute:
         assert "exec-modal" in response.text
 
     @pytest.mark.asyncio
+    async def test_executions_page_has_retry_button(self, async_client):
+        """Executions page includes retry button in modal."""
+        async with async_client as client:
+            response = await client.get("/caseyos/executions")
+        
+        assert response.status_code == 200
+        assert "retryExecution" in response.text
+        assert "modal-retry-section" in response.text
+
+    @pytest.mark.asyncio
+    async def test_executions_page_has_error_display(self, async_client):
+        """Executions page includes error traceback display."""
+        async with async_client as client:
+            response = await client.get("/caseyos/executions")
+        
+        assert response.status_code == 200
+        assert "modal-error-section" in response.text
+        assert "modal-traceback" in response.text
+
+    @pytest.mark.asyncio
     async def test_executions_nav_link(self, async_client):
         """Executions link appears in navigation."""
         async with async_client as client:
