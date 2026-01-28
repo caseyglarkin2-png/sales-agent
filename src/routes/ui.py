@@ -117,3 +117,12 @@ async def memory_browser(request: Request):
     View and search Jarvis conversation sessions and context.
     """
     return templates.TemplateResponse("memory.html", {"request": request, "active_tab": "memory"})
+
+
+@router.get("/caseyos/integrations", response_class=HTMLResponse)
+async def integrations_hub(request: Request):
+    """
+    Integrations Hub - Sprint 46
+    Connect and manage third-party app connections.
+    """
+    return templates.TemplateResponse("integrations.html", {"request": request, "active_tab": "integrations"})

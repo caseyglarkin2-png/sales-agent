@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}Integrations - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .integration-card {
+        transition: all 0.2s ease;
+    }
+    .integration-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .status-active { background-color: #22c55e; }
+    .status-error { background-color: #ef4444; }
+    .status-disconnected { background-color: #9ca3af; }
+    .status-coming_soon { background-color: #f59e0b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">🔌 Integrations</h1>
+            <p class="text-gray-600">Connect and manage third-party app connections</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <!-- Status Summary -->
+            <div id="status-summary" class="flex items-center space-x-4 text-sm">
+                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                    <span id="connected-count">0</span> connected
+                </span>
+                <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                    <span id="available-count">0</span> available
+                </span>
+            </div>
+            <!-- Refresh Button -->
+            <button onclick="loadIntegrations()" 
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Connected Integrations -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Connected</h2>
+        <div id="connected-integrations" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Populated via JS -->
+            <div class="p-8 text-center text-gray-400 col-span-full">
+                Loading connected integrations...
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Integrations -->
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Available</h2>
+        <div id="available-integrations" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Populated via JS -->
+            <div class="p-8 text-center text-gray-400 col-span-full">
+                Loading available integrations...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Integration Detail Modal -->
+<div id="integration-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span id="modal-icon" class="text-3xl">🔌</span>
+                    <div>
+                        <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Integration</h3>
+                        <p id="modal-status" class="text-sm text-gray-500">Status</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <p id="modal-description" class="text-gray-600 mb-4">Description</p>
+            
+            <h4 class="font-medium text-gray-900 mb-2">Features</h4>
+            <ul id="modal-features" class="list-disc list-inside text-sm text-gray-600 mb-6">
+                <!-- Features listed here -->
+            </ul>
+            
+            <!-- Connection Details (if connected) -->
+            <div id="modal-connection-details" class="hidden bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 class="font-medium text-gray-900 mb-2">Connection Details</h4>
+                <div class="text-sm text-gray-600 space-y-1">
+                    <p>Connected: <span id="modal-connected-at">-</span></p>
+                    <p>Last sync: <span id="modal-last-sync">-</span></p>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button id="modal-connect-btn" onclick="connectIntegration()" 
+                    class="flex-1 bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                    Connect
+                </button>
+                <button id="modal-disconnect-btn" onclick="disconnectIntegration()" 
+                    class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors hidden">
+                    Disconnect
+                </button>
+                <button id="modal-sync-btn" onclick="syncIntegration()" 
+                    class="flex-1 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium transition-colors hidden">
+                    Sync Now
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// State
+let integrations = {};
+let connectedStatus = {};
+let currentIntegration = null;
+
+// Icons for integrations
+const ICONS = {
+    'google-drive': '📁',
+    'google-workspace': '🔧',
+    'hubspot': '🟠',
+    'slack': '💬',
+    'youtube': '▶️',
+    'yardflow-hitlist': '📋'
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadIntegrations();
+});
+
+// Load integrations
+async function loadIntegrations() {
+    try {
+        // Load available integrations
+        const availableRes = await fetch('/api/integrations/available');
+        const available = await availableRes.json();
+        
+        // Store in object for lookup
+        available.forEach(i => {
+            integrations[i.app_name] = i;
+        });
+        
+        // Load connection status
+        const statusRes = await fetch('/api/integrations/status');
+        const status = await statusRes.json();
+        connectedStatus = status.connected || {};
+        
+        // Update counts
+        document.getElementById('connected-count').textContent = Object.keys(connectedStatus).length;
+        document.getElementById('available-count').textContent = available.length;
+        
+        // Render connected
+        renderConnected();
+        
+        // Render available (not connected)
+        renderAvailable(available);
+        
+    } catch (error) {
+        console.error('Failed to load integrations:', error);
+        document.getElementById('connected-integrations').innerHTML = `
+            <div class="p-8 text-center text-red-500 col-span-full">
+                Failed to load integrations. <button onclick="loadIntegrations()" class="underline">Retry</button>
+            </div>
+        `;
+    }
+}
+
+// Render connected integrations
+function renderConnected() {
+    const container = document.getElementById('connected-integrations');
+    const connected = Object.values(connectedStatus);
+    
+    if (connected.length === 0) {
+        container.innerHTML = `
+            <div class="p-6 text-center text-gray-400 col-span-full bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <p class="mb-2">No integrations connected yet</p>
+                <p class="text-sm">Connect an integration below to get started</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = connected.map(conn => {
+        const config = integrations[conn.app_name] || { display_name: conn.app_name, description: '' };
+        return `
+            <div class="integration-card bg-white rounded-lg border border-gray-200 p-4 cursor-pointer" 
+                onclick="openModal('${conn.app_name}')">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">${ICONS[conn.app_name] || '🔌'}</span>
+                        <div>
+                            <h3 class="font-medium text-gray-900">${config.display_name}</h3>
+                            <div class="flex items-center space-x-2">
+                                <span class="status-dot status-${conn.status}"></span>
+                                <span class="text-xs text-gray-500 capitalize">${conn.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="text-green-500">✓</span>
+                </div>
+                <p class="text-sm text-gray-600 line-clamp-2">${config.description}</p>
+                ${conn.last_sync ? `<p class="text-xs text-gray-400 mt-2">Last sync: ${timeAgo(conn.last_sync)}</p>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// Render available integrations
+function renderAvailable(available) {
+    const container = document.getElementById('available-integrations');
+    
+    // Filter out already connected
+    const notConnected = available.filter(i => !connectedStatus[i.app_name]);
+    
+    if (notConnected.length === 0) {
+        container.innerHTML = `
+            <div class="p-6 text-center text-gray-400 col-span-full">
+                All available integrations are connected! 🎉
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = notConnected.map(config => `
+        <div class="integration-card bg-white rounded-lg border border-gray-200 p-4 cursor-pointer ${config.status === 'coming_soon' ? 'opacity-60' : ''}" 
+            onclick="openModal('${config.app_name}')">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">${ICONS[config.app_name] || '🔌'}</span>
+                    <div>
+                        <h3 class="font-medium text-gray-900">${config.display_name}</h3>
+                        <div class="flex items-center space-x-2">
+                            <span class="status-dot status-${config.status}"></span>
+                            <span class="text-xs text-gray-500 capitalize">${config.status.replace('_', ' ')}</span>
+                        </div>
+                    </div>
+                </div>
+                ${config.status === 'coming_soon' ? '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Soon</span>' : ''}
+            </div>
+            <p class="text-sm text-gray-600 line-clamp-2">${config.description}</p>
+            <div class="mt-3 flex flex-wrap gap-1">
+                ${config.features.slice(0, 3).map(f => `
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">${f}</span>
+                `).join('')}
+                ${config.features.length > 3 ? `<span class="text-xs text-gray-400">+${config.features.length - 3} more</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Open modal
+function openModal(appName) {
+    currentIntegration = appName;
+    const config = integrations[appName];
+    const connected = connectedStatus[appName];
+    
+    if (!config) return;
+    
+    document.getElementById('modal-icon').textContent = ICONS[appName] || '🔌';
+    document.getElementById('modal-title').textContent = config.display_name;
+    document.getElementById('modal-description').textContent = config.description;
+    document.getElementById('modal-status').textContent = connected ? 'Connected' : (config.status === 'coming_soon' ? 'Coming Soon' : 'Not Connected');
+    
+    // Features
+    document.getElementById('modal-features').innerHTML = config.features.map(f => `<li>${f}</li>`).join('');
+    
+    // Connection details
+    const detailsEl = document.getElementById('modal-connection-details');
+    if (connected) {
+        detailsEl.classList.remove('hidden');
+        document.getElementById('modal-connected-at').textContent = connected.connected_at ? timeAgo(connected.connected_at) : '-';
+        document.getElementById('modal-last-sync').textContent = connected.last_sync ? timeAgo(connected.last_sync) : '-';
+    } else {
+        detailsEl.classList.add('hidden');
+    }
+    
+    // Buttons
+    const connectBtn = document.getElementById('modal-connect-btn');
+    const disconnectBtn = document.getElementById('modal-disconnect-btn');
+    const syncBtn = document.getElementById('modal-sync-btn');
+    
+    if (connected) {
+        connectBtn.classList.add('hidden');
+        disconnectBtn.classList.remove('hidden');
+        syncBtn.classList.remove('hidden');
+    } else {
+        connectBtn.classList.remove('hidden');
+        disconnectBtn.classList.add('hidden');
+        syncBtn.classList.add('hidden');
+        
+        if (config.status === 'coming_soon') {
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Coming Soon';
+            connectBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            connectBtn.disabled = false;
+            connectBtn.textContent = 'Connect';
+            connectBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+    
+    document.getElementById('integration-modal').classList.remove('hidden');
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('integration-modal').classList.add('hidden');
+    currentIntegration = null;
+}
+
+// Connect integration
+async function connectIntegration() {
+    if (!currentIntegration) return;
+    
+    const btn = document.getElementById('modal-connect-btn');
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    
+    try {
+        // Redirect to OAuth
+        window.location.href = `/api/integrations/${currentIntegration}/connect`;
+    } catch (error) {
+        console.error('Connect failed:', error);
+        alert('Failed to connect. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Connect';
+    }
+}
+
+// Disconnect integration
+async function disconnectIntegration() {
+    if (!currentIntegration) return;
+    
+    if (!confirm('Are you sure you want to disconnect this integration?')) return;
+    
+    const btn = document.getElementById('modal-disconnect-btn');
+    btn.disabled = true;
+    btn.textContent = 'Disconnecting...';
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch(`/api/integrations/${currentIntegration}/disconnect`, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        
+        if (response.ok) {
+            closeModal();
+            loadIntegrations();
+        } else {
+            throw new Error('Disconnect failed');
+        }
+    } catch (error) {
+        console.error('Disconnect failed:', error);
+        alert('Failed to disconnect. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Disconnect';
+    }
+}
+
+// Sync integration
+async function syncIntegration() {
+    if (!currentIntegration) return;
+    
+    const btn = document.getElementById('modal-sync-btn');
+    btn.disabled = true;
+    btn.textContent = 'Syncing...';
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch(`/api/integrations/${currentIntegration}/sync`, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        
+        if (response.ok) {
+            alert('Sync started!');
+            loadIntegrations();
+        } else {
+            throw new Error('Sync failed');
+        }
+    } catch (error) {
+        console.error('Sync failed:', error);
+        alert('Failed to sync. Please try again.');
+    }
+    
+    btn.disabled = false;
+    btn.textContent = 'Sync Now';
+}
+
+// Utility functions
+function timeAgo(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return date.toLocaleDateString();
+}
+
+function getCookie(name) {
+    let value = "; " + document.cookie;
+    let parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+    return '';
+}
+
+// Close modal on escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+
+// Close modal on backdrop click
+document.getElementById('integration-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+{% endblock %}
