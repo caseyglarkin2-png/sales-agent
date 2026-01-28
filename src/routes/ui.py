@@ -153,3 +153,12 @@ async def workflows_hub(request: Request):
     Execute multi-step automated workflows with Gemini and agents.
     """
     return templates.TemplateResponse("workflows.html", {"request": request, "active_tab": "workflows"})
+
+
+@router.get("/caseyos/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """
+    Settings & Configuration - Sprint 50
+    System settings, operation mode, auto-approval rules, notifications.
+    """
+    return templates.TemplateResponse("settings.html", {"request": request, "active_tab": "settings"})

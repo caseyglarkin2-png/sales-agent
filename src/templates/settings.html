@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .setting-card {
+        transition: all 0.2s ease;
+    }
+    .setting-card:hover {
+        border-color: #4f46e5;
+    }
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 24px;
+    }
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #d1d5db;
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+        background-color: #4f46e5;
+    }
+    input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+    }
+    .danger-zone {
+        border: 2px solid #ef4444;
+        background: #fef2f2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">⚙️ Settings</h1>
+            <p class="text-gray-600">System configuration and preferences</p>
+        </div>
+        <button onclick="loadAllSettings()" 
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
+            ↻ Refresh
+        </button>
+    </div>
+
+    <!-- Settings Tabs -->
+    <div class="border-b border-gray-200">
+        <nav class="flex space-x-8">
+            <button onclick="showTab('general')" data-tab="general"
+                class="tab-btn border-b-2 border-primary text-gray-900 px-1 pb-4 text-sm font-medium">
+                General
+            </button>
+            <button onclick="showTab('operations')" data-tab="operations"
+                class="tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 px-1 pb-4 text-sm font-medium">
+                Operations Mode
+            </button>
+            <button onclick="showTab('rules')" data-tab="rules"
+                class="tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 px-1 pb-4 text-sm font-medium">
+                Auto-Approval Rules
+            </button>
+            <button onclick="showTab('notifications')" data-tab="notifications"
+                class="tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 px-1 pb-4 text-sm font-medium">
+                Notifications
+            </button>
+            <button onclick="showTab('danger')" data-tab="danger"
+                class="tab-btn border-b-2 border-transparent text-red-500 hover:text-red-700 px-1 pb-4 text-sm font-medium">
+                ⚠️ Danger Zone
+            </button>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="flex-1 overflow-y-auto">
+        <!-- General Tab -->
+        <div id="tab-general" class="tab-content space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- System Status -->
+                <div class="setting-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-semibold text-gray-900 mb-4">System Status</h3>
+                    <div id="system-status" class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Connector Status -->
+                <div class="setting-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-semibold text-gray-900 mb-4">Connectors</h3>
+                    <div id="connector-status" class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Feature Flags -->
+            <div class="setting-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <h3 class="font-semibold text-gray-900 mb-4">Feature Flags</h3>
+                <div id="feature-flags" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="text-gray-400">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operations Mode Tab -->
+        <div id="tab-operations" class="tab-content hidden space-y-4">
+            <!-- Current Mode -->
+            <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Operation Mode</h3>
+                        <p class="text-sm text-gray-500">Control whether the system sends emails or creates drafts only</p>
+                    </div>
+                    <div id="current-mode" class="px-4 py-2 rounded-full text-sm font-medium bg-gray-100">
+                        Loading...
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div id="mode-draft" onclick="setMode('draft_only')"
+                        class="cursor-pointer p-4 rounded-lg border-2 border-gray-200 hover:border-indigo-300">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span class="text-2xl">📝</span>
+                            <span class="font-medium text-gray-900">Draft Only</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Creates email drafts that require manual approval before sending. Safest option for testing and review.</p>
+                    </div>
+                    <div id="mode-send" onclick="setMode('send')"
+                        class="cursor-pointer p-4 rounded-lg border-2 border-gray-200 hover:border-indigo-300">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span class="text-2xl">📤</span>
+                            <span class="font-medium text-gray-900">Send Mode</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Automatically sends approved emails. Requires proper approval rules to be configured.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rate Limits -->
+            <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <h3 class="font-semibold text-gray-900 mb-4">Rate Limits</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="text-sm text-gray-500">Max Sends per Hour</label>
+                        <input type="number" id="rate-hourly" value="100" min="0" max="1000"
+                            class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="text-sm text-gray-500">Max Sends per Day</label>
+                        <input type="number" id="rate-daily" value="500" min="0" max="5000"
+                            class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="text-sm text-gray-500">Error Threshold (%)</label>
+                        <input type="number" id="error-threshold" value="10" min="1" max="50"
+                            class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+                <button onclick="saveRateLimits()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                    Save Rate Limits
+                </button>
+            </div>
+        </div>
+
+        <!-- Auto-Approval Rules Tab -->
+        <div id="tab-rules" class="tab-content hidden space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Auto-Approval Rules</h3>
+                <button onclick="seedDefaultRules()" class="text-sm text-indigo-600 hover:text-indigo-800">
+                    + Seed Default Rules
+                </button>
+            </div>
+            <div id="rules-list" class="space-y-3">
+                <div class="text-gray-400 p-4">Loading rules...</div>
+            </div>
+        </div>
+
+        <!-- Notifications Tab -->
+        <div id="tab-notifications" class="tab-content hidden space-y-4">
+            <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <h3 class="font-semibold text-gray-900 mb-4">Notification Preferences</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-gray-900">Signal Alerts</span>
+                            <p class="text-sm text-gray-500">Get notified when new signals arrive</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="notify-signals" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-gray-900">Approval Requests</span>
+                            <p class="text-sm text-gray-500">Get notified when drafts need approval</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="notify-approvals" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-gray-900">Agent Activity</span>
+                            <p class="text-sm text-gray-500">Get notified when agents complete tasks</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="notify-agents">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-gray-900">System Errors</span>
+                            <p class="text-sm text-gray-500">Get notified about system errors and issues</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="notify-errors" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <button onclick="saveNotificationPrefs()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                    Save Preferences
+                </button>
+            </div>
+        </div>
+
+        <!-- Danger Zone Tab -->
+        <div id="tab-danger" class="tab-content hidden space-y-4">
+            <div class="danger-zone rounded-xl p-6">
+                <h3 class="font-semibold text-red-700 mb-4">⚠️ Danger Zone</h3>
+                <p class="text-sm text-red-600 mb-6">These actions can affect system operation. Use with caution.</p>
+                
+                <div class="space-y-4">
+                    <!-- Emergency Stop -->
+                    <div class="bg-white rounded-lg p-4 border border-red-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-gray-900">Emergency Stop</h4>
+                                <p class="text-sm text-gray-500">Immediately disable all auto-approval and sending</p>
+                            </div>
+                            <button id="emergency-btn" onclick="emergencyStop()"
+                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium">
+                                🛑 Emergency Stop
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resume Operations -->
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-gray-900">Resume Operations</h4>
+                                <p class="text-sm text-gray-500">Re-enable auto-approval after emergency stop</p>
+                            </div>
+                            <button onclick="resumeOperations()"
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium">
+                                ▶ Resume
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Clear Queue -->
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-gray-900">Clear Command Queue</h4>
+                                <p class="text-sm text-gray-500">Remove all pending items from the queue</p>
+                            </div>
+                            <button onclick="clearQueue()"
+                                class="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 font-medium">
+                                🗑️ Clear Queue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllSettings();
+});
+
+// Tab switching
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('border-primary', 'text-gray-900');
+        el.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // Show selected tab
+    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    document.querySelector(`[data-tab="${tabName}"]`).classList.remove('border-transparent', 'text-gray-500');
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('border-primary', 'text-gray-900');
+}
+
+// Load all settings
+async function loadAllSettings() {
+    await Promise.all([
+        loadSystemStatus(),
+        loadEmergencyStatus(),
+        loadRules()
+    ]);
+}
+
+// Load system status
+async function loadSystemStatus() {
+    try {
+        const response = await fetch('/health/status');
+        if (!response.ok) throw new Error('Failed to load status');
+        const data = await response.json();
+        
+        // System status
+        const statusContainer = document.getElementById('system-status');
+        statusContainer.innerHTML = `
+            <div class="flex items-center justify-between">
+                <span class="text-gray-600">API Status</span>
+                <span class="px-2 py-1 rounded-full text-xs ${data.status === 'healthy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${data.status}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-gray-600">Database</span>
+                <span class="px-2 py-1 rounded-full text-xs ${data.database?.status === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${data.database?.status || 'Unknown'}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-gray-600">Redis</span>
+                <span class="px-2 py-1 rounded-full text-xs ${data.redis?.status === 'connected' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">${data.redis?.status || 'Optional'}</span>
+            </div>
+        `;
+        
+        // Connector status
+        const connectorContainer = document.getElementById('connector-status');
+        const connectors = data.connectors || {};
+        connectorContainer.innerHTML = Object.entries(connectors).map(([name, info]) => `
+            <div class="flex items-center justify-between">
+                <span class="text-gray-600 capitalize">${name}</span>
+                <span class="px-2 py-1 rounded-full text-xs ${info.status === 'connected' || info.status === 'configured' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${info.status}</span>
+            </div>
+        `).join('') || '<span class="text-gray-400">No connectors configured</span>';
+        
+    } catch (error) {
+        console.error('Failed to load system status:', error);
+        document.getElementById('system-status').innerHTML = `
+            <span class="text-red-500">Failed to load status</span>
+        `;
+    }
+}
+
+// Load emergency status
+async function loadEmergencyStatus() {
+    try {
+        const response = await fetch('/api/admin/emergency-status');
+        if (!response.ok) throw new Error('Failed to load emergency status');
+        const data = await response.json();
+        
+        // Update mode display
+        const modeEl = document.getElementById('current-mode');
+        const draftEl = document.getElementById('mode-draft');
+        const sendEl = document.getElementById('mode-send');
+        
+        const isKillSwitch = data.kill_switch_active;
+        const allowRealSends = data.allow_real_sends;
+        
+        if (isKillSwitch) {
+            modeEl.textContent = '🛑 Emergency Stop Active';
+            modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-700';
+        } else if (allowRealSends) {
+            modeEl.textContent = '📤 Send Mode';
+            modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-700';
+            sendEl.classList.add('border-green-500', 'bg-green-50');
+        } else {
+            modeEl.textContent = '📝 Draft Only';
+            modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-700';
+            draftEl.classList.add('border-blue-500', 'bg-blue-50');
+        }
+        
+        // Update emergency button
+        const emergencyBtn = document.getElementById('emergency-btn');
+        if (isKillSwitch) {
+            emergencyBtn.textContent = '🔴 Stop Active';
+            emergencyBtn.disabled = true;
+            emergencyBtn.classList.add('opacity-50');
+        }
+        
+    } catch (error) {
+        console.error('Failed to load emergency status:', error);
+    }
+}
+
+// Load auto-approval rules
+async function loadRules() {
+    const container = document.getElementById('rules-list');
+    
+    try {
+        const response = await fetch('/api/admin/rules');
+        if (!response.ok) throw new Error('Failed to load rules');
+        const data = await response.json();
+        
+        if (!data.rules || data.rules.length === 0) {
+            container.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-6 text-center">
+                    <p class="text-gray-500 mb-3">No auto-approval rules configured</p>
+                    <button onclick="seedDefaultRules()" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                        + Seed Default Rules
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.rules.map(rule => `
+            <div class="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-3">
+                        <span class="font-medium text-gray-900">${escapeHtml(rule.name)}</span>
+                        <span class="px-2 py-0.5 rounded text-xs ${rule.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${rule.enabled ? 'Enabled' : 'Disabled'}</span>
+                        <span class="px-2 py-0.5 rounded text-xs bg-indigo-100 text-indigo-700">${rule.rule_type}</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">${escapeHtml(rule.description || '')}</p>
+                    <p class="text-xs text-gray-400 mt-1">Priority: ${rule.priority} | Confidence: ${(rule.confidence * 100).toFixed(0)}%</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    ${rule.enabled ? 
+                        `<button onclick="toggleRule('${rule.id}', false)" class="text-sm text-amber-600 hover:text-amber-800">Disable</button>` :
+                        `<button onclick="toggleRule('${rule.id}', true)" class="text-sm text-green-600 hover:text-green-800">Enable</button>`
+                    }
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Failed to load rules:', error);
+        container.innerHTML = `<div class="text-red-500 p-4">Failed to load rules</div>`;
+    }
+}
+
+// Toggle rule
+async function toggleRule(ruleId, enable) {
+    try {
+        const endpoint = enable ? `/api/admin/rules/${ruleId}/enable` : `/api/admin/rules/${ruleId}/disable`;
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        if (response.ok) {
+            loadRules();
+        }
+    } catch (error) {
+        console.error('Failed to toggle rule:', error);
+    }
+}
+
+// Seed default rules
+async function seedDefaultRules() {
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch('/api/admin/seed-rules', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        if (response.ok) {
+            loadRules();
+            alert('Default rules have been seeded');
+        }
+    } catch (error) {
+        console.error('Failed to seed rules:', error);
+    }
+}
+
+// Emergency stop
+async function emergencyStop() {
+    if (!confirm('Are you sure you want to activate the emergency stop? This will disable all auto-approval.')) {
+        return;
+    }
+    
+    const reason = prompt('Enter reason for emergency stop:', 'Manual intervention required');
+    if (!reason) return;
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch('/api/admin/emergency-stop', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ reason })
+        });
+        
+        if (response.ok) {
+            alert('Emergency stop activated. All auto-approval is now disabled.');
+            loadEmergencyStatus();
+        } else {
+            const error = await response.json();
+            alert(`Failed: ${error.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Emergency stop failed:', error);
+        alert('Emergency stop failed. Please try again.');
+    }
+}
+
+// Resume operations
+async function resumeOperations() {
+    if (!confirm('Are you sure you want to resume normal operations?')) {
+        return;
+    }
+    
+    try {
+        const adminPassword = prompt('Enter admin password:');
+        if (!adminPassword) return;
+        
+        const response = await fetch(`/api/admin/emergency-resume?admin_password=${encodeURIComponent(adminPassword)}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            alert('Operations resumed. Auto-approval is now enabled.');
+            loadEmergencyStatus();
+        } else {
+            const error = await response.json();
+            alert(`Failed: ${error.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Resume failed:', error);
+    }
+}
+
+// Clear queue
+async function clearQueue() {
+    if (!confirm('Are you sure you want to clear the command queue? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch('/api/command-queue/clear', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+        });
+        
+        if (response.ok) {
+            alert('Command queue cleared.');
+        }
+    } catch (error) {
+        console.error('Clear queue failed:', error);
+    }
+}
+
+// Save notification preferences
+function saveNotificationPrefs() {
+    const prefs = {
+        signals: document.getElementById('notify-signals').checked,
+        approvals: document.getElementById('notify-approvals').checked,
+        agents: document.getElementById('notify-agents').checked,
+        errors: document.getElementById('notify-errors').checked
+    };
+    // Store in localStorage for now
+    localStorage.setItem('notificationPrefs', JSON.stringify(prefs));
+    alert('Notification preferences saved');
+}
+
+// Save rate limits
+function saveRateLimits() {
+    // This would call an API endpoint
+    alert('Rate limits saved (demo mode)');
+}
+
+// Set mode
+function setMode(mode) {
+    alert(`Mode change to ${mode} requires admin authentication (demo mode)`);
+}
+
+// Utility functions
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCookie(name) {
+    let value = "; " + document.cookie;
+    let parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+    return '';
+}
+</script>
+{% endblock %}
