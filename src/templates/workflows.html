@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .workflow-card {
+        transition: all 0.2s ease;
+    }
+    .workflow-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .step-connector {
+        width: 2px;
+        background: #e5e7eb;
+    }
+    .step-active .step-connector {
+        background: #4f46e5;
+    }
+    .step-complete .step-indicator {
+        background: #22c55e;
+        color: white;
+    }
+    .step-running .step-indicator {
+        background: #4f46e5;
+        animation: pulse 1s infinite;
+    }
+    .step-error .step-indicator {
+        background: #ef4444;
+        color: white;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">🔄 Workflows</h1>
+            <p class="text-gray-600">Execute multi-step automated workflows</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <!-- Category Filter -->
+            <select id="category-filter" onchange="loadWorkflows()" 
+                class="border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                <option value="">All Categories</option>
+            </select>
+            <button onclick="loadWorkflows()" 
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <!-- Workflow List -->
+        <div class="lg:col-span-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="font-semibold text-gray-900">Available Workflows</h3>
+                <p id="workflow-count" class="text-sm text-gray-500">Loading...</p>
+            </div>
+            <div id="workflow-list" class="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
+                <div class="p-8 text-center text-gray-400">Loading workflows...</div>
+            </div>
+        </div>
+
+        <!-- Workflow Detail & Execution -->
+        <div class="lg:col-span-2 flex flex-col space-y-4">
+            <!-- Workflow Detail -->
+            <div id="workflow-detail" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="p-6 text-center text-gray-400">
+                    <div class="text-5xl mb-4">📋</div>
+                    <p class="text-lg">Select a workflow to view details</p>
+                </div>
+            </div>
+
+            <!-- Execution Panel (hidden until workflow selected) -->
+            <div id="execution-panel" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hidden">
+                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="font-semibold text-gray-900">Execution Progress</h3>
+                    <span id="execution-status" class="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600">Not Started</span>
+                </div>
+                <div id="execution-steps" class="p-4">
+                    <!-- Steps will be rendered here -->
+                </div>
+                <div id="execution-result" class="p-4 border-t border-gray-200 hidden">
+                    <h4 class="font-medium text-gray-700 mb-2">Final Output</h4>
+                    <pre id="execution-output" class="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Workflow Input Modal -->
+<div id="input-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden">
+        <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 id="modal-title" class="font-semibold text-gray-900">Execute Workflow</h3>
+            <button onclick="closeInputModal()" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+        <form id="input-form" class="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
+            <!-- Dynamic inputs rendered here -->
+        </form>
+        <div class="p-4 border-t border-gray-200 flex justify-end space-x-3">
+            <button type="button" onclick="closeInputModal()" 
+                class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                Cancel
+            </button>
+            <button type="button" onclick="executeWorkflow()" id="execute-btn"
+                class="px-4 py-2 text-white bg-primary rounded-lg hover:bg-indigo-700">
+                Execute
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// State
+let currentWorkflow = null;
+let categories = [];
+let isExecuting = false;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadWorkflows();
+});
+
+// Load workflows
+async function loadWorkflows() {
+    const container = document.getElementById('workflow-list');
+    const category = document.getElementById('category-filter').value;
+    
+    try {
+        const url = category 
+            ? `/api/gemini/workflows?category=${encodeURIComponent(category)}`
+            : '/api/gemini/workflows';
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to load workflows');
+        const data = await response.json();
+        
+        // Update categories dropdown
+        if (data.categories && data.categories.length !== categories.length) {
+            categories = data.categories;
+            updateCategoryDropdown(categories);
+        }
+        
+        document.getElementById('workflow-count').textContent = `${data.total} workflows available`;
+        
+        if (!data.workflows || data.workflows.length === 0) {
+            container.innerHTML = `
+                <div class="p-8 text-center text-gray-400">
+                    <div class="text-3xl mb-2">📭</div>
+                    No workflows found
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.workflows.map(w => `
+            <div class="workflow-card p-4 cursor-pointer hover:bg-gray-50" onclick="selectWorkflow('${w.id}')">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-medium text-gray-900">${escapeHtml(w.name)}</span>
+                    <span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">${w.category}</span>
+                </div>
+                <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml(w.description)}</p>
+                <div class="flex items-center mt-2 text-xs text-gray-400">
+                    <span>${w.steps?.length || 0} steps</span>
+                    <span class="mx-2">•</span>
+                    <span>~${w.estimated_duration || 'Unknown'}</span>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Failed to load workflows:', error);
+        container.innerHTML = `
+            <div class="p-4 text-center text-red-500">Failed to load workflows</div>
+        `;
+    }
+}
+
+// Update category dropdown
+function updateCategoryDropdown(cats) {
+    const select = document.getElementById('category-filter');
+    const current = select.value;
+    
+    select.innerHTML = '<option value="">All Categories</option>' + 
+        cats.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
+}
+
+// Select a workflow
+async function selectWorkflow(workflowId) {
+    const detailContainer = document.getElementById('workflow-detail');
+    
+    try {
+        const response = await fetch(`/api/gemini/workflows/${workflowId}`);
+        if (!response.ok) throw new Error('Failed to load workflow');
+        currentWorkflow = await response.json();
+        
+        detailContainer.innerHTML = `
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold text-gray-900">${escapeHtml(currentWorkflow.name)}</h3>
+                    <span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">${currentWorkflow.category}</span>
+                </div>
+                <button onclick="openInputModal()" 
+                    class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+                    ▶ Execute
+                </button>
+            </div>
+            <div class="p-4">
+                <p class="text-gray-600 mb-4">${escapeHtml(currentWorkflow.description)}</p>
+                
+                <h4 class="font-medium text-gray-700 mb-2">Required Inputs</h4>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    ${currentWorkflow.required_inputs.map(input => `
+                        <span class="px-2 py-1 bg-amber-100 text-amber-700 rounded text-sm">${input}</span>
+                    `).join('') || '<span class="text-gray-400 text-sm">None required</span>'}
+                </div>
+                
+                <h4 class="font-medium text-gray-700 mb-2">Workflow Steps</h4>
+                <div class="space-y-3">
+                    ${currentWorkflow.steps.map((step, i) => `
+                        <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
+                                ${i + 1}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-medium text-gray-900">${escapeHtml(step.agent_name)}</span>
+                                    ${step.optional ? '<span class="text-xs text-gray-400">(optional)</span>' : ''}
+                                </div>
+                                <p class="text-sm text-gray-600">${escapeHtml(step.action)}</p>
+                                ${step.condition ? `<p class="text-xs text-amber-600 mt-1">Condition: ${step.condition}</p>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        // Show execution panel
+        document.getElementById('execution-panel').classList.remove('hidden');
+        resetExecutionPanel();
+        
+    } catch (error) {
+        console.error('Failed to load workflow:', error);
+        detailContainer.innerHTML = `
+            <div class="p-6 text-center text-red-500">Failed to load workflow details</div>
+        `;
+    }
+}
+
+// Open input modal
+function openInputModal() {
+    if (!currentWorkflow) return;
+    
+    const modal = document.getElementById('input-modal');
+    const form = document.getElementById('input-form');
+    
+    document.getElementById('modal-title').textContent = `Execute: ${currentWorkflow.name}`;
+    
+    // Build input fields
+    form.innerHTML = currentWorkflow.required_inputs.map(input => `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">${input}</label>
+            <input type="text" name="${input}" required
+                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Enter ${input}...">
+        </div>
+    `).join('') || '<p class="text-gray-500">No inputs required for this workflow.</p>';
+    
+    modal.classList.remove('hidden');
+}
+
+// Close input modal
+function closeInputModal() {
+    document.getElementById('input-modal').classList.add('hidden');
+}
+
+// Execute workflow
+async function executeWorkflow() {
+    if (!currentWorkflow || isExecuting) return;
+    
+    const form = document.getElementById('input-form');
+    const formData = new FormData(form);
+    const inputs = {};
+    formData.forEach((value, key) => inputs[key] = value);
+    
+    // Close modal
+    closeInputModal();
+    
+    // Start execution
+    isExecuting = true;
+    updateExecutionStatus('running', 'Executing...');
+    renderExecutionSteps(currentWorkflow.steps, []);
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const response = await fetch(`/api/gemini/workflows/${currentWorkflow.id}/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify(inputs)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Execution failed');
+        }
+        
+        const result = await response.json();
+        
+        // Update UI with results
+        renderExecutionSteps(currentWorkflow.steps, result.results);
+        updateExecutionStatus('complete', 'Completed');
+        showExecutionResult(result);
+        
+    } catch (error) {
+        console.error('Workflow execution failed:', error);
+        updateExecutionStatus('error', 'Failed');
+        document.getElementById('execution-output').textContent = error.message;
+        document.getElementById('execution-result').classList.remove('hidden');
+    } finally {
+        isExecuting = false;
+    }
+}
+
+// Render execution steps
+function renderExecutionSteps(steps, results) {
+    const container = document.getElementById('execution-steps');
+    
+    container.innerHTML = steps.map((step, i) => {
+        const result = results[i];
+        let status = 'pending';
+        let statusIcon = '⏳';
+        
+        if (result) {
+            if (result.skipped) {
+                status = 'skipped';
+                statusIcon = '⏭️';
+            } else if (result.success) {
+                status = 'complete';
+                statusIcon = '✅';
+            } else {
+                status = 'error';
+                statusIcon = '❌';
+            }
+        }
+        
+        return `
+            <div class="flex items-start space-x-3 step-${status}">
+                <div class="flex flex-col items-center">
+                    <div class="step-indicator w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
+                        ${statusIcon}
+                    </div>
+                    ${i < steps.length - 1 ? '<div class="step-connector flex-1 my-1 min-h-[20px]"></div>' : ''}
+                </div>
+                <div class="flex-1 pb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-medium text-gray-900">${escapeHtml(step.agent_name)}</span>
+                        ${result?.duration_ms ? `<span class="text-xs text-gray-400">${result.duration_ms}ms</span>` : ''}
+                    </div>
+                    <p class="text-sm text-gray-600">${escapeHtml(step.action)}</p>
+                    ${result?.error ? `<p class="text-sm text-red-500 mt-1">${escapeHtml(result.error)}</p>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Update execution status badge
+function updateExecutionStatus(state, text) {
+    const badge = document.getElementById('execution-status');
+    const colors = {
+        'pending': 'bg-gray-100 text-gray-600',
+        'running': 'bg-blue-100 text-blue-600',
+        'complete': 'bg-green-100 text-green-600',
+        'error': 'bg-red-100 text-red-600',
+    };
+    badge.className = `text-sm px-3 py-1 rounded-full ${colors[state] || colors.pending}`;
+    badge.textContent = text;
+}
+
+// Show execution result
+function showExecutionResult(result) {
+    document.getElementById('execution-result').classList.remove('hidden');
+    document.getElementById('execution-output').textContent = JSON.stringify(result.final_context || result, null, 2);
+}
+
+// Reset execution panel
+function resetExecutionPanel() {
+    updateExecutionStatus('pending', 'Not Started');
+    document.getElementById('execution-steps').innerHTML = '';
+    document.getElementById('execution-result').classList.add('hidden');
+}
+
+// Utility functions
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCookie(name) {
+    let value = "; " + document.cookie;
+    let parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+    return '';
+}
+</script>
+{% endblock %}

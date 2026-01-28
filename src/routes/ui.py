@@ -144,3 +144,12 @@ async def analytics_dashboard(request: Request):
     System metrics, performance trends, error analysis, recovery stats.
     """
     return templates.TemplateResponse("analytics.html", {"request": request, "active_tab": "analytics"})
+
+
+@router.get("/caseyos/workflows", response_class=HTMLResponse)
+async def workflows_hub(request: Request):
+    """
+    Workflows Hub - Sprint 49
+    Execute multi-step automated workflows with Gemini and agents.
+    """
+    return templates.TemplateResponse("workflows.html", {"request": request, "active_tab": "workflows"})
