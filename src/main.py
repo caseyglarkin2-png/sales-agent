@@ -314,6 +314,7 @@ from src.routes import twitter_oauth  # Twitter OAuth for personal feed access
 from src.routes import grok_routes  # Grok: xAI Market Intelligence (Sprint 13)
 from src.routes import mcp_routes  # Sprint 20: MCP Server Integration
 from src.routes import data_hygiene  # Sprint 56: Data Hygiene Dashboard
+from src.routes import retry_queue  # Sprint 58: Resilience & Error Recovery
 
 # Configure logging
 settings = get_settings()
@@ -375,6 +376,7 @@ app.include_router(twitter_oauth.router)  # Twitter OAuth for personal feed acce
 app.include_router(grok_routes.router)  # Grok: xAI Market Intelligence (Sprint 13)
 app.include_router(mcp_routes.router)  # Sprint 20: MCP Server Integration
 app.include_router(data_hygiene.router)  # Sprint 56: Data Hygiene Dashboard
+app.include_router(retry_queue.router)  # Sprint 58: Resilience & Error Recovery
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)
