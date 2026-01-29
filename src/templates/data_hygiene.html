@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Data Hygiene - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .metric-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .quality-score {
+        font-size: 3rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    
+    .quality-excellent { color: #22c55e; }
+    .quality-good { color: #84cc16; }
+    .quality-fair { color: #eab308; }
+    .quality-poor { color: #f97316; }
+    .quality-bad { color: #ef4444; }
+    
+    .duplicate-card, .decay-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        transition: all 0.2s;
+    }
+    
+    .duplicate-card:hover, .decay-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .badge-zombie { background: #fef2f2; color: #dc2626; }
+    .badge-decayed { background: #fef3c7; color: #d97706; }
+    .badge-stale { background: #fefce8; color: #ca8a04; }
+    .badge-fresh { background: #f0fdf4; color: #16a34a; }
+    
+    .match-score {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .match-high { color: #22c55e; }
+    .match-medium { color: #eab308; }
+    .match-low { color: #f97316; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">🧹 Data Hygiene</h1>
+            <p class="text-gray-600">Monitor and improve contact data quality</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="triggerScan()" class="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                🔍 Run Full Scan
+            </button>
+            <button onclick="loadDashboard()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Metrics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div class="metric-card col-span-1 md:col-span-2 flex items-center justify-between">
+            <div>
+                <div class="text-sm text-gray-500 mb-1">Data Quality Score</div>
+                <div id="quality-score" class="quality-score quality-good">--</div>
+                <div class="text-sm text-gray-500 mt-2">out of 100</div>
+            </div>
+            <div class="text-6xl opacity-20">📊</div>
+        </div>
+        <div class="metric-card">
+            <div class="text-sm text-gray-500 mb-1">Total Contacts</div>
+            <div id="total-contacts" class="text-2xl font-bold text-gray-900">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="text-sm text-gray-500 mb-1">Duplicates Found</div>
+            <div id="duplicates-count" class="text-2xl font-bold text-red-600">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="text-sm text-gray-500 mb-1">Stale/Decayed</div>
+            <div id="decayed-count" class="text-2xl font-bold text-yellow-600">--</div>
+        </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div id="recommendations" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-8 hidden">
+        <h3 class="font-semibold text-gray-900 mb-3">🎯 Recommendations</h3>
+        <div id="recommendations-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        <!-- Duplicates Section -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">👥 Duplicate Contacts</h2>
+                <a href="#" class="text-sm text-primary hover:underline">View All →</a>
+            </div>
+            <div id="duplicates-list" class="space-y-3 overflow-y-auto flex-1">
+                <div class="p-8 text-center text-gray-400">Loading duplicates...</div>
+            </div>
+        </div>
+
+        <!-- Decayed Contacts Section -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">📉 Decayed Contacts</h2>
+                <a href="#" class="text-sm text-primary hover:underline">View All →</a>
+            </div>
+            <div id="decayed-list" class="space-y-3 overflow-y-auto flex-1">
+                <div class="p-8 text-center text-gray-400">Loading decayed contacts...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', loadDashboard);
+
+async function loadDashboard() {
+    try {
+        const res = await fetch('/api/data-hygiene/dashboard-summary');
+        if (!res.ok) throw new Error('Failed to load');
+        
+        const data = await res.json();
+        
+        // Update metrics
+        updateMetrics(data.metrics);
+        
+        // Render duplicates
+        renderDuplicates(data.top_duplicates);
+        
+        // Render decayed contacts
+        renderDecayed(data.top_decayed);
+        
+        // Render recommendations
+        renderRecommendations(data.recommendations);
+        
+    } catch (err) {
+        console.error('Failed to load dashboard:', err);
+    }
+}
+
+function updateMetrics(metrics) {
+    document.getElementById('quality-score').textContent = Math.round(metrics.quality_score);
+    document.getElementById('total-contacts').textContent = metrics.total_contacts.toLocaleString();
+    document.getElementById('duplicates-count').textContent = metrics.duplicates_found;
+    document.getElementById('decayed-count').textContent = metrics.stale_contacts + metrics.decayed_contacts;
+    
+    // Update quality score color
+    const scoreEl = document.getElementById('quality-score');
+    const score = metrics.quality_score;
+    scoreEl.className = 'quality-score ' + getQualityClass(score);
+}
+
+function getQualityClass(score) {
+    if (score >= 90) return 'quality-excellent';
+    if (score >= 75) return 'quality-good';
+    if (score >= 60) return 'quality-fair';
+    if (score >= 40) return 'quality-poor';
+    return 'quality-bad';
+}
+
+function renderDuplicates(duplicates) {
+    const container = document.getElementById('duplicates-list');
+    
+    if (!duplicates || duplicates.length === 0) {
+        container.innerHTML = `
+            <div class="p-8 text-center text-gray-400">
+                <div class="text-4xl mb-2">✨</div>
+                <p>No duplicates found!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = duplicates.map(dupe => `
+        <div class="duplicate-card">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <div class="font-medium text-gray-900">${dupe.primary_name}</div>
+                    <div class="text-sm text-gray-500">${dupe.primary_email}</div>
+                </div>
+                <span class="match-score ${dupe.match_score > 0.9 ? 'match-high' : dupe.match_score > 0.7 ? 'match-medium' : 'match-low'}">
+                    ${Math.round(dupe.match_score * 100)}% match
+                </span>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-2 mt-2">
+                <div class="text-xs text-gray-500 mb-1">Potential duplicates (${dupe.duplicates.length}):</div>
+                ${dupe.duplicates.map(d => `
+                    <div class="text-sm text-gray-700 flex justify-between">
+                        <span>${d.name} &lt;${d.email}&gt;</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="mt-3 flex space-x-2">
+                <button onclick="mergeDuplicate('${dupe.duplicates[0]?.id}', '${dupe.primary_id}')" 
+                    class="flex-1 bg-primary text-white text-sm px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors">
+                    Merge
+                </button>
+                <button class="flex-1 bg-gray-100 text-gray-700 text-sm px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors">
+                    Review
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderDecayed(decayed) {
+    const container = document.getElementById('decayed-list');
+    
+    if (!decayed || decayed.length === 0) {
+        container.innerHTML = `
+            <div class="p-8 text-center text-gray-400">
+                <div class="text-4xl mb-2">🌱</div>
+                <p>All contacts are fresh!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = decayed.map(contact => `
+        <div class="decay-card">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <div class="font-medium text-gray-900">${contact.name}</div>
+                    <div class="text-sm text-gray-500">${contact.email}</div>
+                    <div class="text-xs text-gray-400">${contact.company}</div>
+                </div>
+                <span class="badge-${contact.decay_level} text-xs px-2 py-1 rounded-full font-medium">
+                    ${contact.decay_level}
+                </span>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">
+                Last activity: ${contact.days_since_activity} days ago
+            </div>
+            <div class="mt-3 flex space-x-2">
+                ${contact.recommended_action === 'archive' || contact.recommended_action === 'delete' ? `
+                    <button onclick="archiveContact('${contact.contact_id}')" 
+                        class="flex-1 bg-red-100 text-red-700 text-sm px-3 py-1.5 rounded-lg hover:bg-red-200 transition-colors">
+                        Archive
+                    </button>
+                ` : `
+                    <button onclick="refreshContact('${contact.contact_id}')" 
+                        class="flex-1 bg-green-100 text-green-700 text-sm px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors">
+                        Refresh
+                    </button>
+                `}
+                <button class="flex-1 bg-gray-100 text-gray-700 text-sm px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors">
+                    View
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderRecommendations(recommendations) {
+    if (!recommendations || recommendations.length === 0) return;
+    
+    const container = document.getElementById('recommendations');
+    container.classList.remove('hidden');
+    
+    const list = document.getElementById('recommendations-list');
+    list.innerHTML = recommendations.map(rec => `
+        <div class="bg-white rounded-lg p-3 border border-${rec.priority === 'high' ? 'red' : rec.priority === 'medium' ? 'yellow' : 'gray'}-200">
+            <div class="flex items-center space-x-2 mb-1">
+                <span class="${rec.priority === 'high' ? 'text-red-500' : rec.priority === 'medium' ? 'text-yellow-500' : 'text-gray-400'}">
+                    ${rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '⚪'}
+                </span>
+                <span class="font-medium text-gray-900">${rec.count} items</span>
+            </div>
+            <p class="text-sm text-gray-600">${rec.message}</p>
+        </div>
+    `).join('');
+}
+
+async function triggerScan() {
+    try {
+        const res = await fetch('/api/data-hygiene/scan', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            alert(data.message + '\n\nEstimated time: ' + data.estimated_time);
+        }
+    } catch (err) {
+        alert('Failed to trigger scan');
+    }
+}
+
+async function mergeDuplicate(duplicateId, primaryId) {
+    if (!confirm('Merge this contact into the primary? This action cannot be undone.')) return;
+    
+    try {
+        const res = await fetch(`/api/data-hygiene/duplicates/${duplicateId}/merge?merge_into=${primaryId}`, {
+            method: 'POST'
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            alert(data.message + '\n\n' + data.actions_taken.join('\n'));
+            loadDashboard();
+        }
+    } catch (err) {
+        alert('Failed to merge contacts');
+    }
+}
+
+async function refreshContact(contactId) {
+    try {
+        const res = await fetch(`/api/data-hygiene/decayed/${contactId}/refresh`, {
+            method: 'POST'
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            alert(data.message);
+            loadDashboard();
+        }
+    } catch (err) {
+        alert('Failed to refresh contact');
+    }
+}
+
+function archiveContact(contactId) {
+    alert('Archive functionality coming soon. Contact ID: ' + contactId);
+}
+</script>
+{% endblock %}
