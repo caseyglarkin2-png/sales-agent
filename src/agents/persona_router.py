@@ -170,6 +170,61 @@ PERSONA_KEYWORDS: Dict[Persona, list[str]] = {
 }
 
 
+# Challenger hooks - persona-specific provocative questions (Sprint 69)
+# These are used to create productive tension and Socratic engagement
+CHALLENGER_HOOKS: Dict[Persona, list[str]] = {
+    Persona.EVENTS: [
+        "What if your best trade show leads are slipping away because follow-up happens too late?",
+        "Have you noticed that the events you're most proud of sometimes generate the least pipeline?",
+        "Why do most field marketing teams measure success by attendance instead of revenue?",
+        "What would change if you could prove event ROI within 30 days instead of 6 months?",
+    ],
+    Persona.DEMAND_GEN: [
+        "What if the MQLs you're celebrating are actually hiding the leads that would close?",
+        "Have you noticed that the metrics your team optimizes for don't match what sales actually needs?",
+        "Why do most demand gen teams measure volume when their CEO only cares about velocity?",
+        "What if your nurture campaigns are training prospects to ignore you?",
+    ],
+    Persona.SALES: [
+        "What if the accounts marketing is targeting aren't the ones you can actually close?",
+        "Have you noticed that your 'qualified' leads often lack the internal champion you need?",
+        "Why do most sales teams accept leads they know aren't ready to buy?",
+        "What would change if marketing brought you meetings instead of just leads?",
+    ],
+    Persona.EXECUTIVE: [
+        "What if your GTM team is working harder than ever but creating less pipeline per dollar?",
+        "Have you noticed that scaling marketing headcount doesn't always scale revenue?",
+        "Why do most companies measure marketing by activity instead of efficiency?",
+        "What would change if you could double GTM output without doubling headcount?",
+    ],
+    Persona.MARKETING_GENERAL: [
+        "What if the campaigns you're most proud of aren't driving the pipeline your CEO needs?",
+        "Have you noticed that your best content doesn't always convert the best leads?",
+        "Why do most marketing teams get judged on metrics they can't connect to revenue?",
+        "What would change if you could prove marketing's impact in the next board meeting?",
+    ],
+    Persona.UNKNOWN: [
+        "What if there's a GTM bottleneck you haven't been able to name yet?",
+        "Have you noticed that some of your biggest marketing investments feel invisible to leadership?",
+        "Why is it so hard to scale marketing without scaling headcount?",
+    ],
+}
+
+
+def get_challenger_hook(persona: Persona) -> Optional[str]:
+    """Get a random challenger hook for the given persona.
+    
+    Args:
+        persona: The detected persona category
+        
+    Returns:
+        A provocative question to use as an opener, or None
+    """
+    import random
+    hooks = CHALLENGER_HOOKS.get(persona, [])
+    return random.choice(hooks) if hooks else None
+
+
 def detect_persona(job_title: Optional[str], company_name: Optional[str] = None) -> Tuple[Persona, float]:
     """Detect the persona category from job title.
     

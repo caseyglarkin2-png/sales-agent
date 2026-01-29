@@ -2,8 +2,12 @@
 
 This module uses OpenAI's GPT models to generate personalized
 email drafts based on voice profiles, context, and meeting slots.
+
+Sprint 69: Added few-shot examples for Casey voice consistency.
 """
+import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
@@ -11,8 +15,12 @@ from openai import AsyncOpenAI
 from src.logger import get_logger
 from src.voice_profile import VoiceProfile, get_voice_profile
 from src.pii_detector import PIISafetyValidator
+from src.agents.persona_router import detect_persona, get_challenger_hook
 
 logger = get_logger(__name__)
+
+# Path to Casey's exemplar emails
+CASEY_EXAMPLES_PATH = Path(__file__).parent / "voice_profiles" / "casey_examples.json"
 
 
 class DraftGenerator:
@@ -30,6 +38,44 @@ class DraftGenerator:
         self.model = os.environ.get("OPENAI_MODEL", "gpt-4o")
         self.enable_pii_check = enable_pii_check
         self.pii_validator = PIISafetyValidator(strict_mode=False) if enable_pii_check else None
+        
+        # Load few-shot examples for Casey voice (Sprint 69)
+        self.casey_examples = self._load_casey_examples()
+    
+    def _load_casey_examples(self) -> List[Dict[str, Any]]:
+        """Load Casey's exemplar emails for few-shot learning."""
+        try:
+            if CASEY_EXAMPLES_PATH.exists():
+                with open(CASEY_EXAMPLES_PATH, "r") as f:
+                    examples = json.load(f)
+                    logger.info(f"Loaded {len(examples)} Casey few-shot examples")
+                    return examples
+        except Exception as e:
+            logger.warning(f"Could not load Casey examples: {e}")
+        return []
+    
+    def _get_matching_examples(self, persona_hint: Optional[str] = None, count: int = 2) -> List[Dict[str, Any]]:
+        """Get examples matching the target persona.
+        
+        Args:
+            persona_hint: Keywords from company/title to match (e.g., "Marketing", "Sales")
+            count: Number of examples to return
+        """
+        if not self.casey_examples:
+            return []
+        
+        # Try to match by persona keyword
+        if persona_hint:
+            hint_lower = persona_hint.lower()
+            matched = [
+                ex for ex in self.casey_examples 
+                if any(word in ex.get("persona", "").lower() for word in hint_lower.split())
+            ]
+            if matched:
+                return matched[:count]
+        
+        # Fall back to first N examples
+        return self.casey_examples[:count]
     
     async def generate_draft(
         self,
@@ -43,6 +89,7 @@ class DraftGenerator:
         talking_points: Optional[List[str]] = None,
         personalization_hooks: Optional[List[str]] = None,
         sender_context: Optional[Dict[str, str]] = None,
+        job_title: Optional[str] = None,  # Sprint 69: For persona detection
     ) -> Dict[str, Any]:
         """Generate a personalized email draft.
         
@@ -58,6 +105,7 @@ class DraftGenerator:
             personalization_hooks: Personalization hooks from research
             sender_context: Dict with sender_name, sender_title, sender_company, 
                            calendar_link from user profile (Sprint 53)
+            job_title: Prospect's job title for persona detection (Sprint 69)
         
         Returns:
             Dict with subject, body, and metadata
@@ -81,13 +129,21 @@ class DraftGenerator:
                 sender_context=effective_sender
             )
         
-        # Build the prompt
-        system_prompt = self._build_system_prompt(profile, sender_context=effective_sender)
+        # Detect persona and get challenger hook (Sprint 69)
+        persona, confidence = detect_persona(job_title, company_name)
+        challenger_hook = get_challenger_hook(persona) if confidence >= 0.6 else None
+        
+        # Build the prompt with persona hint for few-shot matching
+        persona_hint = job_title or company_name  # Use job title or company for matching examples
+        system_prompt = self._build_system_prompt(
+            profile, sender_context=effective_sender, persona_hint=persona_hint
+        )
         user_prompt = self._build_user_prompt(
             prospect_name, company_name, thread_context, 
             meeting_slots, asset_link, profile,
             talking_points=talking_points,
             personalization_hooks=personalization_hooks,
+            challenger_hook=challenger_hook,  # Sprint 69
         )
         
         try:
@@ -144,13 +200,15 @@ class DraftGenerator:
         self, 
         profile: VoiceProfile,
         sender_context: Optional[Dict[str, str]] = None,
+        persona_hint: Optional[str] = None,
     ) -> str:
-        """Build system prompt with voice profile and sender context.
+        """Build system prompt with voice profile, sender context, and few-shot examples.
         
         Args:
             profile: VoiceProfile with tone/style settings
             sender_context: Dict with sender_name, sender_title, sender_company,
                            calendar_link from user profile (Sprint 53)
+            persona_hint: Keywords to match few-shot examples (e.g., "Marketing VP")
         """
         # Build sender info block from context (Sprint 53)
         sender_info = ""
@@ -166,6 +224,9 @@ class DraftGenerator:
                 sender_parts.append(f"Calendar Link: {sender_context['calendar_link']}")
             if sender_parts:
                 sender_info = "\nSENDER INFORMATION:\n" + "\n".join(sender_parts) + "\n"
+        
+        # Build few-shot examples section (Sprint 69)
+        examples_section = self._build_examples_section(persona_hint)
         
         return f"""You are Casey Larkin, a Socratic and provocative B2B communicator. 
 Your emails make people stop and think. You challenge assumptions and ask questions 
@@ -184,7 +245,7 @@ PROVOCATIVE EDGE:
 - "Most [persona] are doing X wrong, and here's why..."
 - Create productive tension between their status quo and what's possible
 - Be the contrarian voice they secretly agree with
-
+{examples_section}
 OUTPUT FORMAT:
 Subject: [compelling subject - question or contrarian hook]
 ---
@@ -198,6 +259,25 @@ RULES:
 - Use the sender's real name and title in the signature
 """
     
+    def _build_examples_section(self, persona_hint: Optional[str] = None) -> str:
+        """Build few-shot examples section for system prompt.
+        
+        Args:
+            persona_hint: Keywords to match examples (e.g., "Marketing")
+        """
+        examples = self._get_matching_examples(persona_hint, count=2)
+        if not examples:
+            return ""
+        
+        parts = ["\nEXAMPLE EMAILS (study the Socratic style):"]
+        for i, ex in enumerate(examples, 1):
+            parts.append(f"\nExample {i} ({ex.get('persona', 'Prospect')}):")
+            parts.append(f"Subject: {ex.get('subject', '')}")
+            parts.append("---")
+            parts.append(ex.get("body", ""))
+        parts.append("")  # Extra newline
+        return "\n".join(parts)
+    
     def _build_user_prompt(
         self,
         prospect_name: str,
@@ -208,11 +288,17 @@ RULES:
         profile: VoiceProfile,
         talking_points: Optional[List[str]] = None,
         personalization_hooks: Optional[List[str]] = None,
+        challenger_hook: Optional[str] = None,  # Sprint 69
     ) -> str:
         """Build user prompt with context."""
         parts = [
             f"Write an email to {prospect_name} at {company_name}.",
         ]
+        
+        # Add challenger hook for Socratic opener (Sprint 69)
+        if challenger_hook:
+            parts.append(f"\nSUGGESTED OPENER (adapt this Socratic question to their context):")
+            parts.append(f"'{challenger_hook}'")
         
         # Add research-based talking points
         if talking_points:

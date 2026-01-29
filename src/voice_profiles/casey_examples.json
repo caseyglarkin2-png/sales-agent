@@ -1,0 +1,42 @@
+[
+  {
+    "persona": "VP Marketing",
+    "subject": "Your competitors outspend you—is that really the problem?",
+    "body": "What if the issue isn't your budget, but what you're measuring?\n\nMost marketing leaders I talk to are optimizing for MQLs while their competitors are winning deals with 60% less spend. The difference? They stopped chasing vanity metrics two years ago.\n\nI've helped three CMOs at mid-market SaaS companies flip their attribution model—and watched their pipeline quality double in 90 days.\n\nWorth a 15-minute call to see if your funnel has the same blind spot?",
+    "opener_style": "question",
+    "challenge_type": "metric_questioning",
+    "notes": "Opens with provocative question about measurement, challenges conventional wisdom about budget being the bottleneck"
+  },
+  {
+    "persona": "Sales Leader",
+    "subject": "Pipeline reviews won't fix pipeline. Here's what will.",
+    "body": "Have you noticed that the more pipeline meetings you have, the less pipeline you seem to generate?\n\nI've watched this pattern repeat at a dozen B2B companies: weekly reviews become accountability theater while the real problem—rep activity quality—goes unaddressed.\n\nThe sales leaders who broke this cycle did something counterintuitive: they cut meetings by 40% and invested that time in coaching the top 20% of activities.\n\nIs your team stuck in the review loop? I have a framework that's helped VPs of Sales at Gong, Outreach, and Clari escape it.",
+    "opener_style": "question",
+    "challenge_type": "process_inversion",
+    "notes": "Challenges the sacred cow of pipeline reviews, uses pattern recognition to build credibility"
+  },
+  {
+    "persona": "Event Manager",
+    "subject": "Your events don't generate leads. They reveal something else.",
+    "body": "What if I told you your event ROI calculation is missing the most valuable metric?\n\nEvents don't generate leads—relationships do. The badge scans you're counting as 'leads' have a 2% conversion rate. The conversations your sales team has at the after-party? 40%.\n\nI helped the events team at Snowflake redesign their conference strategy around relationship density instead of lead volume. They cut their event budget by 25% and increased pipeline from events by 3x.\n\nCurious how your event strategy would score on the relationship density model?",
+    "opener_style": "question",
+    "challenge_type": "metric_reframe",
+    "notes": "Reframes what events actually produce, introduces new mental model"
+  },
+  {
+    "persona": "RevOps",
+    "subject": "Your tech stack isn't broken. Your process is.",
+    "body": "Why do companies with 15 tools in their stack still have data quality issues, while others with 5 tools have pristine pipelines?\n\nIt's not the technology. It's the incentive structure around data entry.\n\nI've audited RevOps functions at 40+ B2B companies. The pattern is always the same: reps don't update Salesforce because there's no feedback loop. Not because Salesforce is hard.\n\nThe fix isn't another integration—it's redesigning the workflow around human psychology, not software capabilities.\n\nWant me to share the 3-step audit I use to find the real bottleneck?",
+    "opener_style": "question",
+    "challenge_type": "root_cause",
+    "notes": "Challenges the assumption that tech is the problem, shifts blame to process design"
+  },
+  {
+    "persona": "Founder",
+    "subject": "You're not losing deals to competitors. You're losing them to indecision.",
+    "body": "Have you tracked what actually happens to the deals you 'lose'?\n\nMost founders assume they lost to a competitor. The data tells a different story: 60% of lost deals go to 'no decision'—the prospect just... stops responding.\n\nThat's not a product problem or a pricing problem. That's a buying experience problem.\n\nI've helped 12 Series A-B founders redesign their sales process to address indecision directly. The result: 35% reduction in stalled deals.\n\nWould it be worth 20 minutes to see if your pipeline has the same hidden leak?",
+    "opener_style": "question",
+    "challenge_type": "assumption_flip",
+    "notes": "Reframes competitive loss as indecision problem, uses data to challenge founder assumptions"
+  }
+]
