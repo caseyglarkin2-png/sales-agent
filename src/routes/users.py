@@ -544,3 +544,187 @@ async def accept_invitation(request: AcceptInvitationRequest):
             "full_name": user.full_name
         }
     }
+
+
+# =============================================================================
+# User Profile Endpoints (Sprint 53)
+# =============================================================================
+
+class UserProfileResponse(BaseModel):
+    """Response model for user profile."""
+    email: str
+    display_name: Optional[str] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    signature_html: Optional[str] = None
+    calendar_link: Optional[str] = None
+    phone_number: Optional[str] = None
+    picture: Optional[str] = None
+    default_voice_profile_id: Optional[str] = None
+
+
+class UserProfileUpdate(BaseModel):
+    """Request model for updating user profile."""
+    display_name: Optional[str] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    signature_html: Optional[str] = None
+    calendar_link: Optional[str] = None
+    phone_number: Optional[str] = None
+    default_voice_profile_id: Optional[str] = None
+
+
+@router.get("/voice-profiles")
+async def list_voice_profiles():
+    """List available voice profiles for email drafts.
+    
+    Returns list of voice profile names and their descriptions.
+    """
+    from src.voice_profile import get_voice_profile_manager
+    
+    manager = get_voice_profile_manager()
+    profiles = []
+    
+    for name in manager.list_profiles():
+        profile = manager.get_profile(name)
+        profiles.append({
+            "id": name,
+            "name": profile.name,
+            "tone": profile.tone,
+            "description": ", ".join(profile.style_notes) if profile.style_notes else f"{profile.tone} tone",
+        })
+    
+    return {"profiles": profiles}
+
+
+@router.get("/me/profile", response_model=UserProfileResponse)
+async def get_my_profile():
+    """Get current user's profile for email signature.
+    
+    Returns profile fields used in email drafts and signatures.
+    """
+    from src.db import get_session
+    from src.models.user import User
+    from sqlalchemy import select
+    
+    # Try to get from DB first
+    async with get_session() as session:
+        stmt = select(User).where(User.email == "casey.l@pesti.io")
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if user:
+            return UserProfileResponse(
+                email=user.email,
+                display_name=user.display_name or user.name,
+                job_title=user.job_title,
+                company_name=user.company_name,
+                signature_html=user.signature_html,
+                calendar_link=user.calendar_link,
+                phone_number=user.phone_number,
+                picture=user.picture,
+                default_voice_profile_id=user.default_voice_profile_id,
+            )
+    
+    # Fallback to voice profile defaults
+    from src.voice_profile import get_voice_profile
+    profile = get_voice_profile()
+    
+    return UserProfileResponse(
+        email="casey.l@pesti.io",
+        display_name="Casey Larkin",
+        job_title="CEO",
+        company_name="Pesti",
+        signature_html=None,
+        calendar_link=profile.calendar_link,
+        phone_number=None,
+        picture=None,
+        default_voice_profile_id="casey_larkin",
+    )
+
+
+@router.put("/me/profile", response_model=UserProfileResponse)
+async def update_my_profile(update: UserProfileUpdate):
+    """Update current user's profile.
+    
+    Updates profile fields used in email signatures.
+    """
+    from src.db import get_session
+    from src.models.user import User
+    from sqlalchemy import select
+    
+    # In production, get user from session
+    # For now, update Casey's profile
+    async with get_session() as session:
+        stmt = select(User).where(User.email == "casey.l@pesti.io")
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update fields
+        if update.display_name is not None:
+            user.display_name = update.display_name
+        if update.job_title is not None:
+            user.job_title = update.job_title
+        if update.company_name is not None:
+            user.company_name = update.company_name
+        if update.signature_html is not None:
+            user.signature_html = update.signature_html
+        if update.calendar_link is not None:
+            user.calendar_link = update.calendar_link
+        if update.phone_number is not None:
+            user.phone_number = update.phone_number
+        if update.default_voice_profile_id is not None:
+            user.default_voice_profile_id = update.default_voice_profile_id
+        
+        await session.commit()
+        await session.refresh(user)
+        
+        return UserProfileResponse(
+            email=user.email,
+            display_name=user.display_name,
+            job_title=user.job_title,
+            company_name=user.company_name,
+            signature_html=user.signature_html,
+            calendar_link=user.calendar_link,
+            phone_number=user.phone_number,
+            default_voice_profile_id=user.default_voice_profile_id,
+            picture=user.picture,
+        )
+
+
+@router.get("/me/signature-preview")
+async def get_signature_preview():
+    """Get a preview of how the email signature will look.
+    
+    Returns both plain text and HTML versions.
+    """
+    from src.db import get_session
+    from src.models.user import User
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        stmt = select(User).where(User.email == "casey.l@pesti.io")
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            # Return default signature
+            return {
+                "plain_text": "Best,\n\nCasey Larkin\nCEO\nPesti\n\nBook time: https://meetings.hubspot.com/casey-larkin",
+                "html": None,
+                "context": {
+                    "sender_name": "Casey Larkin",
+                    "sender_title": "CEO",
+                    "sender_company": "Pesti",
+                    "calendar_link": "https://meetings.hubspot.com/casey-larkin",
+                }
+            }
+        
+        return {
+            "plain_text": user.build_signature(),
+            "html": user.signature_html,
+            "context": user.get_signature_context(),
+        }

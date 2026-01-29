@@ -1,6 +1,7 @@
 """User model for CaseyOS authentication.
 
 Sprint 1, Task 1.1 - Google OAuth Setup
+Sprint 53, Task 53.1 - User Profile Extension
 """
 from datetime import datetime
 from typing import Optional, List
@@ -8,7 +9,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import Column, String, DateTime, JSON, Boolean, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.db import Base
 
@@ -25,6 +26,15 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=True)
     picture = Column(Text, nullable=True)  # Google profile picture URL
+    
+    # Profile fields for email signature (Sprint 53)
+    display_name = Column(String(255), nullable=True)  # Name to use in emails
+    job_title = Column(String(255), nullable=True)  # e.g., "CEO, Pesti"
+    company_name = Column(String(255), nullable=True)  # e.g., "Pesti"
+    signature_html = Column(Text, nullable=True)  # Custom HTML signature
+    calendar_link = Column(String(500), nullable=True)  # HubSpot/Calendly booking link
+    phone_number = Column(String(50), nullable=True)  # Contact phone
+    default_voice_profile_id = Column(PGUUID(as_uuid=True), nullable=True)  # Preferred voice profile
     
     # Google OAuth tokens (encrypted in production)
     google_access_token = Column(Text, nullable=True)
@@ -57,6 +67,37 @@ class User(Base):
         if not self.google_token_scopes:
             return False
         return scope in self.google_token_scopes
+    
+    def get_display_name(self) -> str:
+        """Get the best available display name for the user."""
+        return self.display_name or self.name or self.email.split("@")[0]
+    
+    def get_signature_context(self) -> dict:
+        """Get signature context for email draft generation.
+        
+        Returns dict with sender_name, sender_title, sender_company, calendar_link.
+        """
+        return {
+            "sender_name": self.get_display_name(),
+            "sender_title": self.job_title or "",
+            "sender_company": self.company_name or "",
+            "sender_email": self.email,
+            "sender_phone": self.phone_number or "",
+            "calendar_link": self.calendar_link or "",
+            "signature_html": self.signature_html or "",
+        }
+    
+    def build_signature(self) -> str:
+        """Build a text signature from profile fields."""
+        parts = ["", "Best,", "", self.get_display_name()]
+        if self.job_title:
+            parts.append(self.job_title)
+        if self.company_name:
+            parts.append(self.company_name)
+        if self.calendar_link:
+            parts.append("")
+            parts.append(f"Book time: {self.calendar_link}")
+        return "\n".join(parts)
     
     # Relationship to sessions
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")

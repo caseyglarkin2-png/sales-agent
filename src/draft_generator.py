@@ -42,6 +42,7 @@ class DraftGenerator:
         voice_profile: Optional[VoiceProfile] = None,
         talking_points: Optional[List[str]] = None,
         personalization_hooks: Optional[List[str]] = None,
+        sender_context: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Generate a personalized email draft.
         
@@ -55,20 +56,33 @@ class DraftGenerator:
             voice_profile: Voice profile for tone/style
             talking_points: Research-based talking points
             personalization_hooks: Personalization hooks from research
+            sender_context: Dict with sender_name, sender_title, sender_company, 
+                           calendar_link from user profile (Sprint 53)
         
         Returns:
             Dict with subject, body, and metadata
         """
         profile = voice_profile or get_voice_profile()
         
+        # Merge sender context from user profile if provided (Sprint 53)
+        effective_sender = {
+            "sender_name": profile.name,
+            "sender_title": "",
+            "sender_company": "",
+            "calendar_link": profile.calendar_link,
+        }
+        if sender_context:
+            effective_sender.update({k: v for k, v in sender_context.items() if v})
+        
         if not self.client:
             logger.warning("OpenAI client not configured, using fallback draft")
             return self._fallback_draft(
-                prospect_name, company_name, meeting_slots, asset_link, profile
+                prospect_name, company_name, meeting_slots, asset_link, profile,
+                sender_context=effective_sender
             )
         
         # Build the prompt
-        system_prompt = self._build_system_prompt(profile)
+        system_prompt = self._build_system_prompt(profile, sender_context=effective_sender)
         user_prompt = self._build_user_prompt(
             prospect_name, company_name, thread_context, 
             meeting_slots, asset_link, profile,
@@ -91,6 +105,7 @@ class DraftGenerator:
             subject, body = self._parse_response(content)
             
             # PII safety check
+            safety_result = None  # Initialize to avoid undefined variable bug
             if self.enable_pii_check and self.pii_validator:
                 full_email = f"{subject}\n\n{body}"
                 safety_result = self.pii_validator.validate(full_email, context="email_draft")
@@ -114,23 +129,49 @@ class DraftGenerator:
                 "model": self.model,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
                 "voice_profile": profile.name,
-                "pii_safety": safety_result if self.enable_pii_check else None,
+                "pii_safety": safety_result,
                 "blocked": False,
             }
         
         except Exception as e:
             logger.error(f"Error generating draft: {e}")
             return self._fallback_draft(
-                prospect_name, company_name, meeting_slots, asset_link, profile
+                prospect_name, company_name, meeting_slots, asset_link, profile,
+                sender_context=effective_sender
             )
     
-    def _build_system_prompt(self, profile: VoiceProfile) -> str:
-        """Build system prompt with voice profile."""
+    def _build_system_prompt(
+        self, 
+        profile: VoiceProfile,
+        sender_context: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """Build system prompt with voice profile and sender context.
+        
+        Args:
+            profile: VoiceProfile with tone/style settings
+            sender_context: Dict with sender_name, sender_title, sender_company,
+                           calendar_link from user profile (Sprint 53)
+        """
+        # Build sender info block from context (Sprint 53)
+        sender_info = ""
+        if sender_context:
+            sender_parts = []
+            if sender_context.get("sender_name"):
+                sender_parts.append(f"Sender Name: {sender_context['sender_name']}")
+            if sender_context.get("sender_title"):
+                sender_parts.append(f"Sender Title: {sender_context['sender_title']}")
+            if sender_context.get("sender_company"):
+                sender_parts.append(f"Sender Company: {sender_context['sender_company']}")
+            if sender_context.get("calendar_link"):
+                sender_parts.append(f"Calendar Link: {sender_context['calendar_link']}")
+            if sender_parts:
+                sender_info = "\nSENDER INFORMATION:\n" + "\n".join(sender_parts) + "\n"
+        
         return f"""You are an expert B2B sales email writer. Your task is to write 
 personalized, effective outreach emails that get responses.
 
 {profile.to_prompt_context()}
-
+{sender_info}
 OUTPUT FORMAT:
 Subject: [email subject line]
 ---
@@ -142,6 +183,7 @@ IMPORTANT:
 - End with exactly ONE clear question/CTA
 - Never be pushy or desperate
 - Sound human, not like a template
+- Use the sender's real name and title in the signature, never use placeholders
 """
     
     def _build_user_prompt(
@@ -214,8 +256,14 @@ IMPORTANT:
         meeting_slots: Optional[List[Dict[str, Any]]],
         asset_link: Optional[str],
         profile: VoiceProfile,
+        sender_context: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Generate fallback draft without OpenAI."""
+        """Generate fallback draft without OpenAI.
+        
+        Args:
+            sender_context: Dict with sender_name, sender_title, sender_company,
+                           calendar_link from user profile (Sprint 53)
+        """
         subject = f"Quick question for {company_name}"
         
         body_parts = [
@@ -235,7 +283,22 @@ IMPORTANT:
         body_parts.append("")
         body_parts.append("Would any of these work for you?")
         body_parts.append("")
-        body_parts.append(profile.signature_style)
+        
+        # Build signature from sender_context if available (Sprint 53)
+        if sender_context and sender_context.get("sender_name"):
+            sig_lines = []
+            sig_lines.append(sender_context["sender_name"])
+            if sender_context.get("sender_title") and sender_context.get("sender_company"):
+                sig_lines.append(f"{sender_context['sender_title']} | {sender_context['sender_company']}")
+            elif sender_context.get("sender_title"):
+                sig_lines.append(sender_context["sender_title"])
+            elif sender_context.get("sender_company"):
+                sig_lines.append(sender_context["sender_company"])
+            if sender_context.get("calendar_link"):
+                sig_lines.append(f"Book a time: {sender_context['calendar_link']}")
+            body_parts.append("\n".join(sig_lines))
+        else:
+            body_parts.append(profile.signature_style)
         
         if profile.include_ps and asset_link:
             body_parts.append("")

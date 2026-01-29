@@ -312,6 +312,20 @@
                 <h3>Body</h3>
                 <textarea id="draft-body" class="draft-input draft-textarea" placeholder="Email body..."></textarea>
             </div>
+            
+            <!-- Signature Preview (Sprint 53) -->
+            <div class="draft-section" id="signature-section">
+                <h3>
+                    Signature
+                    <span class="text-sm font-normal text-gray-500">(auto-attached on send)</span>
+                </h3>
+                <div id="signature-preview" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <pre id="signature-text" class="text-sm text-gray-700 whitespace-pre-wrap">Loading signature...</pre>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    <a href="/caseyos/settings" class="text-primary hover:underline">Edit signature in Settings → Profile</a>
+                </p>
+            </div>
 
             <div class="action-buttons">
                 <button onclick="saveDraft()" class="btn btn-primary">
@@ -353,7 +367,26 @@
     let currentItem = null;
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', loadItem);
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadItem();
+        await loadSignaturePreview();
+    });
+    
+    // Load signature preview (Sprint 53)
+    async function loadSignaturePreview() {
+        try {
+            const res = await fetch('/api/users/me/signature-preview');
+            if (res.ok) {
+                const data = await res.json();
+                const sigText = document.getElementById('signature-text');
+                if (sigText && data.plain_text) {
+                    sigText.textContent = data.plain_text;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load signature:', err);
+        }
+    }
 
     async function loadItem() {
         try {

@@ -21,14 +21,16 @@ def test_health_check_returns_ok(client):
 
 
 def test_root_endpoint_returns_dashboard(client):
-    """Test that root endpoint returns dashboard HTML or service info."""
+    """Test that root endpoint returns CaseyOS dashboard (redirect from Sprint 52)."""
     response = client.get("/")
     assert response.status_code == 200
-    # Root now returns HTML dashboard if static file exists, otherwise JSON
+    # Root now redirects to CaseyOS dashboard
     content_type = response.headers.get("content-type", "")
     if "text/html" in content_type:
-        assert "Sales Agent" in response.text
+        # CaseyOS dashboard should have the main navigation
+        assert "CaseyOS" in response.text or "caseyos" in response.text.lower()
     else:
+        # Fallback to JSON response
         data = response.json()
         assert data["service"] == "sales-agent"
         assert data["status"] == "running"
