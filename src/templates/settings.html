@@ -7,19 +7,23 @@
     .setting-card {
         transition: all 0.2s ease;
     }
+
     .setting-card:hover {
         border-color: #4f46e5;
     }
+
     .toggle-switch {
         position: relative;
         width: 48px;
         height: 24px;
     }
+
     .toggle-switch input {
         opacity: 0;
         width: 0;
         height: 0;
     }
+
     .toggle-slider {
         position: absolute;
         cursor: pointer;
@@ -31,6 +35,7 @@
         transition: 0.3s;
         border-radius: 24px;
     }
+
     .toggle-slider:before {
         position: absolute;
         content: "";
@@ -42,12 +47,15 @@
         transition: 0.3s;
         border-radius: 50%;
     }
-    input:checked + .toggle-slider {
+
+    input:checked+.toggle-slider {
         background-color: #4f46e5;
     }
-    input:checked + .toggle-slider:before {
+
+    input:checked+.toggle-slider:before {
         transform: translateX(24px);
     }
+
     .danger-zone {
         border: 2px solid #ef4444;
         background: #fef2f2;
@@ -63,7 +71,7 @@
             <h1 class="text-2xl font-bold text-gray-900">⚙️ Settings</h1>
             <p class="text-gray-600">System configuration and preferences</p>
         </div>
-        <button onclick="loadAllSettings()" 
+        <button onclick="loadAllSettings()"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
             ↻ Refresh
         </button>
@@ -106,7 +114,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Email Signature Profile</h2>
                 <p class="text-gray-600 mb-6">Configure your name, title, and signature for outgoing emails.</p>
-                
+
                 <form id="profile-form" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -116,28 +124,28 @@
                                 placeholder="Casey Larkin">
                             <p class="text-xs text-gray-500 mt-1">Name used in email signatures</p>
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
                             <input type="text" id="profile-job-title" name="job_title"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 placeholder="CEO">
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
                             <input type="text" id="profile-company" name="company_name"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 placeholder="Pesti">
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                             <input type="tel" id="profile-phone" name="phone_number"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 placeholder="+1 555-123-4567">
                         </div>
-                        
+
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Calendar Link</label>
                             <input type="url" id="profile-calendar" name="calendar_link"
@@ -145,15 +153,16 @@
                                 placeholder="https://meetings.hubspot.com/casey-larkin">
                             <p class="text-xs text-gray-500 mt-1">HubSpot or Calendly link for booking meetings</p>
                         </div>
-                        
+
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Custom Signature (Optional)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Custom Signature
+                                (Optional)</label>
                             <textarea id="profile-signature" name="signature_html" rows="4"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono text-sm"
                                 placeholder="Best,&#10;&#10;Casey Larkin&#10;CEO, Pesti"></textarea>
                             <p class="text-xs text-gray-500 mt-1">Leave blank to auto-generate from profile fields</p>
                         </div>
-                        
+
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Default Voice Profile</label>
                             <select id="profile-voice" name="default_voice_profile_id"
@@ -163,7 +172,7 @@
                             <p class="text-xs text-gray-500 mt-1">Voice profile used for generating email drafts</p>
                         </div>
                     </div>
-                    
+
                     <!-- Signature Preview -->
                     <div class="border-t border-gray-200 pt-6">
                         <h3 class="text-sm font-semibold text-gray-900 mb-3">Signature Preview</h3>
@@ -178,13 +187,13 @@ Pesti
 Book time: https://meetings.hubspot.com/casey-larkin</pre>
                         </div>
                     </div>
-                    
+
                     <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="loadProfile()" 
+                        <button type="button" onclick="loadProfile()"
                             class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
                             Reset
                         </button>
-                        <button type="submit" 
+                        <button type="submit"
                             class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">
                             💾 Save Profile
                         </button>
@@ -205,7 +214,7 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Connector Status -->
                 <div class="setting-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                     <h3 class="font-semibold text-gray-900 mb-4">Connectors</h3>
@@ -216,7 +225,7 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Feature Flags -->
             <div class="setting-card bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                 <h3 class="font-semibold text-gray-900 mb-4">Feature Flags</h3>
@@ -233,13 +242,14 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                 <div class="flex items-center justify-between mb-6">
                     <div>
                         <h3 class="font-semibold text-gray-900">Operation Mode</h3>
-                        <p class="text-sm text-gray-500">Control whether the system sends emails or creates drafts only</p>
+                        <p class="text-sm text-gray-500">Control whether the system sends emails or creates drafts only
+                        </p>
                     </div>
                     <div id="current-mode" class="px-4 py-2 rounded-full text-sm font-medium bg-gray-100">
                         Loading...
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="mode-draft" onclick="setMode('draft_only')"
                         class="cursor-pointer p-4 rounded-lg border-2 border-gray-200 hover:border-indigo-300">
@@ -247,7 +257,8 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                             <span class="text-2xl">📝</span>
                             <span class="font-medium text-gray-900">Draft Only</span>
                         </div>
-                        <p class="text-sm text-gray-600">Creates email drafts that require manual approval before sending. Safest option for testing and review.</p>
+                        <p class="text-sm text-gray-600">Creates email drafts that require manual approval before
+                            sending. Safest option for testing and review.</p>
                     </div>
                     <div id="mode-send" onclick="setMode('send')"
                         class="cursor-pointer p-4 rounded-lg border-2 border-gray-200 hover:border-indigo-300">
@@ -255,7 +266,8 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                             <span class="text-2xl">📤</span>
                             <span class="font-medium text-gray-900">Send Mode</span>
                         </div>
-                        <p class="text-sm text-gray-600">Automatically sends approved emails. Requires proper approval rules to be configured.</p>
+                        <p class="text-sm text-gray-600">Automatically sends approved emails. Requires proper approval
+                            rules to be configured.</p>
                     </div>
                 </div>
             </div>
@@ -280,7 +292,8 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                             class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2">
                     </div>
                 </div>
-                <button onclick="saveRateLimits()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                <button onclick="saveRateLimits()"
+                    class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
                     Save Rate Limits
                 </button>
             </div>
@@ -345,7 +358,8 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                         </label>
                     </div>
                 </div>
-                <button onclick="saveNotificationPrefs()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                <button onclick="saveNotificationPrefs()"
+                    class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
                     Save Preferences
                 </button>
             </div>
@@ -356,7 +370,7 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
             <div class="danger-zone rounded-xl p-6">
                 <h3 class="font-semibold text-red-700 mb-4">⚠️ Danger Zone</h3>
                 <p class="text-sm text-red-600 mb-6">These actions can affect system operation. Use with caution.</p>
-                
+
                 <div class="space-y-4">
                     <!-- Emergency Stop -->
                     <div class="bg-white rounded-lg p-4 border border-red-200">
@@ -371,7 +385,7 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                             </button>
                         </div>
                     </div>
-                    
+
                     <!-- Resume Operations -->
                     <div class="bg-white rounded-lg p-4 border border-gray-200">
                         <div class="flex items-center justify-between">
@@ -385,7 +399,7 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
                             </button>
                         </div>
                     </div>
-                    
+
                     <!-- Clear Queue -->
                     <div class="bg-white rounded-lg p-4 border border-gray-200">
                         <div class="flex items-center justify-between">
@@ -406,45 +420,45 @@ Book time: https://meetings.hubspot.com/casey-larkin</pre>
 </div>
 
 <script>
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    loadAllSettings();
-});
-
-// Tab switching
-function showTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(el => {
-        el.classList.remove('border-primary', 'text-gray-900');
-        el.classList.add('border-transparent', 'text-gray-500');
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+        loadAllSettings();
     });
-    
-    // Show selected tab
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    document.querySelector(`[data-tab="${tabName}"]`).classList.remove('border-transparent', 'text-gray-500');
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('border-primary', 'text-gray-900');
-}
 
-// Load all settings
-async function loadAllSettings() {
-    await Promise.all([
-        loadSystemStatus(),
-        loadEmergencyStatus(),
-        loadRules()
-    ]);
-}
+    // Tab switching
+    function showTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => {
+            el.classList.remove('border-primary', 'text-gray-900');
+            el.classList.add('border-transparent', 'text-gray-500');
+        });
 
-// Load system status
-async function loadSystemStatus() {
-    try {
-        const response = await fetch('/health/status');
-        if (!response.ok) throw new Error('Failed to load status');
-        const data = await response.json();
-        
-        // System status
-        const statusContainer = document.getElementById('system-status');
-        statusContainer.innerHTML = `
+        // Show selected tab
+        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        document.querySelector(`[data-tab="${tabName}"]`).classList.remove('border-transparent', 'text-gray-500');
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('border-primary', 'text-gray-900');
+    }
+
+    // Load all settings
+    async function loadAllSettings() {
+        await Promise.all([
+            loadSystemStatus(),
+            loadEmergencyStatus(),
+            loadRules()
+        ]);
+    }
+
+    // Load system status
+    async function loadSystemStatus() {
+        try {
+            const response = await fetch('/health/status');
+            if (!response.ok) throw new Error('Failed to load status');
+            const data = await response.json();
+
+            // System status
+            const statusContainer = document.getElementById('system-status');
+            statusContainer.innerHTML = `
             <div class="flex items-center justify-between">
                 <span class="text-gray-600">API Status</span>
                 <span class="px-2 py-1 rounded-full text-xs ${data.status === 'healthy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${data.status}</span>
@@ -458,77 +472,77 @@ async function loadSystemStatus() {
                 <span class="px-2 py-1 rounded-full text-xs ${data.redis?.status === 'connected' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">${data.redis?.status || 'Optional'}</span>
             </div>
         `;
-        
-        // Connector status
-        const connectorContainer = document.getElementById('connector-status');
-        const connectors = data.connectors || {};
-        connectorContainer.innerHTML = Object.entries(connectors).map(([name, info]) => `
+
+            // Connector status
+            const connectorContainer = document.getElementById('connector-status');
+            const connectors = data.connectors || {};
+            connectorContainer.innerHTML = Object.entries(connectors).map(([name, info]) => `
             <div class="flex items-center justify-between">
                 <span class="text-gray-600 capitalize">${name}</span>
                 <span class="px-2 py-1 rounded-full text-xs ${info.status === 'connected' || info.status === 'configured' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${info.status}</span>
             </div>
         `).join('') || '<span class="text-gray-400">No connectors configured</span>';
-        
-    } catch (error) {
-        console.error('Failed to load system status:', error);
-        document.getElementById('system-status').innerHTML = `
+
+        } catch (error) {
+            console.error('Failed to load system status:', error);
+            document.getElementById('system-status').innerHTML = `
             <span class="text-red-500">Failed to load status</span>
         `;
-    }
-}
-
-// Load emergency status
-async function loadEmergencyStatus() {
-    try {
-        const response = await fetch('/api/admin/emergency-status');
-        if (!response.ok) throw new Error('Failed to load emergency status');
-        const data = await response.json();
-        
-        // Update mode display
-        const modeEl = document.getElementById('current-mode');
-        const draftEl = document.getElementById('mode-draft');
-        const sendEl = document.getElementById('mode-send');
-        
-        const isKillSwitch = data.kill_switch_active;
-        const allowRealSends = data.allow_real_sends;
-        
-        if (isKillSwitch) {
-            modeEl.textContent = '🛑 Emergency Stop Active';
-            modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-700';
-        } else if (allowRealSends) {
-            modeEl.textContent = '📤 Send Mode';
-            modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-700';
-            sendEl.classList.add('border-green-500', 'bg-green-50');
-        } else {
-            modeEl.textContent = '📝 Draft Only';
-            modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-700';
-            draftEl.classList.add('border-blue-500', 'bg-blue-50');
         }
-        
-        // Update emergency button
-        const emergencyBtn = document.getElementById('emergency-btn');
-        if (isKillSwitch) {
-            emergencyBtn.textContent = '🔴 Stop Active';
-            emergencyBtn.disabled = true;
-            emergencyBtn.classList.add('opacity-50');
-        }
-        
-    } catch (error) {
-        console.error('Failed to load emergency status:', error);
     }
-}
 
-// Load auto-approval rules
-async function loadRules() {
-    const container = document.getElementById('rules-list');
-    
-    try {
-        const response = await fetch('/api/admin/rules');
-        if (!response.ok) throw new Error('Failed to load rules');
-        const data = await response.json();
-        
-        if (!data.rules || data.rules.length === 0) {
-            container.innerHTML = `
+    // Load emergency status
+    async function loadEmergencyStatus() {
+        try {
+            const response = await fetch('/api/admin/emergency-status');
+            if (!response.ok) throw new Error('Failed to load emergency status');
+            const data = await response.json();
+
+            // Update mode display
+            const modeEl = document.getElementById('current-mode');
+            const draftEl = document.getElementById('mode-draft');
+            const sendEl = document.getElementById('mode-send');
+
+            const isKillSwitch = data.kill_switch_active;
+            const allowRealSends = data.allow_real_sends;
+
+            if (isKillSwitch) {
+                modeEl.textContent = '🛑 Emergency Stop Active';
+                modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-700';
+            } else if (allowRealSends) {
+                modeEl.textContent = '📤 Send Mode';
+                modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-700';
+                sendEl.classList.add('border-green-500', 'bg-green-50');
+            } else {
+                modeEl.textContent = '📝 Draft Only';
+                modeEl.className = 'px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-700';
+                draftEl.classList.add('border-blue-500', 'bg-blue-50');
+            }
+
+            // Update emergency button
+            const emergencyBtn = document.getElementById('emergency-btn');
+            if (isKillSwitch) {
+                emergencyBtn.textContent = '🔴 Stop Active';
+                emergencyBtn.disabled = true;
+                emergencyBtn.classList.add('opacity-50');
+            }
+
+        } catch (error) {
+            console.error('Failed to load emergency status:', error);
+        }
+    }
+
+    // Load auto-approval rules
+    async function loadRules() {
+        const container = document.getElementById('rules-list');
+
+        try {
+            const response = await fetch('/api/admin/rules');
+            if (!response.ok) throw new Error('Failed to load rules');
+            const data = await response.json();
+
+            if (!data.rules || data.rules.length === 0) {
+                container.innerHTML = `
                 <div class="bg-gray-50 rounded-lg p-6 text-center">
                     <p class="text-gray-500 mb-3">No auto-approval rules configured</p>
                     <button onclick="seedDefaultRules()" class="text-indigo-600 hover:text-indigo-800 font-medium">
@@ -536,10 +550,10 @@ async function loadRules() {
                     </button>
                 </div>
             `;
-            return;
-        }
-        
-        container.innerHTML = data.rules.map(rule => `
+                return;
+            }
+
+            container.innerHTML = data.rules.map(rule => `
             <div class="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center space-x-3">
@@ -551,308 +565,308 @@ async function loadRules() {
                     <p class="text-xs text-gray-400 mt-1">Priority: ${rule.priority} | Confidence: ${(rule.confidence * 100).toFixed(0)}%</p>
                 </div>
                 <div class="flex items-center space-x-2">
-                    ${rule.enabled ? 
-                        `<button onclick="toggleRule('${rule.id}', false)" class="text-sm text-amber-600 hover:text-amber-800">Disable</button>` :
-                        `<button onclick="toggleRule('${rule.id}', true)" class="text-sm text-green-600 hover:text-green-800">Enable</button>`
-                    }
+                    ${rule.enabled ?
+                    `<button onclick="toggleRule('${rule.id}', false)" class="text-sm text-amber-600 hover:text-amber-800">Disable</button>` :
+                    `<button onclick="toggleRule('${rule.id}', true)" class="text-sm text-green-600 hover:text-green-800">Enable</button>`
+                }
                 </div>
             </div>
         `).join('');
-        
-    } catch (error) {
-        console.error('Failed to load rules:', error);
-        container.innerHTML = `<div class="text-red-500 p-4">Failed to load rules</div>`;
-    }
-}
 
-// Toggle rule
-async function toggleRule(ruleId, enable) {
-    try {
-        const endpoint = enable ? `/api/admin/rules/${ruleId}/enable` : `/api/admin/rules/${ruleId}/disable`;
-        const csrfToken = getCookie('csrf_token');
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'X-CSRF-Token': csrfToken }
-        });
-        if (response.ok) {
-            loadRules();
+        } catch (error) {
+            console.error('Failed to load rules:', error);
+            container.innerHTML = `<div class="text-red-500 p-4">Failed to load rules</div>`;
         }
-    } catch (error) {
-        console.error('Failed to toggle rule:', error);
     }
-}
 
-// Seed default rules
-async function seedDefaultRules() {
-    try {
-        const csrfToken = getCookie('csrf_token');
-        const response = await fetch('/api/admin/seed-rules', {
-            method: 'POST',
-            headers: { 'X-CSRF-Token': csrfToken }
-        });
-        if (response.ok) {
-            loadRules();
-            alert('Default rules have been seeded');
-        }
-    } catch (error) {
-        console.error('Failed to seed rules:', error);
-    }
-}
-
-// Emergency stop
-async function emergencyStop() {
-    if (!confirm('Are you sure you want to activate the emergency stop? This will disable all auto-approval.')) {
-        return;
-    }
-    
-    const reason = prompt('Enter reason for emergency stop:', 'Manual intervention required');
-    if (!reason) return;
-    
-    try {
-        const csrfToken = getCookie('csrf_token');
-        const response = await fetch('/api/admin/emergency-stop', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({ reason })
-        });
-        
-        if (response.ok) {
-            alert('Emergency stop activated. All auto-approval is now disabled.');
-            loadEmergencyStatus();
-        } else {
-            const error = await response.json();
-            alert(`Failed: ${error.detail || 'Unknown error'}`);
-        }
-    } catch (error) {
-        console.error('Emergency stop failed:', error);
-        alert('Emergency stop failed. Please try again.');
-    }
-}
-
-// Resume operations
-async function resumeOperations() {
-    if (!confirm('Are you sure you want to resume normal operations?')) {
-        return;
-    }
-    
-    try {
-        const adminPassword = prompt('Enter admin password:');
-        if (!adminPassword) return;
-        
-        const response = await fetch(`/api/admin/emergency-resume?admin_password=${encodeURIComponent(adminPassword)}`, {
-            method: 'POST'
-        });
-        
-        if (response.ok) {
-            alert('Operations resumed. Auto-approval is now enabled.');
-            loadEmergencyStatus();
-        } else {
-            const error = await response.json();
-            alert(`Failed: ${error.detail || 'Unknown error'}`);
-        }
-    } catch (error) {
-        console.error('Resume failed:', error);
-    }
-}
-
-// Clear queue
-async function clearQueue() {
-    if (!confirm('Are you sure you want to clear the command queue? This cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        const csrfToken = getCookie('csrf_token');
-        const response = await fetch('/api/command-queue/clear', {
-            method: 'POST',
-            headers: { 'X-CSRF-Token': csrfToken }
-        });
-        
-        if (response.ok) {
-            alert('Command queue cleared.');
-        }
-    } catch (error) {
-        console.error('Clear queue failed:', error);
-    }
-}
-
-// Save notification preferences
-function saveNotificationPrefs() {
-    const prefs = {
-        signals: document.getElementById('notify-signals').checked,
-        approvals: document.getElementById('notify-approvals').checked,
-        agents: document.getElementById('notify-agents').checked,
-        errors: document.getElementById('notify-errors').checked
-    };
-    // Store in localStorage for now
-    localStorage.setItem('notificationPrefs', JSON.stringify(prefs));
-    alert('Notification preferences saved');
-}
-
-// Save rate limits
-function saveRateLimits() {
-    // This would call an API endpoint
-    alert('Rate limits saved (demo mode)');
-}
-
-// Set mode
-function setMode(mode) {
-    alert(`Mode change to ${mode} requires admin authentication (demo mode)`);
-}
-
-// =====================================================
-// Profile Management (Sprint 53)
-// =====================================================
-
-// Load voice profiles dropdown
-async function loadVoiceProfiles() {
-    try {
-        const response = await fetch('/api/users/voice-profiles');
-        if (response.ok) {
-            const data = await response.json();
-            const select = document.getElementById('profile-voice');
-            select.innerHTML = '<option value="">Select a voice profile...</option>';
-            
-            data.profiles.forEach(profile => {
-                const option = document.createElement('option');
-                option.value = profile.id;
-                option.textContent = `${profile.name} (${profile.tone})`;
-                select.appendChild(option);
+    // Toggle rule
+    async function toggleRule(ruleId, enable) {
+        try {
+            const endpoint = enable ? `/api/admin/rules/${ruleId}/enable` : `/api/admin/rules/${ruleId}/disable`;
+            const csrfToken = getCookie('csrf_token');
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken }
             });
+            if (response.ok) {
+                loadRules();
+            }
+        } catch (error) {
+            console.error('Failed to toggle rule:', error);
         }
-    } catch (error) {
-        console.error('Failed to load voice profiles:', error);
     }
-}
 
-// Load user profile
-async function loadProfile() {
-    try {
-        // Load voice profiles dropdown first
-        await loadVoiceProfiles();
-        
-        const response = await fetch('/api/users/me/profile');
-        if (response.ok) {
-            const profile = await response.json();
-            
-            document.getElementById('profile-display-name').value = profile.display_name || '';
-            document.getElementById('profile-job-title').value = profile.job_title || '';
-            document.getElementById('profile-company').value = profile.company_name || '';
-            document.getElementById('profile-phone').value = profile.phone_number || '';
-            document.getElementById('profile-calendar').value = profile.calendar_link || '';
-            document.getElementById('profile-signature').value = profile.signature_html || '';
-            document.getElementById('profile-voice').value = profile.default_voice_profile_id || '';
-            
-            updateSignaturePreview();
+    // Seed default rules
+    async function seedDefaultRules() {
+        try {
+            const csrfToken = getCookie('csrf_token');
+            const response = await fetch('/api/admin/seed-rules', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken }
+            });
+            if (response.ok) {
+                loadRules();
+                alert('Default rules have been seeded');
+            }
+        } catch (error) {
+            console.error('Failed to seed rules:', error);
         }
-    } catch (error) {
-        console.error('Failed to load profile:', error);
     }
-}
 
-// Save user profile
-async function saveProfile(event) {
-    event.preventDefault();
-    
-    const formData = {
-        display_name: document.getElementById('profile-display-name').value || null,
-        job_title: document.getElementById('profile-job-title').value || null,
-        company_name: document.getElementById('profile-company').value || null,
-        phone_number: document.getElementById('profile-phone').value || null,
-        calendar_link: document.getElementById('profile-calendar').value || null,
-        signature_html: document.getElementById('profile-signature').value || null,
-        default_voice_profile_id: document.getElementById('profile-voice').value || null
-    };
-    
-    try {
-        const csrfToken = getCookie('csrf_token');
-        const response = await fetch('/api/users/me/profile', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify(formData)
-        });
-        
-        if (response.ok) {
-            alert('Profile saved successfully!');
-            loadProfile();
+    // Emergency stop
+    async function emergencyStop() {
+        if (!confirm('Are you sure you want to activate the emergency stop? This will disable all auto-approval.')) {
+            return;
+        }
+
+        const reason = prompt('Enter reason for emergency stop:', 'Manual intervention required');
+        if (!reason) return;
+
+        try {
+            const csrfToken = getCookie('csrf_token');
+            const response = await fetch('/api/admin/emergency-stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ reason })
+            });
+
+            if (response.ok) {
+                alert('Emergency stop activated. All auto-approval is now disabled.');
+                loadEmergencyStatus();
+            } else {
+                const error = await response.json();
+                alert(`Failed: ${error.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Emergency stop failed:', error);
+            alert('Emergency stop failed. Please try again.');
+        }
+    }
+
+    // Resume operations
+    async function resumeOperations() {
+        if (!confirm('Are you sure you want to resume normal operations?')) {
+            return;
+        }
+
+        try {
+            const adminPassword = prompt('Enter admin password:');
+            if (!adminPassword) return;
+
+            const response = await fetch(`/api/admin/emergency-resume?admin_password=${encodeURIComponent(adminPassword)}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                alert('Operations resumed. Auto-approval is now enabled.');
+                loadEmergencyStatus();
+            } else {
+                const error = await response.json();
+                alert(`Failed: ${error.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Resume failed:', error);
+        }
+    }
+
+    // Clear queue
+    async function clearQueue() {
+        if (!confirm('Are you sure you want to clear the command queue? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const csrfToken = getCookie('csrf_token');
+            const response = await fetch('/api/command-queue/clear', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken }
+            });
+
+            if (response.ok) {
+                alert('Command queue cleared.');
+            }
+        } catch (error) {
+            console.error('Clear queue failed:', error);
+        }
+    }
+
+    // Save notification preferences
+    function saveNotificationPrefs() {
+        const prefs = {
+            signals: document.getElementById('notify-signals').checked,
+            approvals: document.getElementById('notify-approvals').checked,
+            agents: document.getElementById('notify-agents').checked,
+            errors: document.getElementById('notify-errors').checked
+        };
+        // Store in localStorage for now
+        localStorage.setItem('notificationPrefs', JSON.stringify(prefs));
+        alert('Notification preferences saved');
+    }
+
+    // Save rate limits
+    function saveRateLimits() {
+        // This would call an API endpoint
+        alert('Rate limits saved (demo mode)');
+    }
+
+    // Set mode
+    function setMode(mode) {
+        alert(`Mode change to ${mode} requires admin authentication (demo mode)`);
+    }
+
+    // =====================================================
+    // Profile Management (Sprint 53)
+    // =====================================================
+
+    // Load voice profiles dropdown
+    async function loadVoiceProfiles() {
+        try {
+            const response = await fetch('/api/users/voice-profiles');
+            if (response.ok) {
+                const data = await response.json();
+                const select = document.getElementById('profile-voice');
+                select.innerHTML = '<option value="">Select a voice profile...</option>';
+
+                data.profiles.forEach(profile => {
+                    const option = document.createElement('option');
+                    option.value = profile.id;
+                    option.textContent = `${profile.name} (${profile.tone})`;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load voice profiles:', error);
+        }
+    }
+
+    // Load user profile
+    async function loadProfile() {
+        try {
+            // Load voice profiles dropdown first
+            await loadVoiceProfiles();
+
+            const response = await fetch('/api/users/me/profile');
+            if (response.ok) {
+                const profile = await response.json();
+
+                document.getElementById('profile-display-name').value = profile.display_name || '';
+                document.getElementById('profile-job-title').value = profile.job_title || '';
+                document.getElementById('profile-company').value = profile.company_name || '';
+                document.getElementById('profile-phone').value = profile.phone_number || '';
+                document.getElementById('profile-calendar').value = profile.calendar_link || '';
+                document.getElementById('profile-signature').value = profile.signature_html || '';
+                document.getElementById('profile-voice').value = profile.default_voice_profile_id || '';
+
+                updateSignaturePreview();
+            }
+        } catch (error) {
+            console.error('Failed to load profile:', error);
+        }
+    }
+
+    // Save user profile
+    async function saveProfile(event) {
+        event.preventDefault();
+
+        const formData = {
+            display_name: document.getElementById('profile-display-name').value || null,
+            job_title: document.getElementById('profile-job-title').value || null,
+            company_name: document.getElementById('profile-company').value || null,
+            phone_number: document.getElementById('profile-phone').value || null,
+            calendar_link: document.getElementById('profile-calendar').value || null,
+            signature_html: document.getElementById('profile-signature').value || null,
+            default_voice_profile_id: document.getElementById('profile-voice').value || null
+        };
+
+        try {
+            const csrfToken = getCookie('csrf_token');
+            const response = await fetch('/api/users/me/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                alert('Profile saved successfully!');
+                loadProfile();
+            } else {
+                const error = await response.json();
+                alert(`Failed to save: ${error.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Failed to save profile:', error);
+            alert('Failed to save profile. Please try again.');
+        }
+    }
+
+    // Update signature preview as user types
+    function updateSignaturePreview() {
+        const displayName = document.getElementById('profile-display-name').value || 'Your Name';
+        const jobTitle = document.getElementById('profile-job-title').value;
+        const company = document.getElementById('profile-company').value;
+        const calendarLink = document.getElementById('profile-calendar').value;
+        const customSignature = document.getElementById('profile-signature').value;
+
+        let preview;
+        if (customSignature) {
+            preview = customSignature;
         } else {
-            const error = await response.json();
-            alert(`Failed to save: ${error.detail || 'Unknown error'}`);
+            const parts = ['Best,', '', displayName];
+            if (jobTitle) parts.push(jobTitle);
+            if (company) parts.push(company);
+            if (calendarLink) {
+                parts.push('');
+                parts.push(`Book time: ${calendarLink}`);
+            }
+            preview = parts.join('\n');
         }
-    } catch (error) {
-        console.error('Failed to save profile:', error);
-        alert('Failed to save profile. Please try again.');
-    }
-}
 
-// Update signature preview as user types
-function updateSignaturePreview() {
-    const displayName = document.getElementById('profile-display-name').value || 'Your Name';
-    const jobTitle = document.getElementById('profile-job-title').value;
-    const company = document.getElementById('profile-company').value;
-    const calendarLink = document.getElementById('profile-calendar').value;
-    const customSignature = document.getElementById('profile-signature').value;
-    
-    let preview;
-    if (customSignature) {
-        preview = customSignature;
-    } else {
-        const parts = ['Best,', '', displayName];
-        if (jobTitle) parts.push(jobTitle);
-        if (company) parts.push(company);
-        if (calendarLink) {
-            parts.push('');
-            parts.push(`Book time: ${calendarLink}`);
-        }
-        preview = parts.join('\n');
+        document.getElementById('signature-preview-text').textContent = preview;
     }
-    
-    document.getElementById('signature-preview-text').textContent = preview;
-}
 
-// Wire up profile form and live preview
-document.addEventListener('DOMContentLoaded', function() {
-    // Load profile on page load
-    loadProfile();
-    
-    // Wire up form submit
-    const profileForm = document.getElementById('profile-form');
-    if (profileForm) {
-        profileForm.addEventListener('submit', saveProfile);
-    }
-    
-    // Wire up live preview updates
-    const profileInputs = [
-        'profile-display-name', 'profile-job-title', 'profile-company',
-        'profile-calendar', 'profile-signature'
-    ];
-    profileInputs.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('input', updateSignaturePreview);
+    // Wire up profile form and live preview
+    document.addEventListener('DOMContentLoaded', function () {
+        // Load profile on page load
+        loadProfile();
+
+        // Wire up form submit
+        const profileForm = document.getElementById('profile-form');
+        if (profileForm) {
+            profileForm.addEventListener('submit', saveProfile);
         }
+
+        // Wire up live preview updates
+        const profileInputs = [
+            'profile-display-name', 'profile-job-title', 'profile-company',
+            'profile-calendar', 'profile-signature'
+        ];
+        profileInputs.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', updateSignaturePreview);
+            }
+        });
     });
-});
 
-// Utility functions
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+    // Utility functions
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-function getCookie(name) {
-    let value = "; " + document.cookie;
-    let parts = value.split("; " + name + "=");
-    if (parts.length == 2) return parts.pop().split(";").shift();
-    return '';
-}
+    function getCookie(name) {
+        let value = "; " + document.cookie;
+        let parts = value.split("; " + name + "=");
+        if (parts.length == 2) return parts.pop().split(";").shift();
+        return '';
+    }
 </script>
 {% endblock %}

@@ -12,27 +12,41 @@
         cursor: pointer;
         transition: all 0.2s;
     }
-    .upload-zone:hover, .upload-zone.dragover {
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
         border-color: #6366f1;
         background-color: #eef2ff;
     }
+
     .source-tab.active {
         background-color: #6366f1;
         color: white;
     }
+
     .sample-card {
         transition: transform 0.2s, box-shadow 0.2s;
     }
+
     .sample-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
     }
+
     .fade-in {
         animation: fadeIn 0.3s ease-in;
     }
+
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>
 {% endblock %}
@@ -45,8 +59,8 @@
             <h1 class="text-2xl font-bold text-gray-900">Voice Training</h1>
             <p class="text-gray-500 text-sm">Train the AI to match your writing style</p>
         </div>
-        <a href="/caseyos/voice-profiles" 
-           class="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+        <a href="/caseyos/voice-profiles"
+            class="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
             <span>🎭</span> Manage Profiles
         </a>
     </div>
@@ -90,27 +104,27 @@
                 <span class="text-lg">📥</span> Add Training Samples
             </h2>
         </div>
-        
+
         <!-- Source Tabs -->
         <div class="flex border-b border-gray-100">
-            <button onclick="setSourceTab('file')" 
-                    class="source-tab active flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
-                    data-tab="file">
+            <button onclick="setSourceTab('file')"
+                class="source-tab active flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
+                data-tab="file">
                 📄 File Upload
             </button>
             <button onclick="setSourceTab('drive')"
-                    class="source-tab flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
-                    data-tab="drive">
+                class="source-tab flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
+                data-tab="drive">
                 📁 Google Drive
             </button>
             <button onclick="setSourceTab('hubspot')"
-                    class="source-tab flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
-                    data-tab="hubspot">
+                class="source-tab flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
+                data-tab="hubspot">
                 🔶 HubSpot Emails
             </button>
             <button onclick="setSourceTab('youtube')"
-                    class="source-tab flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
-                    data-tab="youtube">
+                class="source-tab flex-1 py-3 text-sm font-medium text-center hover:bg-gray-50 transition"
+                data-tab="youtube">
                 🎥 YouTube
             </button>
         </div>
@@ -119,15 +133,16 @@
         <div class="p-6">
             <!-- File Upload -->
             <div id="tab-file" class="tab-content">
-                <div class="upload-zone" id="dropzone"
-                     ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
-                    <input type="file" id="fileInput" class="hidden" accept=".txt,.md,.doc,.docx,.pdf" onchange="handleFileSelect(event)">
+                <div class="upload-zone" id="dropzone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
+                    ondragleave="handleDragLeave(event)">
+                    <input type="file" id="fileInput" class="hidden" accept=".txt,.md,.doc,.docx,.pdf"
+                        onchange="handleFileSelect(event)">
                     <div class="py-8">
                         <span class="text-4xl mb-3 block">📄</span>
                         <p class="text-gray-600 mb-2">Drag & drop files here or click to browse</p>
                         <p class="text-sm text-gray-400">Supports: .txt, .md, .doc, .docx, .pdf</p>
                         <button onclick="document.getElementById('fileInput').click()"
-                                class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                            class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
                             Choose Files
                         </button>
                     </div>
@@ -139,9 +154,9 @@
                 <div class="space-y-4">
                     <div class="flex gap-3">
                         <input type="text" id="driveUrl" placeholder="Paste Google Drive file or folder link..."
-                               class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        <button onclick="importFromDrive()" 
-                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <button onclick="importFromDrive()"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                             Import
                         </button>
                     </div>
@@ -161,9 +176,9 @@
                             <option value="recent">Last 30 Days</option>
                         </select>
                         <input type="number" id="hubspotLimit" value="50" min="10" max="200"
-                               class="w-24 px-4 py-2 border border-gray-200 rounded-lg">
+                            class="w-24 px-4 py-2 border border-gray-200 rounded-lg">
                         <button onclick="importFromHubSpot()"
-                                class="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
+                            class="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
                             Import from HubSpot
                         </button>
                     </div>
@@ -178,9 +193,9 @@
                 <div class="space-y-4">
                     <div class="flex gap-3">
                         <input type="text" id="youtubeUrl" placeholder="Paste YouTube video URL..."
-                               class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                         <button onclick="importFromYouTube()"
-                                class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                            class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
                             Extract Transcript
                         </button>
                     </div>
@@ -222,57 +237,57 @@
 </div>
 
 <script>
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    loadStats();
-    loadSamples();
-});
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+        loadStats();
+        loadSamples();
+    });
 
-// Tab switching
-function setSourceTab(tab) {
-    document.querySelectorAll('.source-tab').forEach(el => el.classList.remove('active'));
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-    
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
-}
+    // Tab switching
+    function setSourceTab(tab) {
+        document.querySelectorAll('.source-tab').forEach(el => el.classList.remove('active'));
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
 
-// Load stats
-async function loadStats() {
-    try {
-        const res = await fetch('/api/voice/training/stats');
-        if (res.ok) {
-            const data = await res.json();
-            document.getElementById('stat-samples').textContent = data.total_samples || 0;
-            document.getElementById('stat-words').textContent = formatNumber(data.total_words || 0);
-            document.getElementById('stat-embeddings').textContent = data.embeddings_generated || 0;
-            document.getElementById('stat-ready').textContent = data.profile_ready ? 'Yes' : 'No';
-        }
-    } catch (e) {
-        console.error('Failed to load stats:', e);
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`tab-${tab}`).classList.remove('hidden');
     }
-}
 
-// Load samples
-async function loadSamples() {
-    const container = document.getElementById('samples-list');
-    try {
-        const res = await fetch('/api/voice/training/samples?limit=20');
-        if (!res.ok) throw new Error('Failed to load');
-        
-        const data = await res.json();
-        
-        if (!data.samples || data.samples.length === 0) {
-            container.innerHTML = `
+    // Load stats
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/voice/training/stats');
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('stat-samples').textContent = data.total_samples || 0;
+                document.getElementById('stat-words').textContent = formatNumber(data.total_words || 0);
+                document.getElementById('stat-embeddings').textContent = data.embeddings_generated || 0;
+                document.getElementById('stat-ready').textContent = data.profile_ready ? 'Yes' : 'No';
+            }
+        } catch (e) {
+            console.error('Failed to load stats:', e);
+        }
+    }
+
+    // Load samples
+    async function loadSamples() {
+        const container = document.getElementById('samples-list');
+        try {
+            const res = await fetch('/api/voice/training/samples?limit=20');
+            if (!res.ok) throw new Error('Failed to load');
+
+            const data = await res.json();
+
+            if (!data.samples || data.samples.length === 0) {
+                container.innerHTML = `
                 <div class="text-center py-12 text-gray-400">
                     <span class="text-4xl block mb-3">📭</span>
                     <p>No training samples yet</p>
                     <p class="text-sm mt-1">Upload files or import from connected sources</p>
                 </div>`;
-            return;
-        }
-        
-        container.innerHTML = data.samples.map(sample => `
+                return;
+            }
+
+            container.innerHTML = data.samples.map(sample => `
             <div class="sample-card fade-in p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <div class="flex items-start justify-between">
                     <div class="flex-1 min-w-0">
@@ -294,186 +309,186 @@ async function loadSamples() {
                 </div>
             </div>
         `).join('');
-        
-    } catch (e) {
-        container.innerHTML = `
+
+        } catch (e) {
+            container.innerHTML = `
             <div class="text-center py-8 text-red-500">
                 <p>Failed to load samples</p>
             </div>`;
-    }
-}
-
-// File handling
-function handleDragOver(e) {
-    e.preventDefault();
-    document.getElementById('dropzone').classList.add('dragover');
-}
-
-function handleDragLeave(e) {
-    document.getElementById('dropzone').classList.remove('dragover');
-}
-
-function handleDrop(e) {
-    e.preventDefault();
-    document.getElementById('dropzone').classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    uploadFiles(files);
-}
-
-function handleFileSelect(e) {
-    uploadFiles(e.target.files);
-}
-
-async function uploadFiles(files) {
-    showProgress('Uploading files...');
-    
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        updateProgress((i / files.length) * 100, `Uploading ${file.name}...`);
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        try {
-            const res = await fetch('/api/voice/training/upload', {
-                method: 'POST',
-                body: formData
-            });
-            if (!res.ok) throw new Error('Upload failed');
-        } catch (e) {
-            console.error('Upload error:', e);
         }
     }
-    
-    hideProgress();
-    loadStats();
-    loadSamples();
-}
 
-// Import functions
-async function importFromDrive() {
-    const url = document.getElementById('driveUrl').value;
-    if (!url) return;
-    
-    showProgress('Importing from Google Drive...');
-    
-    try {
-        const res = await fetch('/api/voice/training/ingest', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({source_type: 'google_drive', source_url: url})
-        });
-        if (!res.ok) throw new Error('Import failed');
-        document.getElementById('driveUrl').value = '';
-    } catch (e) {
-        alert('Import failed: ' + e.message);
+    // File handling
+    function handleDragOver(e) {
+        e.preventDefault();
+        document.getElementById('dropzone').classList.add('dragover');
     }
-    
-    hideProgress();
-    loadStats();
-    loadSamples();
-}
 
-async function importFromHubSpot() {
-    const filter = document.getElementById('hubspotFilter').value;
-    const limit = document.getElementById('hubspotLimit').value;
-    
-    showProgress('Importing from HubSpot...');
-    
-    try {
-        const res = await fetch('/api/voice/training/ingest/hubspot', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({filter, limit: parseInt(limit)})
-        });
-        if (!res.ok) throw new Error('Import failed');
-    } catch (e) {
-        alert('Import failed: ' + e.message);
+    function handleDragLeave(e) {
+        document.getElementById('dropzone').classList.remove('dragover');
     }
-    
-    hideProgress();
-    loadStats();
-    loadSamples();
-}
 
-async function importFromYouTube() {
-    const url = document.getElementById('youtubeUrl').value;
-    if (!url) return;
-    
-    showProgress('Extracting transcript...');
-    
-    try {
-        const res = await fetch('/api/voice/training/ingest', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({source_type: 'youtube', source_url: url})
-        });
-        if (!res.ok) throw new Error('Import failed');
-        document.getElementById('youtubeUrl').value = '';
-    } catch (e) {
-        alert('Import failed: ' + e.message);
+    function handleDrop(e) {
+        e.preventDefault();
+        document.getElementById('dropzone').classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        uploadFiles(files);
     }
-    
-    hideProgress();
-    loadStats();
-    loadSamples();
-}
 
-async function deleteSample(id) {
-    if (!confirm('Delete this sample?')) return;
-    
-    try {
-        await fetch(`/api/voice/training/samples/${id}`, {method: 'DELETE'});
+    function handleFileSelect(e) {
+        uploadFiles(e.target.files);
+    }
+
+    async function uploadFiles(files) {
+        showProgress('Uploading files...');
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            updateProgress((i / files.length) * 100, `Uploading ${file.name}...`);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/voice/training/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error('Upload failed');
+            } catch (e) {
+                console.error('Upload error:', e);
+            }
+        }
+
+        hideProgress();
         loadStats();
         loadSamples();
-    } catch (e) {
-        console.error('Delete error:', e);
     }
-}
 
-// UI helpers
-function showProgress(text) {
-    document.getElementById('progress-section').classList.remove('hidden');
-    document.getElementById('progress-text').textContent = text;
-    document.getElementById('progress-bar').style.width = '0%';
-}
+    // Import functions
+    async function importFromDrive() {
+        const url = document.getElementById('driveUrl').value;
+        if (!url) return;
 
-function updateProgress(pct, text) {
-    document.getElementById('progress-bar').style.width = pct + '%';
-    if (text) document.getElementById('progress-text').textContent = text;
-}
+        showProgress('Importing from Google Drive...');
 
-function hideProgress() {
-    document.getElementById('progress-section').classList.add('hidden');
-}
+        try {
+            const res = await fetch('/api/voice/training/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source_type: 'google_drive', source_url: url })
+            });
+            if (!res.ok) throw new Error('Import failed');
+            document.getElementById('driveUrl').value = '';
+        } catch (e) {
+            alert('Import failed: ' + e.message);
+        }
 
-function getSourceIcon(type) {
-    const icons = {
-        'file': '📄',
-        'google_drive': '📁',
-        'hubspot': '🔶',
-        'youtube': '🎥',
-        'manual': '✏️'
-    };
-    return icons[type] || '📝';
-}
+        hideProgress();
+        loadStats();
+        loadSamples();
+    }
 
-function formatNumber(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return n.toString();
-}
+    async function importFromHubSpot() {
+        const filter = document.getElementById('hubspotFilter').value;
+        const limit = document.getElementById('hubspotLimit').value;
 
-function formatTimeAgo(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = Math.floor((now - date) / 1000);
-    
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    return Math.floor(diff / 86400) + 'd ago';
-}
+        showProgress('Importing from HubSpot...');
+
+        try {
+            const res = await fetch('/api/voice/training/ingest/hubspot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filter, limit: parseInt(limit) })
+            });
+            if (!res.ok) throw new Error('Import failed');
+        } catch (e) {
+            alert('Import failed: ' + e.message);
+        }
+
+        hideProgress();
+        loadStats();
+        loadSamples();
+    }
+
+    async function importFromYouTube() {
+        const url = document.getElementById('youtubeUrl').value;
+        if (!url) return;
+
+        showProgress('Extracting transcript...');
+
+        try {
+            const res = await fetch('/api/voice/training/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source_type: 'youtube', source_url: url })
+            });
+            if (!res.ok) throw new Error('Import failed');
+            document.getElementById('youtubeUrl').value = '';
+        } catch (e) {
+            alert('Import failed: ' + e.message);
+        }
+
+        hideProgress();
+        loadStats();
+        loadSamples();
+    }
+
+    async function deleteSample(id) {
+        if (!confirm('Delete this sample?')) return;
+
+        try {
+            await fetch(`/api/voice/training/samples/${id}`, { method: 'DELETE' });
+            loadStats();
+            loadSamples();
+        } catch (e) {
+            console.error('Delete error:', e);
+        }
+    }
+
+    // UI helpers
+    function showProgress(text) {
+        document.getElementById('progress-section').classList.remove('hidden');
+        document.getElementById('progress-text').textContent = text;
+        document.getElementById('progress-bar').style.width = '0%';
+    }
+
+    function updateProgress(pct, text) {
+        document.getElementById('progress-bar').style.width = pct + '%';
+        if (text) document.getElementById('progress-text').textContent = text;
+    }
+
+    function hideProgress() {
+        document.getElementById('progress-section').classList.add('hidden');
+    }
+
+    function getSourceIcon(type) {
+        const icons = {
+            'file': '📄',
+            'google_drive': '📁',
+            'hubspot': '🔶',
+            'youtube': '🎥',
+            'manual': '✏️'
+        };
+        return icons[type] || '📝';
+    }
+
+    function formatNumber(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+        return n.toString();
+    }
+
+    function formatTimeAgo(timestamp) {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+    }
 </script>
 {% endblock %}

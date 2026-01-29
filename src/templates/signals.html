@@ -11,7 +11,8 @@
             <p class="text-gray-600">Real-time events from forms, HubSpot, Gmail, and manual entries</p>
         </div>
         <div class="flex space-x-3">
-            <button onclick="refreshSignals()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-700 transition">
+            <button onclick="refreshSignals()"
+                class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-700 transition">
                 🔄 Refresh
             </button>
         </div>
@@ -42,7 +43,8 @@
         <div class="flex flex-wrap gap-4 items-center">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
-                <select id="filter-source" onchange="applyFilters()" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary focus:border-primary">
+                <select id="filter-source" onchange="applyFilters()"
+                    class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary focus:border-primary">
                     <option value="">All Sources</option>
                     <option value="form">📝 Form</option>
                     <option value="hubspot">🔶 HubSpot</option>
@@ -52,7 +54,8 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select id="filter-processed" onchange="applyFilters()" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary focus:border-primary">
+                <select id="filter-processed" onchange="applyFilters()"
+                    class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary focus:border-primary">
                     <option value="">All</option>
                     <option value="true">✅ Processed</option>
                     <option value="false">⏳ Pending</option>
@@ -70,12 +73,18 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preview</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event
+                        Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preview
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    </th>
                 </tr>
             </thead>
             <tbody id="signals-table-body" class="bg-white divide-y divide-gray-200">
@@ -90,11 +99,13 @@
 
     <!-- Pagination -->
     <div class="flex justify-between items-center">
-        <button id="btn-prev" onclick="prevPage()" disabled class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+        <button id="btn-prev" onclick="prevPage()" disabled
+            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
             ← Previous
         </button>
         <span id="page-info" class="text-sm text-gray-600">Page 1</span>
-        <button id="btn-next" onclick="nextPage()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+        <button id="btn-next" onclick="nextPage()"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
             Next →
         </button>
     </div>
@@ -107,7 +118,8 @@
             <h3 class="text-lg font-medium text-gray-900">Signal Details</h3>
             <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
                 </svg>
             </button>
         </div>
@@ -147,11 +159,11 @@
                 fetch('/api/signals?limit=1&processed=true'),
                 fetch('/api/signals?limit=1&processed=false')
             ]);
-            
+
             const totalData = await totalRes.json();
             const processedData = await processedRes.json();
             const pendingData = await pendingRes.json();
-            
+
             document.getElementById('stat-total').textContent = totalData.total || 0;
             document.getElementById('stat-processed').textContent = processedData.total || 0;
             document.getElementById('stat-pending').textContent = pendingData.total || 0;
@@ -164,24 +176,24 @@
     async function loadSignals() {
         const source = document.getElementById('filter-source').value;
         const processed = document.getElementById('filter-processed').value;
-        
+
         let url = `/api/signals?limit=${pageSize}&offset=${currentPage * pageSize}`;
         if (source) url += `&source=${source}`;
         if (processed) url += `&processed=${processed}`;
-        
+
         try {
             const res = await fetch(url);
             const data = await res.json();
-            
+
             totalSignals = data.total || 0;
             document.getElementById('showing-count').textContent = data.signals?.length || 0;
             document.getElementById('total-count').textContent = totalSignals;
             document.getElementById('page-info').textContent = `Page ${currentPage + 1} of ${Math.max(1, Math.ceil(totalSignals / pageSize))}`;
-            
+
             // Update pagination buttons
             document.getElementById('btn-prev').disabled = currentPage === 0;
             document.getElementById('btn-next').disabled = (currentPage + 1) * pageSize >= totalSignals;
-            
+
             renderSignals(data.signals || []);
         } catch (e) {
             console.error('Failed to load signals:', e);
@@ -197,7 +209,7 @@
 
     function renderSignals(signals) {
         const tbody = document.getElementById('signals-table-body');
-        
+
         if (!signals.length) {
             tbody.innerHTML = `
                 <tr>
@@ -208,15 +220,15 @@
             `;
             return;
         }
-        
+
         tbody.innerHTML = signals.map(signal => {
             const icon = sourceIcons[signal.source] || '❓';
             const preview = getPayloadPreview(signal.payload);
-            const statusBadge = signal.processed_at 
+            const statusBadge = signal.processed_at
                 ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">✅ Processed</span>'
                 : '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">⏳ Pending</span>';
             const timeAgo = formatTimeAgo(signal.created_at);
-            
+
             return `
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -263,7 +275,7 @@
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
-        
+
         if (diffMins < 1) return 'Just now';
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
@@ -274,7 +286,7 @@
     function showSignalDetail(signal) {
         const modal = document.getElementById('signal-modal');
         const content = document.getElementById('signal-modal-content');
-        
+
         content.innerHTML = `
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
@@ -309,7 +321,7 @@
                 </div>
             </div>
         `;
-        
+
         modal.classList.remove('hidden');
     }
 

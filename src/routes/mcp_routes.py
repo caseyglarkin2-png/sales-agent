@@ -74,8 +74,8 @@ async def mcp_websocket(websocket: WebSocket):
         logger.exception("MCP WebSocket error")
         try:
             await websocket.close(code=1011, reason=str(e))
-        except:
-            pass
+        except Exception as close_error:
+            logger.debug(f"WebSocket close failed: {close_error}")
 
 
 @router.post("/message")

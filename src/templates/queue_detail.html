@@ -329,14 +329,14 @@
 
             <div class="draft-section">
                 <h3>Body</h3>
-                <textarea id="draft-body" class="draft-input draft-textarea" placeholder="Email body..." 
+                <textarea id="draft-body" class="draft-input draft-textarea" placeholder="Email body..."
                     oninput="updateBodyStats()"></textarea>
                 <div class="flex justify-between mt-1 text-xs text-gray-500">
                     <span id="body-words">0 words</span>
                     <span id="body-chars">0 chars</span>
                 </div>
             </div>
-            
+
             <!-- Signature Preview (Sprint 53) -->
             <div class="draft-section" id="signature-section">
                 <h3>
@@ -344,10 +344,12 @@
                     <span class="text-sm font-normal text-gray-500">(auto-attached on send)</span>
                 </h3>
                 <div id="signature-preview" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <pre id="signature-text" class="text-sm text-gray-700 whitespace-pre-wrap">Loading signature...</pre>
+                    <pre id="signature-text"
+                        class="text-sm text-gray-700 whitespace-pre-wrap">Loading signature...</pre>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">
-                    <a href="/caseyos/settings" class="text-primary hover:underline">Edit signature in Settings → Profile</a>
+                    <a href="/caseyos/settings" class="text-primary hover:underline">Edit signature in Settings →
+                        Profile</a>
                 </p>
             </div>
 
@@ -398,7 +400,7 @@
         await loadItem();
         await loadSignaturePreview();
     });
-    
+
     // Load signature preview (Sprint 53)
     async function loadSignaturePreview() {
         try {
@@ -605,23 +607,23 @@
         const body = document.getElementById('draft-body').value;
         const words = body.trim().split(/\s+/).filter(w => w.length > 0).length;
         const chars = body.length;
-        
+
         document.getElementById('body-words').textContent = `${words} words`;
         document.getElementById('body-chars').textContent = `${chars} chars`;
     }
-    
+
     // Sprint 55: Update subject char count
-    document.getElementById('draft-subject')?.addEventListener('input', function() {
+    document.getElementById('draft-subject')?.addEventListener('input', function () {
         const chars = this.value.length;
         document.getElementById('subject-chars').textContent = `${chars} chars`;
     });
-    
+
     // Sprint 55: Regenerate draft
     async function regenerateDraft() {
         const btn = document.getElementById('btn-regenerate');
         btn.disabled = true;
         btn.textContent = '⏳ Generating...';
-        
+
         try {
             const ctx = currentItem.action_context || {};
             const res = await fetch('/api/users/drafts/generate', {
@@ -634,7 +636,7 @@
                     thread_context: ctx.thread_context,
                 })
             });
-            
+
             if (res.ok) {
                 const draft = await res.json();
                 document.getElementById('draft-subject').value = draft.subject || '';

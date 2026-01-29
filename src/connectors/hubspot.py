@@ -1,4 +1,5 @@
 """HubSpot connector for CRM integration."""
+import asyncio
 import os
 from typing import Any, Dict, List, Optional
 
@@ -7,6 +8,67 @@ import httpx
 from src.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Retry configuration
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 1.0  # seconds
+BACKOFF_MULTIPLIER = 2.0
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+async def _retry_with_backoff(
+    func,
+    *args,
+    max_retries: int = MAX_RETRIES,
+    initial_backoff: float = INITIAL_BACKOFF,
+    **kwargs,
+) -> Any:
+    """Execute function with exponential backoff on retryable errors.
+    
+    Args:
+        func: Async function to execute
+        max_retries: Maximum number of retry attempts
+        initial_backoff: Initial backoff delay in seconds
+        
+    Returns:
+        Function result on success, None on exhausted retries
+    """
+    last_exception = None
+    backoff = initial_backoff
+    
+    for attempt in range(max_retries + 1):
+        try:
+            return await func(*args, **kwargs)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in RETRYABLE_STATUS_CODES:
+                last_exception = e
+                if attempt < max_retries:
+                    logger.warning(
+                        f"HubSpot API returned {e.response.status_code}, "
+                        f"retrying in {backoff}s (attempt {attempt + 1}/{max_retries})"
+                    )
+                    await asyncio.sleep(backoff)
+                    backoff *= BACKOFF_MULTIPLIER
+                    continue
+            raise
+        except httpx.TimeoutException as e:
+            last_exception = e
+            if attempt < max_retries:
+                logger.warning(
+                    f"HubSpot API timeout, retrying in {backoff}s "
+                    f"(attempt {attempt + 1}/{max_retries})"
+                )
+                await asyncio.sleep(backoff)
+                backoff *= BACKOFF_MULTIPLIER
+                continue
+            raise
+        except Exception as e:
+            # Non-retryable error
+            raise
+    
+    if last_exception:
+        raise last_exception
+    return None
 
 
 def create_hubspot_connector() -> "HubSpotConnector":
@@ -24,6 +86,7 @@ class HubSpotConnector:
     """Connector for HubSpot API."""
 
     BASE_URL = "https://api.hubapi.com"
+    DEFAULT_TIMEOUT = 30.0  # seconds
 
     def __init__(self, api_key: str):
         """Initialize HubSpot connector."""
@@ -32,6 +95,34 @@ class HubSpotConnector:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Check HubSpot API connectivity and authentication.
+        
+        Returns:
+            Dict with status, latency_ms, and error if any
+        """
+        import time
+        start = time.time()
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v3/objects/contacts?limit=1",
+                    headers=self.headers,
+                )
+                latency_ms = int((time.time() - start) * 1000)
+                
+                if response.status_code == 200:
+                    return {"status": "healthy", "latency_ms": latency_ms}
+                elif response.status_code == 401:
+                    return {"status": "unhealthy", "error": "Invalid API key", "latency_ms": latency_ms}
+                else:
+                    return {"status": "degraded", "error": f"Status {response.status_code}", "latency_ms": latency_ms}
+            except httpx.TimeoutException:
+                return {"status": "unhealthy", "error": "Timeout", "latency_ms": 10000}
+            except Exception as e:
+                return {"status": "unhealthy", "error": str(e), "latency_ms": -1}
 
     async def search_contacts(self, email: str) -> Optional[Dict[str, Any]]:
         """Search for a contact by email address."""

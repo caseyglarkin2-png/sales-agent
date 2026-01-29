@@ -77,19 +77,28 @@ Meeting Slots:
 DEFAULT_PROFILES: Dict[str, VoiceProfile] = {
     "casey_larkin": VoiceProfile(
         name="Casey Larkin",
-        tone="professional",
+        tone="provocative-professional",
         style_notes=[
-            "Direct but warm",
-            "Focus on value and outcomes, not features",
-            "Reference specific pain points relevant to their role",
-            "Never pushy or salesy",
-            "Go-to-market and demand generation expert",
-            "Conversational but professional",
+            # Socratic approach - guide through questions
+            "Lead with a thought-provoking question that challenges their current approach",
+            "Ask 'what if' questions that make them reconsider assumptions",
+            "Use Socratic method: don't tell them the answer, help them discover it",
+            # Provocative edge - create productive tension
+            "Name uncomfortable truths about their industry that others avoid",
+            "Challenge the status quo respectfully but directly",
+            "Create cognitive dissonance about their current state vs. potential",
+            # Core personality
+            "Direct, warm, and intellectually curious",
+            "Focus on outcomes they haven't considered, not obvious value props",
+            "Reference specific pain points they may not have articulated yet",
+            # Domain expertise
+            "Go-to-market and demand generation expert with contrarian insights",
             "Pesti helps companies with field marketing, lead generation, nurturing, and ABM",
             "Connect marketing and sales to enable real GTM functions",
-            "Tailor messaging to persona: events=field marketing, demand gen=leads/velocity, sales=target accounts",
-            "Keep it concise and actionable",
-            "End with clear next step (usually calendar link)",
+            # Tactical
+            "Keep it concise - every word earns its place",
+            "End with ONE question that's hard to ignore",
+            "Never sound like every other sales email they delete",
         ],
         use_contractions=True,
         max_paragraphs=3,

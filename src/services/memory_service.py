@@ -411,8 +411,8 @@ Provide:
                 end = summary_text.find("]") + 1
                 try:
                     key_facts = json.loads(summary_text[start:end])
-                except:
-                    pass
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.debug(f"Could not parse key facts from summary: {e}")
         except Exception as e:
             logger.error(f"Failed to generate summary: {e}")
             summary_text = f"Conversation from {old_messages[0].created_at.date()} to {old_messages[-1].created_at.date()}"

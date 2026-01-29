@@ -7,32 +7,46 @@
     .workflow-card {
         transition: all 0.2s ease;
     }
+
     .workflow-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
+
     .step-connector {
         width: 2px;
         background: #e5e7eb;
     }
+
     .step-active .step-connector {
         background: #4f46e5;
     }
+
     .step-complete .step-indicator {
         background: #22c55e;
         color: white;
     }
+
     .step-running .step-indicator {
         background: #4f46e5;
         animation: pulse 1s infinite;
     }
+
     .step-error .step-indicator {
         background: #ef4444;
         color: white;
     }
+
     @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.7;
+        }
     }
 </style>
 {% endblock %}
@@ -47,11 +61,11 @@
         </div>
         <div class="flex items-center space-x-4">
             <!-- Category Filter -->
-            <select id="category-filter" onchange="loadWorkflows()" 
+            <select id="category-filter" onchange="loadWorkflows()"
                 class="border border-gray-300 rounded-lg px-4 py-2 text-sm">
                 <option value="">All Categories</option>
             </select>
-            <button onclick="loadWorkflows()" 
+            <button onclick="loadWorkflows()"
                 class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
                 ↻ Refresh
             </button>
@@ -82,10 +96,12 @@
             </div>
 
             <!-- Execution Panel (hidden until workflow selected) -->
-            <div id="execution-panel" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hidden">
+            <div id="execution-panel"
+                class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hidden">
                 <div class="p-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 class="font-semibold text-gray-900">Execution Progress</h3>
-                    <span id="execution-status" class="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600">Not Started</span>
+                    <span id="execution-status" class="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600">Not
+                        Started</span>
                 </div>
                 <div id="execution-steps" class="p-4">
                     <!-- Steps will be rendered here -->
@@ -110,7 +126,7 @@
             <!-- Dynamic inputs rendered here -->
         </form>
         <div class="p-4 border-t border-gray-200 flex justify-end space-x-3">
-            <button type="button" onclick="closeInputModal()" 
+            <button type="button" onclick="closeInputModal()"
                 class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
                 Cancel
             </button>
@@ -123,49 +139,49 @@
 </div>
 
 <script>
-// State
-let currentWorkflow = null;
-let categories = [];
-let isExecuting = false;
+    // State
+    let currentWorkflow = null;
+    let categories = [];
+    let isExecuting = false;
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    loadWorkflows();
-});
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+        loadWorkflows();
+    });
 
-// Load workflows
-async function loadWorkflows() {
-    const container = document.getElementById('workflow-list');
-    const category = document.getElementById('category-filter').value;
-    
-    try {
-        const url = category 
-            ? `/api/gemini/workflows?category=${encodeURIComponent(category)}`
-            : '/api/gemini/workflows';
-        
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to load workflows');
-        const data = await response.json();
-        
-        // Update categories dropdown
-        if (data.categories && data.categories.length !== categories.length) {
-            categories = data.categories;
-            updateCategoryDropdown(categories);
-        }
-        
-        document.getElementById('workflow-count').textContent = `${data.total} workflows available`;
-        
-        if (!data.workflows || data.workflows.length === 0) {
-            container.innerHTML = `
+    // Load workflows
+    async function loadWorkflows() {
+        const container = document.getElementById('workflow-list');
+        const category = document.getElementById('category-filter').value;
+
+        try {
+            const url = category
+                ? `/api/gemini/workflows?category=${encodeURIComponent(category)}`
+                : '/api/gemini/workflows';
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to load workflows');
+            const data = await response.json();
+
+            // Update categories dropdown
+            if (data.categories && data.categories.length !== categories.length) {
+                categories = data.categories;
+                updateCategoryDropdown(categories);
+            }
+
+            document.getElementById('workflow-count').textContent = `${data.total} workflows available`;
+
+            if (!data.workflows || data.workflows.length === 0) {
+                container.innerHTML = `
                 <div class="p-8 text-center text-gray-400">
                     <div class="text-3xl mb-2">📭</div>
                     No workflows found
                 </div>
             `;
-            return;
-        }
-        
-        container.innerHTML = data.workflows.map(w => `
+                return;
+            }
+
+            container.innerHTML = data.workflows.map(w => `
             <div class="workflow-card p-4 cursor-pointer hover:bg-gray-50" onclick="selectWorkflow('${w.id}')">
                 <div class="flex items-center justify-between mb-2">
                     <span class="font-medium text-gray-900">${escapeHtml(w.name)}</span>
@@ -179,34 +195,34 @@ async function loadWorkflows() {
                 </div>
             </div>
         `).join('');
-        
-    } catch (error) {
-        console.error('Failed to load workflows:', error);
-        container.innerHTML = `
+
+        } catch (error) {
+            console.error('Failed to load workflows:', error);
+            container.innerHTML = `
             <div class="p-4 text-center text-red-500">Failed to load workflows</div>
         `;
+        }
     }
-}
 
-// Update category dropdown
-function updateCategoryDropdown(cats) {
-    const select = document.getElementById('category-filter');
-    const current = select.value;
-    
-    select.innerHTML = '<option value="">All Categories</option>' + 
-        cats.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
-}
+    // Update category dropdown
+    function updateCategoryDropdown(cats) {
+        const select = document.getElementById('category-filter');
+        const current = select.value;
 
-// Select a workflow
-async function selectWorkflow(workflowId) {
-    const detailContainer = document.getElementById('workflow-detail');
-    
-    try {
-        const response = await fetch(`/api/gemini/workflows/${workflowId}`);
-        if (!response.ok) throw new Error('Failed to load workflow');
-        currentWorkflow = await response.json();
-        
-        detailContainer.innerHTML = `
+        select.innerHTML = '<option value="">All Categories</option>' +
+            cats.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
+    }
+
+    // Select a workflow
+    async function selectWorkflow(workflowId) {
+        const detailContainer = document.getElementById('workflow-detail');
+
+        try {
+            const response = await fetch(`/api/gemini/workflows/${workflowId}`);
+            if (!response.ok) throw new Error('Failed to load workflow');
+            currentWorkflow = await response.json();
+
+            detailContainer.innerHTML = `
             <div class="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div>
                     <h3 class="font-semibold text-gray-900">${escapeHtml(currentWorkflow.name)}</h3>
@@ -247,30 +263,30 @@ async function selectWorkflow(workflowId) {
                 </div>
             </div>
         `;
-        
-        // Show execution panel
-        document.getElementById('execution-panel').classList.remove('hidden');
-        resetExecutionPanel();
-        
-    } catch (error) {
-        console.error('Failed to load workflow:', error);
-        detailContainer.innerHTML = `
+
+            // Show execution panel
+            document.getElementById('execution-panel').classList.remove('hidden');
+            resetExecutionPanel();
+
+        } catch (error) {
+            console.error('Failed to load workflow:', error);
+            detailContainer.innerHTML = `
             <div class="p-6 text-center text-red-500">Failed to load workflow details</div>
         `;
+        }
     }
-}
 
-// Open input modal
-function openInputModal() {
-    if (!currentWorkflow) return;
-    
-    const modal = document.getElementById('input-modal');
-    const form = document.getElementById('input-form');
-    
-    document.getElementById('modal-title').textContent = `Execute: ${currentWorkflow.name}`;
-    
-    // Build input fields
-    form.innerHTML = currentWorkflow.required_inputs.map(input => `
+    // Open input modal
+    function openInputModal() {
+        if (!currentWorkflow) return;
+
+        const modal = document.getElementById('input-modal');
+        const form = document.getElementById('input-form');
+
+        document.getElementById('modal-title').textContent = `Execute: ${currentWorkflow.name}`;
+
+        // Build input fields
+        form.innerHTML = currentWorkflow.required_inputs.map(input => `
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">${input}</label>
             <input type="text" name="${input}" required
@@ -278,88 +294,88 @@ function openInputModal() {
                 placeholder="Enter ${input}...">
         </div>
     `).join('') || '<p class="text-gray-500">No inputs required for this workflow.</p>';
-    
-    modal.classList.remove('hidden');
-}
 
-// Close input modal
-function closeInputModal() {
-    document.getElementById('input-modal').classList.add('hidden');
-}
-
-// Execute workflow
-async function executeWorkflow() {
-    if (!currentWorkflow || isExecuting) return;
-    
-    const form = document.getElementById('input-form');
-    const formData = new FormData(form);
-    const inputs = {};
-    formData.forEach((value, key) => inputs[key] = value);
-    
-    // Close modal
-    closeInputModal();
-    
-    // Start execution
-    isExecuting = true;
-    updateExecutionStatus('running', 'Executing...');
-    renderExecutionSteps(currentWorkflow.steps, []);
-    
-    try {
-        const csrfToken = getCookie('csrf_token');
-        const response = await fetch(`/api/gemini/workflows/${currentWorkflow.id}/execute`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify(inputs)
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Execution failed');
-        }
-        
-        const result = await response.json();
-        
-        // Update UI with results
-        renderExecutionSteps(currentWorkflow.steps, result.results);
-        updateExecutionStatus('complete', 'Completed');
-        showExecutionResult(result);
-        
-    } catch (error) {
-        console.error('Workflow execution failed:', error);
-        updateExecutionStatus('error', 'Failed');
-        document.getElementById('execution-output').textContent = error.message;
-        document.getElementById('execution-result').classList.remove('hidden');
-    } finally {
-        isExecuting = false;
+        modal.classList.remove('hidden');
     }
-}
 
-// Render execution steps
-function renderExecutionSteps(steps, results) {
-    const container = document.getElementById('execution-steps');
-    
-    container.innerHTML = steps.map((step, i) => {
-        const result = results[i];
-        let status = 'pending';
-        let statusIcon = '⏳';
-        
-        if (result) {
-            if (result.skipped) {
-                status = 'skipped';
-                statusIcon = '⏭️';
-            } else if (result.success) {
-                status = 'complete';
-                statusIcon = '✅';
-            } else {
-                status = 'error';
-                statusIcon = '❌';
+    // Close input modal
+    function closeInputModal() {
+        document.getElementById('input-modal').classList.add('hidden');
+    }
+
+    // Execute workflow
+    async function executeWorkflow() {
+        if (!currentWorkflow || isExecuting) return;
+
+        const form = document.getElementById('input-form');
+        const formData = new FormData(form);
+        const inputs = {};
+        formData.forEach((value, key) => inputs[key] = value);
+
+        // Close modal
+        closeInputModal();
+
+        // Start execution
+        isExecuting = true;
+        updateExecutionStatus('running', 'Executing...');
+        renderExecutionSteps(currentWorkflow.steps, []);
+
+        try {
+            const csrfToken = getCookie('csrf_token');
+            const response = await fetch(`/api/gemini/workflows/${currentWorkflow.id}/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(inputs)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Execution failed');
             }
+
+            const result = await response.json();
+
+            // Update UI with results
+            renderExecutionSteps(currentWorkflow.steps, result.results);
+            updateExecutionStatus('complete', 'Completed');
+            showExecutionResult(result);
+
+        } catch (error) {
+            console.error('Workflow execution failed:', error);
+            updateExecutionStatus('error', 'Failed');
+            document.getElementById('execution-output').textContent = error.message;
+            document.getElementById('execution-result').classList.remove('hidden');
+        } finally {
+            isExecuting = false;
         }
-        
-        return `
+    }
+
+    // Render execution steps
+    function renderExecutionSteps(steps, results) {
+        const container = document.getElementById('execution-steps');
+
+        container.innerHTML = steps.map((step, i) => {
+            const result = results[i];
+            let status = 'pending';
+            let statusIcon = '⏳';
+
+            if (result) {
+                if (result.skipped) {
+                    status = 'skipped';
+                    statusIcon = '⏭️';
+                } else if (result.success) {
+                    status = 'complete';
+                    statusIcon = '✅';
+                } else {
+                    status = 'error';
+                    statusIcon = '❌';
+                }
+            }
+
+            return `
             <div class="flex items-start space-x-3 step-${status}">
                 <div class="flex flex-col items-center">
                     <div class="step-indicator w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
@@ -377,48 +393,48 @@ function renderExecutionSteps(steps, results) {
                 </div>
             </div>
         `;
-    }).join('');
-}
+        }).join('');
+    }
 
-// Update execution status badge
-function updateExecutionStatus(state, text) {
-    const badge = document.getElementById('execution-status');
-    const colors = {
-        'pending': 'bg-gray-100 text-gray-600',
-        'running': 'bg-blue-100 text-blue-600',
-        'complete': 'bg-green-100 text-green-600',
-        'error': 'bg-red-100 text-red-600',
-    };
-    badge.className = `text-sm px-3 py-1 rounded-full ${colors[state] || colors.pending}`;
-    badge.textContent = text;
-}
+    // Update execution status badge
+    function updateExecutionStatus(state, text) {
+        const badge = document.getElementById('execution-status');
+        const colors = {
+            'pending': 'bg-gray-100 text-gray-600',
+            'running': 'bg-blue-100 text-blue-600',
+            'complete': 'bg-green-100 text-green-600',
+            'error': 'bg-red-100 text-red-600',
+        };
+        badge.className = `text-sm px-3 py-1 rounded-full ${colors[state] || colors.pending}`;
+        badge.textContent = text;
+    }
 
-// Show execution result
-function showExecutionResult(result) {
-    document.getElementById('execution-result').classList.remove('hidden');
-    document.getElementById('execution-output').textContent = JSON.stringify(result.final_context || result, null, 2);
-}
+    // Show execution result
+    function showExecutionResult(result) {
+        document.getElementById('execution-result').classList.remove('hidden');
+        document.getElementById('execution-output').textContent = JSON.stringify(result.final_context || result, null, 2);
+    }
 
-// Reset execution panel
-function resetExecutionPanel() {
-    updateExecutionStatus('pending', 'Not Started');
-    document.getElementById('execution-steps').innerHTML = '';
-    document.getElementById('execution-result').classList.add('hidden');
-}
+    // Reset execution panel
+    function resetExecutionPanel() {
+        updateExecutionStatus('pending', 'Not Started');
+        document.getElementById('execution-steps').innerHTML = '';
+        document.getElementById('execution-result').classList.add('hidden');
+    }
 
-// Utility functions
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+    // Utility functions
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-function getCookie(name) {
-    let value = "; " + document.cookie;
-    let parts = value.split("; " + name + "=");
-    if (parts.length == 2) return parts.pop().split(";").shift();
-    return '';
-}
+    function getCookie(name) {
+        let value = "; " + document.cookie;
+        let parts = value.split("; " + name + "=");
+        if (parts.length == 2) return parts.pop().split(";").shift();
+        return '';
+    }
 </script>
 {% endblock %}

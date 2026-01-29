@@ -267,8 +267,8 @@ async def chat_with_agent(request: ChatRequest) -> ChatResponse:
                 for wf in recent:
                     workflow_context += f"- {wf.get('contact_email', 'Unknown')}: {wf.get('status', 'unknown')}\n"
                 system_prompt += workflow_context
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not load workflow context: {e}")
         
         # Build messages
         messages = [{"role": "system", "content": system_prompt}]

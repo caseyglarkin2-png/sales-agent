@@ -124,7 +124,8 @@ def verify_password(password: str, stored_hash: str) -> bool:
         salt, hashed = stored_hash.split(":")
         check_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
         return check_hash.hex() == hashed
-    except:
+    except (ValueError, AttributeError) as e:
+        logger.debug(f"Password verification failed: {e}")
         return False
 
 
