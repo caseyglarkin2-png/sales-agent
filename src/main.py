@@ -315,6 +315,8 @@ from src.routes import grok_routes  # Grok: xAI Market Intelligence (Sprint 13)
 from src.routes import mcp_routes  # Sprint 20: MCP Server Integration
 from src.routes import data_hygiene  # Sprint 56: Data Hygiene Dashboard
 from src.routes import retry_queue  # Sprint 58: Resilience & Error Recovery
+from src.routes import abm_campaigns  # Sprint 62: ABM Campaigns
+from src.routes import sequences_api  # Sprint 63: Sequence Automation
 
 # Configure logging
 settings = get_settings()
@@ -377,6 +379,8 @@ app.include_router(grok_routes.router)  # Grok: xAI Market Intelligence (Sprint 
 app.include_router(mcp_routes.router)  # Sprint 20: MCP Server Integration
 app.include_router(data_hygiene.router)  # Sprint 56: Data Hygiene Dashboard
 app.include_router(retry_queue.router)  # Sprint 58: Resilience & Error Recovery
+app.include_router(abm_campaigns.router)  # Sprint 62: ABM Campaigns
+app.include_router(sequences_api.router)  # Sprint 63: Sequence Automation
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)

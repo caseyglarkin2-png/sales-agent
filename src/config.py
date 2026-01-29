@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     slack_bot_token: str = Field(default="", alias="SLACK_BOT_TOKEN", description="Slack Bot Token (xoxb-...)")
     slack_signing_secret: str = Field(default="", alias="SLACK_SIGNING_SECRET", description="Slack Signing Secret")
 
+    # SendGrid (Sprint 64 - High Volume Email)
+    sendgrid_api_key: str = Field(default="", alias="SENDGRID_API_KEY", description="SendGrid API Key")
+    sendgrid_sender_email: str = Field(default="", alias="SENDGRID_SENDER_EMAIL", description="SendGrid verified sender email")
+    sendgrid_sender_name: str = Field(default="CaseyOS", alias="SENDGRID_SENDER_NAME", description="SendGrid sender display name")
+    email_provider: str = Field(default="gmail", alias="EMAIL_PROVIDER", description="Email provider: gmail, sendgrid, or auto")
+
     # Feature Flags
     feature_cold_start_demo: bool = Field(default=True, alias="FEATURE_COLD_START_DEMO", description="Enable cold-start demo")
     feature_validation_agent: bool = Field(default=False, alias="FEATURE_VALIDATION_AGENT", description="Enable validation agent")
