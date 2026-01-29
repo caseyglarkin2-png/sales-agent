@@ -142,6 +142,145 @@ async def list_available_integrations() -> List[IntegrationConfig]:
     return list(AVAILABLE_INTEGRATIONS.values())
 
 
+class TokenHealthStatus(BaseModel):
+    """Token health status for an integration (Sprint 54)."""
+    service: str
+    connected: bool
+    token_valid: bool
+    expires_at: Optional[datetime] = None
+    expires_in_hours: Optional[float] = None
+    last_refreshed_at: Optional[datetime] = None
+    warning: Optional[str] = None
+    error: Optional[str] = None
+
+
+class TokenHealthResponse(BaseModel):
+    """Response for all token health statuses (Sprint 54)."""
+    user_id: str
+    tokens: List[TokenHealthStatus]
+    overall_health: str  # 'healthy', 'warning', 'error', 'no_tokens'
+
+
+@router.get("/tokens/health", response_model=TokenHealthResponse)
+async def get_token_health(
+    user_id: str = Depends(get_current_user_id)
+) -> TokenHealthResponse:
+    """
+    Get health status of all OAuth tokens (Sprint 54).
+    
+    Returns detailed token status including expiry warnings.
+    """
+    from src.db import get_session
+    from src.oauth_manager import OAuthToken
+    from sqlalchemy import select
+    from uuid import UUID
+    
+    tokens = []
+    overall_health = "no_tokens"
+    
+    try:
+        user_uuid = UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        async with get_session() as db:
+            query = select(OAuthToken).where(
+                OAuthToken.user_id == user_uuid,
+                OAuthToken.revoked == False
+            )
+            result = await db.execute(query)
+            token_records = result.scalars().all()
+            
+            if token_records:
+                overall_health = "healthy"
+            
+            for token in token_records:
+                status = TokenHealthStatus(
+                    service=token.service,
+                    connected=True,
+                    token_valid=True,
+                    expires_at=token.expires_at,
+                    last_refreshed_at=token.last_refreshed_at,
+                )
+                
+                # Calculate expiry
+                if token.expires_at:
+                    now = datetime.utcnow()
+                    if token.expires_at < now:
+                        status.token_valid = False
+                        status.error = "Token has expired"
+                        overall_health = "error"
+                    else:
+                        delta = token.expires_at - now
+                        status.expires_in_hours = delta.total_seconds() / 3600
+                        
+                        # Warning if expiring within 24 hours
+                        if status.expires_in_hours < 24:
+                            status.warning = f"Token expires in {status.expires_in_hours:.1f} hours"
+                            if overall_health == "healthy":
+                                overall_health = "warning"
+                
+                tokens.append(status)
+                
+    except Exception as e:
+        # No tokens found or error - return empty list
+        tokens.append(TokenHealthStatus(
+            service="system",
+            connected=False,
+            token_valid=False,
+            error=str(e)
+        ))
+        overall_health = "error"
+    
+    return TokenHealthResponse(
+        user_id=user_id,
+        tokens=tokens,
+        overall_health=overall_health
+    )
+
+
+@router.post("/tokens/{service}/refresh")
+async def refresh_token(
+    service: str,
+    user_id: str = Depends(get_current_user_id)
+) -> dict:
+    """
+    Manually refresh an OAuth token (Sprint 54).
+    
+    Attempts to refresh the specified service's token.
+    """
+    from src.db import get_session
+    from src.oauth_manager import TokenManager
+    from uuid import UUID
+    
+    try:
+        user_uuid = UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        async with get_session() as db:
+            manager = TokenManager(db)
+            
+            # Get token with auto_refresh=True
+            credentials = await manager.get_token(user_uuid, service, auto_refresh=True)
+            
+            if credentials:
+                return {
+                    "success": True,
+                    "service": service,
+                    "message": f"Token for {service} refreshed successfully"
+                }
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No token found for {service}. Please reconnect."
+                )
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to refresh token: {str(e)}"
+        )
+
+
 @router.get("/{app_name}/status", response_model=IntegrationStatus)
 async def get_integration_status(
     app_name: str,

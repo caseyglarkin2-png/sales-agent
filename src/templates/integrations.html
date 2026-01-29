@@ -32,6 +32,11 @@
             <p class="text-gray-600">Connect and manage third-party app connections</p>
         </div>
         <div class="flex items-center space-x-4">
+            <!-- Token Health Summary (Sprint 54) -->
+            <div id="token-health-summary" class="hidden items-center space-x-2 text-sm bg-gray-50 px-3 py-1.5 rounded-full">
+                <span id="health-dot" class="status-dot status-active"></span>
+                <span id="health-text">Tokens healthy</span>
+            </div>
             <!-- Status Summary -->
             <div id="status-summary" class="flex items-center space-x-4 text-sm">
                 <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full">
@@ -108,6 +113,30 @@
                 </div>
             </div>
             
+            <!-- Token Health (Sprint 54) -->
+            <div id="modal-token-health" class="hidden mb-6">
+                <h4 class="font-medium text-gray-900 mb-2">Token Health</h4>
+                <div id="token-health-content" class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span id="token-status-dot" class="status-dot status-active"></span>
+                            <span id="token-status-text" class="text-sm font-medium">Token valid</span>
+                        </div>
+                        <span id="token-expiry" class="text-xs text-gray-500">-</span>
+                    </div>
+                    <div id="token-warning" class="hidden mt-2 text-sm text-yellow-700 bg-yellow-50 rounded p-2">
+                        ⚠️ <span id="token-warning-text">Warning</span>
+                    </div>
+                    <div id="token-error" class="hidden mt-2 text-sm text-red-700 bg-red-50 rounded p-2">
+                        ❌ <span id="token-error-text">Error</span>
+                    </div>
+                    <button id="refresh-token-btn" onclick="refreshToken()" 
+                        class="mt-3 w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        🔄 Refresh Token
+                    </button>
+                </div>
+            </div>
+            
             <div class="flex space-x-3">
                 <button id="modal-connect-btn" onclick="connectIntegration()" 
                     class="flex-1 bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
@@ -145,7 +174,46 @@ const ICONS = {
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     loadIntegrations();
+    loadOverallTokenHealth();
 });
+
+// Load overall token health summary (Sprint 54)
+async function loadOverallTokenHealth() {
+    try {
+        const res = await fetch('/api/integrations/tokens/health');
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        
+        const summaryEl = document.getElementById('token-health-summary');
+        const dotEl = document.getElementById('health-dot');
+        const textEl = document.getElementById('health-text');
+        
+        if (data.tokens.length > 0) {
+            summaryEl.classList.remove('hidden');
+            summaryEl.classList.add('flex');
+            
+            switch (data.overall_health) {
+                case 'healthy':
+                    dotEl.className = 'status-dot status-active';
+                    textEl.textContent = 'Tokens healthy';
+                    break;
+                case 'warning':
+                    dotEl.className = 'status-dot status-coming_soon';
+                    textEl.textContent = 'Token expiring soon';
+                    break;
+                case 'error':
+                    dotEl.className = 'status-dot status-error';
+                    textEl.textContent = 'Token issue';
+                    break;
+                default:
+                    summaryEl.classList.add('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load token health:', error);
+    }
+}
 
 // Load integrations
 async function loadIntegrations() {
@@ -285,12 +353,19 @@ function openModal(appName) {
     
     // Connection details
     const detailsEl = document.getElementById('modal-connection-details');
+    const tokenHealthEl = document.getElementById('modal-token-health');
+    
     if (connected) {
         detailsEl.classList.remove('hidden');
         document.getElementById('modal-connected-at').textContent = connected.connected_at ? timeAgo(connected.connected_at) : '-';
         document.getElementById('modal-last-sync').textContent = connected.last_sync ? timeAgo(connected.last_sync) : '-';
+        
+        // Load token health (Sprint 54)
+        tokenHealthEl.classList.remove('hidden');
+        loadTokenHealth(appName);
     } else {
         detailsEl.classList.add('hidden');
+        tokenHealthEl.classList.add('hidden');
     }
     
     // Buttons
@@ -319,6 +394,105 @@ function openModal(appName) {
     }
     
     document.getElementById('integration-modal').classList.remove('hidden');
+}
+
+// Load token health for an integration (Sprint 54)
+async function loadTokenHealth(appName) {
+    try {
+        const res = await fetch('/api/integrations/tokens/health');
+        if (!res.ok) throw new Error('Failed to load token health');
+        
+        const data = await res.json();
+        
+        // Find token for this service
+        const serviceName = appName.replace('-', '_');
+        const token = data.tokens.find(t => 
+            t.service === serviceName || 
+            t.service === appName || 
+            t.service.includes(serviceName.split('_')[0])
+        );
+        
+        const statusDot = document.getElementById('token-status-dot');
+        const statusText = document.getElementById('token-status-text');
+        const expiryEl = document.getElementById('token-expiry');
+        const warningEl = document.getElementById('token-warning');
+        const errorEl = document.getElementById('token-error');
+        
+        // Reset
+        warningEl.classList.add('hidden');
+        errorEl.classList.add('hidden');
+        
+        if (token) {
+            if (token.token_valid) {
+                statusDot.className = 'status-dot status-active';
+                statusText.textContent = 'Token valid';
+                
+                if (token.expires_in_hours) {
+                    expiryEl.textContent = `Expires in ${token.expires_in_hours.toFixed(1)} hours`;
+                } else {
+                    expiryEl.textContent = '';
+                }
+                
+                if (token.warning) {
+                    warningEl.classList.remove('hidden');
+                    document.getElementById('token-warning-text').textContent = token.warning;
+                }
+            } else {
+                statusDot.className = 'status-dot status-error';
+                statusText.textContent = 'Token expired';
+                expiryEl.textContent = '';
+                
+                if (token.error) {
+                    errorEl.classList.remove('hidden');
+                    document.getElementById('token-error-text').textContent = token.error;
+                }
+            }
+        } else {
+            statusDot.className = 'status-dot status-disconnected';
+            statusText.textContent = 'No token found';
+            expiryEl.textContent = 'Reconnect to get a fresh token';
+        }
+        
+    } catch (error) {
+        console.error('Failed to load token health:', error);
+        document.getElementById('token-status-text').textContent = 'Unable to check';
+    }
+}
+
+// Refresh token manually (Sprint 54)
+async function refreshToken() {
+    if (!currentIntegration) return;
+    
+    const btn = document.getElementById('refresh-token-btn');
+    btn.disabled = true;
+    btn.textContent = '🔄 Refreshing...';
+    
+    try {
+        const csrfToken = getCookie('csrf_token');
+        const serviceName = currentIntegration.replace('-', '_');
+        
+        const res = await fetch(`/api/integrations/tokens/${serviceName}/refresh`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            alert(data.message || 'Token refreshed successfully');
+            loadTokenHealth(currentIntegration);
+        } else {
+            const error = await res.json();
+            alert(error.detail || 'Failed to refresh token');
+        }
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+        alert('Failed to refresh token. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh Token';
+    }
 }
 
 // Close modal
