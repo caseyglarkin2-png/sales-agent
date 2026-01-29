@@ -58,11 +58,11 @@ class TestVersionUpdate:
     """Test version numbers have been updated."""
     
     def test_base_html_version_updated(self):
-        """Base template footer should show v4.0."""
+        """Base template footer should show current version."""
         with open("src/templates/base.html", "r") as f:
             content = f.read()
-        assert "v4.0" in content, "Base template should show version 4.0"
-        assert "Sprint 52" in content or "v4.0" in content, "Version should reference Sprint 52"
+        # Version should be 4.x (4.0, 4.1, etc.)
+        assert "v4." in content, "Base template should show version 4.x"
     
     def test_pyproject_version_updated(self):
         """pyproject.toml should have updated version."""

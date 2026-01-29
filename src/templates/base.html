@@ -72,6 +72,7 @@
                         <a href="/caseyos/queue"
                             class="{% if active_tab == 'queue' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Command Queue
+                            <span id="pending-badge" class="ml-1 px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full hidden">0</span>
                         </a>
                         <a href="/caseyos/gemini"
                             class="{% if active_tab == 'gemini' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
@@ -158,10 +159,39 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 py-4">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-sm text-gray-500">
-            <div>CaseyOS v4.0 (Sprint 52)</div>
+            <div>CaseyOS v4.1 (Sprint 57)</div>
             <div>&copy; 2026 Dude What's The Bid?! LLC</div>
         </div>
     </footer>
+
+    <!-- Global Scripts -->
+    <script>
+        // Pending badge update
+        async function updatePendingBadge() {
+            try {
+                const response = await fetch('/api/command-queue');
+                if (response.ok) {
+                    const data = await response.json();
+                    const pending = data.items ? data.items.filter(i => i.status === 'pending').length : 0;
+                    const badge = document.getElementById('pending-badge');
+                    if (badge) {
+                        if (pending > 0) {
+                            badge.textContent = pending > 99 ? '99+' : pending;
+                            badge.classList.remove('hidden');
+                        } else {
+                            badge.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.debug('Could not update pending badge:', e);
+            }
+        }
+        
+        // Update on load and every 30 seconds
+        updatePendingBadge();
+        setInterval(updatePendingBadge, 30000);
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

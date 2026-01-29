@@ -100,6 +100,68 @@
     background: var(--gray-50);
   }
 
+  .queue-item.keyboard-selected {
+    background: #e0e7ff;
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+
+  /* Keyboard help modal */
+  .keyboard-help-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .keyboard-help-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    max-width: 320px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+  }
+
+  .keyboard-help-content h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.125rem;
+  }
+
+  .keyboard-help-content ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+  }
+
+  .keyboard-help-content li {
+    padding: 0.375rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .keyboard-help-content kbd {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.875rem;
+    font-family: monospace;
+  }
+
+  .keyboard-help-content button {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+  }
+
   /* Priority indicator */
   .priority-bar {
     width: 4px;
@@ -1131,6 +1193,134 @@
     }
     touchStartY = 0;
   });
+
+  // Keyboard navigation
+  let selectedIndex = -1;
+  const getQueueItems = () => document.querySelectorAll('.queue-item');
+  
+  function selectItem(index) {
+    const items = getQueueItems();
+    if (items.length === 0) return;
+    
+    // Remove previous selection
+    items.forEach(item => item.classList.remove('keyboard-selected'));
+    
+    // Clamp index
+    if (index < 0) index = 0;
+    if (index >= items.length) index = items.length - 1;
+    
+    selectedIndex = index;
+    const item = items[index];
+    item.classList.add('keyboard-selected');
+    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  
+  document.addEventListener('keydown', (e) => {
+    // Don't intercept if in input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    const items = getQueueItems();
+    if (items.length === 0) return;
+    
+    switch(e.key) {
+      case 'j':
+      case 'ArrowDown':
+        e.preventDefault();
+        selectItem(selectedIndex + 1);
+        break;
+      case 'k':
+      case 'ArrowUp':
+        e.preventDefault();
+        selectItem(selectedIndex - 1);
+        break;
+      case 'Enter':
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+          const link = items[selectedIndex].querySelector('a[href*="/caseyos/queue/"]');
+          if (link) link.click();
+        }
+        break;
+      case 'a':
+        // Quick approve selected item
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+          const itemId = items[selectedIndex].dataset.id;
+          if (itemId) quickApprove(itemId);
+        }
+        break;
+      case 'r':
+        // Quick reject selected item
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+          const itemId = items[selectedIndex].dataset.id;
+          if (itemId) {
+            const reason = prompt('Rejection reason (optional):');
+            quickReject(itemId, reason || 'Rejected via keyboard shortcut');
+          }
+        }
+        break;
+      case '?':
+        // Show keyboard shortcuts help
+        showKeyboardHelp();
+        break;
+      case 'Escape':
+        // Deselect
+        items.forEach(item => item.classList.remove('keyboard-selected'));
+        selectedIndex = -1;
+        break;
+    }
+  });
+  
+  function quickApprove(itemId) {
+    fetch(`/api/command-queue/${itemId}/accept`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      }
+    })
+    .then(r => r.json())
+    .then(data => {
+      showToast('Approved!', 'success');
+      loadQueue();
+    })
+    .catch(() => showToast('Failed to approve', 'error'));
+  }
+  
+  function quickReject(itemId, reason) {
+    fetch(`/api/command-queue/${itemId}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      },
+      body: JSON.stringify({ reason })
+    })
+    .then(r => r.json())
+    .then(data => {
+      showToast('Rejected', 'warning');
+      loadQueue();
+    })
+    .catch(() => showToast('Failed to reject', 'error'));
+  }
+  
+  function showKeyboardHelp() {
+    const modal = document.createElement('div');
+    modal.className = 'keyboard-help-modal';
+    modal.innerHTML = `
+      <div class="keyboard-help-content">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <ul>
+          <li><kbd>j</kbd> / <kbd>↓</kbd> - Next item</li>
+          <li><kbd>k</kbd> / <kbd>↑</kbd> - Previous item</li>
+          <li><kbd>Enter</kbd> - Open selected item</li>
+          <li><kbd>a</kbd> - Approve selected</li>
+          <li><kbd>r</kbd> - Reject selected</li>
+          <li><kbd>Esc</kbd> - Deselect</li>
+          <li><kbd>?</kbd> - Show this help</li>
+        </ul>
+        <button onclick="this.parentElement.parentElement.remove()">Close</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
 
   // Initial load
   loadQueue();
