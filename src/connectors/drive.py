@@ -2,21 +2,70 @@
 
 Searches configured Drive folders for relevant assets (proposals,
 case studies, reports) to include in outbound emails.
+Sprint 67: Added retry for Google API calls
 """
+import asyncio
 import json
 import os
 import io
-from typing import Any, Dict, List, Optional
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.errors import HttpError
 
 from src.logger import get_logger
 
 logger = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+
+T = TypeVar("T")
+
+
+def with_drive_retry(
+    max_retries: int = 3,
+    backoff_base: float = 1.0,
+    retryable_statuses: frozenset = frozenset({429, 500, 502, 503, 504}),
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Retry decorator for Drive API calls.
+    
+    Handles rate limiting (429) and transient server errors.
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def wrapper(*args, **kwargs) -> T:
+            last_error = None
+            for attempt in range(max_retries + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except HttpError as e:
+                    last_error = e
+                    if e.resp.status in retryable_statuses and attempt < max_retries:
+                        delay = backoff_base * (2 ** attempt)
+                        logger.warning(
+                            f"Drive API error {e.resp.status}, retry {attempt + 1}/{max_retries} "
+                            f"in {delay:.1f}s"
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
+                except Exception as e:
+                    # Non-Google API errors (network, etc.)
+                    last_error = e
+                    if attempt < max_retries:
+                        delay = backoff_base * (2 ** attempt)
+                        logger.warning(
+                            f"Drive API call error: {e}, retry {attempt + 1}/{max_retries} in {delay:.1f}s"
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
+            raise last_error
+        return wrapper
+    return decorator
 
 
 class DriveConnector:
@@ -50,6 +99,7 @@ class DriveConnector:
         if self.credentials and not self.service:
             self.service = build("drive", "v3", credentials=self.credentials)
     
+    @with_drive_retry(max_retries=3, backoff_base=1.0)
     async def search_assets(
         self,
         query: str,

@@ -2,6 +2,7 @@
 
 High-volume email sending via SendGrid API.
 Sprint 64: SendGrid Integration
+Sprint 67: Added retry with exponential backoff
 """
 import logging
 from typing import Optional, Dict, Any, List
@@ -10,6 +11,7 @@ from dataclasses import dataclass
 import httpx
 
 from src.config import get_settings
+from src.connectors.retry import with_retry, RetryExhaustedError
 
 logger = logging.getLogger(__name__)
 
@@ -120,43 +122,54 @@ class SendGridConnector:
         if custom_args:
             payload["personalizations"][0]["custom_args"] = custom_args
         
-        # Send request
+        # Send request with retry
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.base_url}/mail/send",
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                    timeout=30.0,
-                )
-            
-            if response.status_code in (200, 201, 202):
-                # Get message ID from headers
-                message_id = response.headers.get("X-Message-Id")
-                logger.info(f"SendGrid email sent to {to_email}, message_id={message_id}")
-                return SendGridResponse(
-                    success=True,
-                    message_id=message_id,
-                    status_code=response.status_code,
-                )
-            else:
-                error_text = response.text
-                logger.error(f"SendGrid error: {response.status_code} - {error_text}")
-                return SendGridResponse(
-                    success=False,
-                    status_code=response.status_code,
-                    error=error_text,
-                )
-        
+            return await self._send_with_retry(payload, to_email)
+        except RetryExhaustedError as e:
+            logger.error(f"SendGrid retries exhausted after {e.attempts} attempts: {e.last_error}")
+            return SendGridResponse(success=False, error=f"Retries exhausted: {e.last_error}")
         except httpx.TimeoutException:
             logger.error("SendGrid request timed out")
             return SendGridResponse(success=False, error="Request timed out")
         except Exception as e:
             logger.error(f"SendGrid error: {e}")
             return SendGridResponse(success=False, error=str(e))
+
+    @with_retry(max_retries=3, backoff_base=1.0, jitter=0.2)
+    async def _send_with_retry(self, payload: Dict[str, Any], to_email: str) -> SendGridResponse:
+        """Send email with automatic retry on transient failures."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/mail/send",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=30.0,
+            )
+        
+        # Raise for retryable status codes (429, 5xx)
+        if response.status_code in (429, 500, 502, 503, 504):
+            response.raise_for_status()
+        
+        if response.status_code in (200, 201, 202):
+            # Get message ID from headers
+            message_id = response.headers.get("X-Message-Id")
+            logger.info(f"SendGrid email sent to {to_email}, message_id={message_id}")
+            return SendGridResponse(
+                success=True,
+                message_id=message_id,
+                status_code=response.status_code,
+            )
+        else:
+            error_text = response.text
+            logger.error(f"SendGrid error: {response.status_code} - {error_text}")
+            return SendGridResponse(
+                success=False,
+                status_code=response.status_code,
+                error=error_text,
+            )
 
     async def send_batch(
         self,

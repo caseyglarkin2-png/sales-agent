@@ -1,18 +1,69 @@
-"""Google Calendar connector for availability management."""
+"""Google Calendar connector for availability management.
+
+Sprint 67: Added retry for Google API calls
+"""
+import asyncio
 import json
 import os
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from src.logger import get_logger
 
 logger = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+
+T = TypeVar("T")
+
+
+def with_google_api_retry(
+    max_retries: int = 3,
+    backoff_base: float = 1.0,
+    retryable_statuses: frozenset = frozenset({429, 500, 502, 503, 504}),
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Retry decorator for Google API calls.
+    
+    Handles rate limiting (429) and transient server errors.
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def wrapper(*args, **kwargs) -> T:
+            last_error = None
+            for attempt in range(max_retries + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except HttpError as e:
+                    last_error = e
+                    if e.resp.status in retryable_statuses and attempt < max_retries:
+                        delay = backoff_base * (2 ** attempt)
+                        logger.warning(
+                            f"Google API error {e.resp.status}, retry {attempt + 1}/{max_retries} "
+                            f"in {delay:.1f}s"
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
+                except Exception as e:
+                    # Non-Google API errors (network, etc.)
+                    last_error = e
+                    if attempt < max_retries:
+                        delay = backoff_base * (2 ** attempt)
+                        logger.warning(
+                            f"API call error: {e}, retry {attempt + 1}/{max_retries} in {delay:.1f}s"
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
+            raise last_error
+        return wrapper
+    return decorator
 
 
 def create_calendar_connector() -> "CalendarConnector":
@@ -69,6 +120,7 @@ class CalendarConnector:
         if self.credentials:
             self.service = build("calendar", "v3", credentials=self.credentials)
 
+    @with_google_api_retry(max_retries=3, backoff_base=1.0)
     async def get_freebusy(
         self,
         time_min: Optional[datetime] = None,
@@ -200,6 +252,7 @@ class CalendarConnector:
             logger.error(f"Error finding available slots: {e}")
             return []
 
+    @with_google_api_retry(max_retries=3, backoff_base=1.0)
     async def create_event(
         self,
         title: str,
