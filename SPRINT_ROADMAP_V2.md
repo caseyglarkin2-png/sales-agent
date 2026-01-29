@@ -3475,7 +3475,276 @@ Sprint 65 (HubSpot Enhancement) ✅ COMPLETE
 
 ---
 
-## Sprint 66-70 Dependency Graph
+## Sprint 71: Test Infrastructure & Coverage Foundation
+**Goal**: Build test infrastructure for sustainable coverage growth; target +5% coverage.
+**Demo**: Run `make coverage` → shows 40% (up from 33%), new test utilities documented.
+
+### Task 71.1: Create shared test fixtures
+**Files**: `tests/fixtures/common.py` (new), `tests/conftest.py`
+**Work**:
+- [ ] Create mock factories: `MockGmailConnector`, `MockHubSpotConnector`, `MockSlackConnector`
+- [ ] Create async context managers for database sessions
+- [ ] Add `@pytest.fixture` for authenticated user context
+- [ ] Document fixture usage in `tests/README.md`
+**Validation**: `pytest tests/fixtures/ -v` passes; fixtures importable
+**Commit**: "test(infra): shared test fixtures"
+
+### Task 71.2: Add unit tests for connectors (Gmail, HubSpot)
+**Files**: `tests/unit/test_gmail_connector.py`, `tests/unit/test_hubspot_connector.py`
+**Work**:
+- [ ] Test `send_email()` with mocked MIME building
+- [ ] Test retry behavior with mocked 429 responses
+- [ ] Test `health_check()` returns correct format
+- [ ] Test circuit breaker state transitions (if implemented)
+- [ ] Target: 80%+ coverage for each connector file
+**Validation**: `pytest tests/unit/test_gmail_connector.py -v --cov=src/connectors/gmail` ≥80%
+**Commit**: "test: Gmail and HubSpot connector coverage"
+
+### Task 71.3: Add unit tests for connectors (SendGrid, Slack)
+**Files**: `tests/unit/test_sendgrid_connector.py`, `tests/unit/test_slack_connector.py`
+**Work**:
+- [ ] Test `send_email()` and `send_batch()` for SendGrid
+- [ ] Test `send_message()` and `post_notification()` for Slack
+- [ ] Test retry and health check behavior
+- [ ] Target: 80%+ coverage for each connector file
+**Validation**: Coverage ≥80% for each file
+**Commit**: "test: SendGrid and Slack connector coverage"
+
+### Task 71.4: Add unit tests for connectors (Calendar, Drive, LLM)
+**Files**: `tests/unit/test_calendar_connector.py`, `tests/unit/test_drive_connector.py`, `tests/unit/test_llm_connector.py`
+**Work**:
+- [ ] Test CRUD operations with mocked Google APIs
+- [ ] Test error handling for auth failures
+- [ ] Test health check responses
+- [ ] Target: 70%+ coverage for each
+**Validation**: Coverage ≥70% for each file
+**Commit**: "test: Calendar, Drive, LLM connector coverage"
+
+### Task 71.5: Coverage report automation
+**Files**: `Makefile`, `.github/workflows/ci.yml`
+**Work**:
+- [ ] Add `make coverage-report` target with HTML output
+- [ ] Configure CI to fail if coverage drops below baseline
+- [ ] Add coverage badge to README
+**Validation**: `make coverage-report` generates `htmlcov/index.html`
+**Commit**: "ci: coverage reporting and baseline enforcement"
+
+---
+
+## Sprint 72: Agent Test Coverage
+**Goal**: Comprehensive unit tests for all agents; target +5% coverage (45% total).
+**Demo**: `pytest tests/unit/test_agents/ -v --cov=src/agents` shows ≥70% agent coverage.
+
+### Task 72.1: Test Jarvis orchestrator
+**Files**: `tests/unit/test_jarvis.py`
+**Work**:
+- [ ] Test intent routing to correct agents
+- [ ] Test error handling when agent fails
+- [ ] Test context passing between agents
+- [ ] Mock all sub-agents
+**Validation**: `pytest tests/unit/test_jarvis.py -v --cov=src/agents/jarvis` ≥80%
+**Commit**: "test: Jarvis orchestrator coverage"
+
+### Task 72.2: Test prospecting agent
+**Files**: `tests/unit/test_prospecting_agent.py`
+**Work**:
+- [ ] Test lead scoring logic
+- [ ] Test context extraction from HubSpot data
+- [ ] Test execute() returns valid draft structure
+**Validation**: ≥70% coverage
+**Commit**: "test: prospecting agent coverage"
+
+### Task 72.3: Test nurturing agent
+**Files**: `tests/unit/test_nurturing_agent.py`
+**Work**:
+- [ ] Test follow-up sequence logic
+- [ ] Test timing calculations
+- [ ] Test persona detection
+**Validation**: ≥70% coverage
+**Commit**: "test: nurturing agent coverage"
+
+### Task 72.4: Test specialized agents
+**Files**: `tests/unit/test_specialized_agents.py`
+**Work**:
+- [ ] Test ABM agent
+- [ ] Test data hygiene agents (data_decay, deduplication)
+- [ ] Test all agents inherit BaseAgent correctly
+**Validation**: ≥60% combined coverage
+**Commit**: "test: specialized agents coverage"
+
+### Task 72.5: Test persona router
+**Files**: `tests/unit/test_persona_router.py`
+**Work**:
+- [ ] Test persona detection from job title
+- [ ] Test challenger hook selection
+- [ ] Test fallback to generic persona
+**Validation**: ≥80% coverage
+**Commit**: "test: persona router coverage"
+
+---
+
+## Sprint 73: Service Layer Test Coverage
+**Goal**: Comprehensive unit tests for all services; target +5% coverage (50% total).
+**Demo**: `pytest tests/unit/test_services/ -v --cov=src/services` shows ≥70%.
+
+### Task 73.1: Test SignalService
+**Files**: `tests/unit/test_signal_service.py`
+**Work**:
+- [ ] Test signal creation from webhook payload
+- [ ] Test signal processing and routing
+- [ ] Test deduplication logic
+- [ ] Test priority scoring
+**Validation**: ≥80% coverage
+**Commit**: "test: SignalService coverage"
+
+### Task 73.2: Test MemoryService
+**Files**: `tests/unit/test_memory_service.py`
+**Work**:
+- [ ] Test memory storage and retrieval
+- [ ] Test vector search functionality (mock pgvector)
+- [ ] Test context window management
+**Validation**: ≥70% coverage
+**Commit**: "test: MemoryService coverage"
+
+### Task 73.3: Test APSCalculator
+**Files**: `tests/unit/test_aps_calculator.py`
+**Work**:
+- [ ] Test priority score calculation
+- [ ] Test all score factors (recency, value, urgency)
+- [ ] Test edge cases (missing data)
+**Validation**: ≥90% coverage (pure logic)
+**Commit**: "test: APSCalculator coverage"
+
+### Task 73.4: Test DraftQueue and OperatorMode
+**Files**: `tests/unit/test_draft_queue.py`, `tests/unit/test_operator_mode.py`
+**Work**:
+- [ ] Test draft creation and approval flow
+- [ ] Test rate limiter integration
+- [ ] Test send vs hold logic
+**Validation**: ≥70% combined coverage
+**Commit**: "test: DraftQueue and OperatorMode coverage"
+
+### Task 73.5: Test RateLimiter
+**Files**: `tests/unit/test_rate_limiter.py`
+**Work**:
+- [ ] Test hourly/daily limits
+- [ ] Test per-domain limits
+- [ ] Test limit reset behavior
+- [ ] Test redis integration (mocked)
+**Validation**: ≥80% coverage
+**Commit**: "test: RateLimiter coverage"
+
+---
+
+## Sprint 74: Route Test Coverage & Integration
+**Goal**: Test all API routes; target +5% coverage (55% total).
+**Demo**: `pytest tests/ -v --cov=src/routes` shows ≥60% route coverage.
+
+### Task 74.1: Test core API routes
+**Files**: `tests/unit/test_routes_api.py`
+**Work**:
+- [ ] Test `/api/command-queue/*` endpoints
+- [ ] Test `/api/drafts/*` endpoints
+- [ ] Test authentication enforcement
+- [ ] Use `TestClient` with mocked dependencies
+**Validation**: ≥70% route coverage
+**Commit**: "test: core API routes coverage"
+
+### Task 74.2: Test integration routes
+**Files**: `tests/unit/test_integrations_api.py`
+**Work**:
+- [ ] Test `/api/integrations` list endpoint
+- [ ] Test `/api/integrations/{app}/connect` (both GET and POST)
+- [ ] Test OAuth callback handling
+- [ ] Test token revocation
+**Validation**: ≥80% coverage
+**Commit**: "test: integrations API coverage"
+
+### Task 74.3: Test UI routes
+**Files**: `tests/unit/test_ui_routes.py`
+**Work**:
+- [ ] Test all `/caseyos/*` pages render
+- [ ] Test template context includes required data
+- [ ] Test authentication redirects
+**Validation**: All UI routes return 200 or 302 (redirect)
+**Commit**: "test: UI routes coverage"
+
+### Task 74.4: Test webhook routes
+**Files**: `tests/unit/test_webhook_routes.py`
+**Work**:
+- [ ] Test HubSpot webhook payload parsing
+- [ ] Test Gmail webhook handling
+- [ ] Test signature verification
+- [ ] Test rate limiting on webhook endpoints
+**Validation**: ≥70% coverage
+**Commit**: "test: webhook routes coverage"
+
+### Task 74.5: Integration test suite
+**Files**: `tests/integration/test_full_flow.py`
+**Work**:
+- [ ] Test: Create signal → CommandQueue item → Draft → Approval → Send
+- [ ] Test: OAuth connect → Token stored → Integration active
+- [ ] Use real test database (SQLite in-memory)
+**Validation**: Full flow tests pass with real DB
+**Commit**: "test: integration test suite"
+
+---
+
+## Sprint 75: Coverage Hardening & Quality Gates
+**Goal**: Fill coverage gaps, establish quality gates; target 60% coverage.
+**Demo**: `make coverage` shows ≥60%; CI blocks PRs that drop coverage.
+
+### Task 75.1: Identify and fill coverage gaps
+**Files**: `tests/unit/test_coverage_gaps.py`
+**Work**:
+- [ ] Run `make coverage-report` → identify files <50% covered
+- [ ] Write targeted tests for top 10 lowest-coverage files
+- [ ] Focus on critical paths (auth, send, approve)
+**Validation**: No critical file below 40% coverage
+**Commit**: "test: coverage gap fixes"
+
+### Task 75.2: Add mutation testing (optional)
+**Files**: `pyproject.toml`, `tests/mutation/`
+**Work**:
+- [ ] Add `mutmut` to dev dependencies
+- [ ] Run mutation testing on core modules
+- [ ] Fix tests where mutations survive
+**Validation**: Mutation score ≥50% for core modules
+**Commit**: "test: mutation testing baseline"
+
+### Task 75.3: Establish CI quality gates
+**Files**: `.github/workflows/ci.yml`
+**Work**:
+- [ ] Block PRs if coverage drops >1%
+- [ ] Require all unit tests pass
+- [ ] Run linting (ruff, pyright) on every PR
+- [ ] Add test summary to PR comments
+**Validation**: CI fails on coverage drop
+**Commit**: "ci: quality gate enforcement"
+
+### Task 75.4: Performance test baseline
+**Files**: `tests/performance/test_latency.py`
+**Work**:
+- [ ] Test draft generation <2s
+- [ ] Test queue operations <100ms
+- [ ] Test health endpoint <50ms
+- [ ] Establish baseline metrics
+**Validation**: Performance tests pass; baselines documented
+**Commit**: "test: performance baseline"
+
+### Task 75.5: Final documentation sweep
+**Files**: `tests/README.md`, `docs/TESTING.md`
+**Work**:
+- [ ] Document test structure and conventions
+- [ ] Document fixture usage
+- [ ] Document CI pipeline
+- [ ] Add coverage goals and timeline
+**Validation**: Documentation complete and accurate
+**Commit**: "docs: testing documentation"
+
+---
+
+## Sprint 66-75 Dependency Graph
 
 ```
 Sprint 66 (Exception Handling)
@@ -3487,23 +3756,69 @@ Sprint 68 (Health Checks & Circuit Breakers) ← Depends on 67 for retry
     ├── Sprint 69 (Casey Voice) ← Runs parallel with 68 (no conflicts)
     │
 Sprint 70 (TODO Cleanup) ← Final hardening, depends on 66-69
+    ↓
+Sprint 71 (Test Infrastructure) ← Stable codebase from 70
+    ↓
+Sprint 72 (Agent Tests) ← Uses fixtures from 71
+    ↓
+Sprint 73 (Service Tests) ← Uses patterns from 72
+    ↓
+Sprint 74 (Route Tests) ← Uses patterns from 72-73
+    ↓
+Sprint 75 (Coverage Hardening) ← Final push, depends on 71-74
 ```
 
 ---
 
-## Success Metrics
+## Connector Priority Matrix (7 of 13)
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Bare `except:` clauses | 10 | 0 |
-| TODO placeholders (critical) | 32 | <10 |
-| Connectors with retry | 2 | 7 |
-| Connectors with health check | 3 | 7 |
-| Connectors with circuit breaker | 0 | 2 |
-| Voice quality score (Casey) | ~50 | >80 |
-| Test coverage | 40% | 45% |
+| Priority | Connector | Retry | Health | Circuit Breaker | Rationale |
+|----------|-----------|-------|--------|-----------------|-----------|
+| 1 | **gmail.py** | ✅ Has | 🔴 Add | 🔴 Add | Revenue-critical send path |
+| 2 | **hubspot.py** | ✅ Has | ✅ Has | 🔴 Add | CRM data source |
+| 3 | **sendgrid.py** | 🔴 Add | 🔴 Add | ❌ Skip | Batch campaign fallback |
+| 4 | **slack.py** | 🔴 Add | 🔴 Add | ❌ Skip | Operator alerts |
+| 5 | **calendar_connector.py** | 🔴 Add | 🔴 Add | ❌ Skip | Meeting scheduling |
+| 6 | **drive.py** | 🔴 Add | 🔴 Add | ❌ Skip | Document context |
+| 7 | **llm.py** | 🔴 Add | ✅ Has | ❌ Skip | Core AI generation |
+
+**Legend**: ✅ Has = Already implemented | 🔴 Add = Sprint 67-68 | ❌ Skip = Not priority
 
 ---
 
-*Updated: 2026-01-29 - Added Sprints 66-70 for code quality, connector resilience, and Casey voice*
-*Version: 2.7*
+## Success Metrics - Phased Targets
+
+### Phase 1: Sprints 66-70 (Code Quality & Resilience)
+| Metric | Current | Sprint 70 Target |
+|--------|---------|------------------|
+| Bare `except:` clauses | 10 | **0** |
+| TODO placeholders (critical) | 30 | **<10** |
+| Connectors with retry | 3 | **7** |
+| Connectors with health check | 2 | **7** |
+| Connectors with circuit breaker | 0 | **2** |
+| Voice quality score (Casey) | ~50% | **80%** |
+| Test coverage | 33% | **40%** |
+
+### Phase 2: Sprints 71-75 (Coverage Push)
+| Metric | Sprint 70 | Sprint 75 Target |
+|--------|-----------|------------------|
+| Test coverage | 40% | **60%** |
+| Agent test coverage | ~20% | **70%** |
+| Connector test coverage | ~30% | **80%** |
+| Route test coverage | ~25% | **60%** |
+| CI quality gates | ❌ | **✅** |
+
+### Stretch Goals (Post-Sprint 75)
+| Metric | Sprint 75 | Stretch Target |
+|--------|-----------|----------------|
+| Test coverage | 60% | **80%** |
+| Voice score (95th percentile) | 80% | **95%** |
+| Critical TODOs | <10 | **0** |
+| E2E test suite | Basic | **Comprehensive** |
+
+> **Reality Check**: 95% coverage requires ~15-20 additional sprints beyond Sprint 75. Recommend stabilizing at 60-70% and focusing on critical path coverage rather than vanity metrics.
+
+---
+
+*Updated: 2025-01-29 - Added Sprints 71-75 for coverage push; phased success metrics; connector priority matrix*
+*Version: 2.8*
