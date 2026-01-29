@@ -2857,5 +2857,246 @@ Sprint 59 (Mobile & Responsive)
 22. **No retry queue** - failed sends just fail, no automatic retry (Sprint 58.2-58.3)
 23. **No idempotency protection** - duplicate requests could send duplicate emails (Sprint 58.5)
 24. **Not mobile-responsive** - poor experience on phone/tablet (Sprint 59)
+25. **OAuth redirect broken** - integrations page redirected to wrong URL (Sprint 60.1) ✅ FIXED
+26. **send_draft doesn't actually send** - marked sent without Gmail API call (Sprint 60.3) ✅ FIXED
+27. **No ABM campaign support** - can't do account-based burst campaigns (Sprint 62)
+28. **No sequence automation** - manual follow-up only (Sprint 63)
+29. **No SendGrid integration** - Gmail only, quota limits apply (Sprint 64)
 
 ---
+
+## Sprint 60: Integration OAuth Fix & Real Send Enable ✅ COMPLETE
+**Goal**: Fix broken OAuth redirect and enable real email sending from the UI.
+**Demo**: Click "Connect Google Drive" → redirects to Google OAuth → returns connected. Send email from queue → actually arrives in recipient inbox.
+**Status**: Completed 2026-01-29
+
+### Task 60.1: Fix OAuth Redirect in Integrations API ✅
+**Description**: The integrations API redirected to `/api/auth/google/authorize` which doesn't exist.
+**Files**: `src/routes/integrations_api.py`
+**Fix Applied**: Changed line 330 from `/api/auth/google/authorize` to `/auth/google?redirect=/caseyos/integrations`
+
+### Task 60.3: Fix Send Draft Endpoint to Actually Send ✅
+**Description**: The `/drafts/{id}/send` endpoint only marked drafts as sent without calling Gmail API.
+**Files**: `src/routes/operator.py`
+**Fix Applied**: Updated `send_draft` endpoint (lines 253-334) to:
+- Check rate limits before sending
+- Check `ALLOW_REAL_SENDS` setting
+- Call `GmailConnector.send_email()` via Gmail API
+- Return `gmail_message_id` and `gmail_thread_id` on success
+- Proper error handling with status preservation on failure
+
+---
+
+## Sprint 61: Contact Data Enrichment Pipeline
+**Goal**: Leverage existing contact data for automated personalization.
+**Demo**: Import contact → auto-enrich with company/title data → personalization score visible in queue.
+
+### Task 61.1: Create Contact Enrichment Celery Task
+**Files**: `src/tasks/contact_enrichment_task.py`
+**Validation**: New contact created → Celery task runs → contact has enrichment data
+- [ ] Create `enrich_contact` Celery task
+- [ ] Call `ContactEnrichmentService.enrich()`
+- [ ] Store results in `custom_properties` JSONB
+- [ ] Add to Celery beat schedule
+- [ ] Commit: "feat(tasks): add contact enrichment background task"
+
+### Task 61.2: Display Enrichment Data in Queue Detail
+**Files**: `src/templates/queue_detail.html`, `src/routes/operator.py`
+**Validation**: View queue item → see company, title, seniority, industry
+- [ ] Fetch contact enrichment when loading queue item
+- [ ] Display company info card
+- [ ] Display contact info card
+- [ ] Show personalization score
+- [ ] Commit: "feat(ui): display contact enrichment in queue detail"
+
+### Task 61.3: Calculate Personalization Score
+**Files**: `src/services/personalization_scorer.py`
+**Validation**: Draft with full context scores 80+, empty context scores <20
+- [ ] Score: first_name (10), company_name (15), title (10), industry (10), pain_point (20), trigger_event (20)
+- [ ] Return score 0-100 and missing data points
+- [ ] Commit: "feat(services): personalization score calculator"
+
+### Task 61.4: Show Personalization Score Badge in Queue
+**Files**: `src/templates/queue.html`
+**Validation**: Queue shows personalization badge (green 70+, yellow 40-69, red <40)
+- [ ] Add `personalization_score` to queue item response
+- [ ] Display score badge with tooltip
+- [ ] Commit: "feat(ui): personalization score badge in queue"
+
+### Task 61.5: Unit Tests for Enrichment Pipeline
+**Files**: `tests/unit/test_contact_enrichment_task.py`, `tests/unit/test_personalization_scorer.py`
+- [ ] Test enrichment task calls service
+- [ ] Test scoring with full/missing context
+- [ ] Commit: "test: add enrichment pipeline tests"
+
+---
+
+## Sprint 62: Account-Based Campaign Engine
+**Goal**: Enable account-based burst campaigns with persona-based individual emails.
+**Demo**: Create ABM campaign targeting 10 accounts × 3 personas = 30 personalized emails queued.
+
+### Task 62.1: Create ABM Campaign Model
+**Files**: `src/models/abm_campaign.py`
+- [ ] `ABMCampaign` model with target_accounts, personas, sequence_id
+- [ ] `ABMCampaignAccount` linking campaign to companies
+- [ ] `ABMPersonaTarget` defining persona types
+- [ ] Create Alembic migration
+- [ ] Commit: "feat(models): add ABM campaign data model"
+
+### Task 62.2: Build Campaign Email Generator
+**Files**: `src/campaigns/abm_email_generator.py`
+- [ ] Accept account context and persona context
+- [ ] Use email_generator service with context injection
+- [ ] Return subject, body, personalization score
+- [ ] Commit: "feat(campaigns): ABM email generator"
+
+### Task 62.3: Create ABM Campaign API Endpoints
+**Files**: `src/routes/abm_campaigns.py`
+- [ ] POST/GET `/api/abm-campaigns` - create/list
+- [ ] GET `/api/abm-campaigns/{id}` - details
+- [ ] POST `/api/abm-campaigns/{id}/generate` - generate emails
+- [ ] POST `/api/abm-campaigns/{id}/launch` - queue for approval
+- [ ] Commit: "feat(api): ABM campaign endpoints"
+
+### Task 62.4: ABM Campaign UI - List and Create
+**Files**: `src/templates/abm_campaigns.html`, `src/templates/abm_campaign_create.html`
+- [ ] Campaign list with status badges
+- [ ] Multi-step creation wizard
+- [ ] Commit: "feat(ui): ABM campaigns list and create"
+
+### Task 62.5: ABM Campaign UI - Detail View
+**Files**: `src/templates/abm_campaign_detail.html`
+- [ ] Campaign overview stats
+- [ ] Account-by-account breakdown with email previews
+- [ ] Generate All and Launch buttons
+- [ ] Commit: "feat(ui): ABM campaign detail page"
+
+### Task 62.6: Unit Tests for ABM Campaign
+**Files**: `tests/unit/test_abm_campaign.py`
+- [ ] Test model CRUD, email generation, bulk queuing
+- [ ] Commit: "test: ABM campaign tests"
+
+---
+
+## Sprint 63: Email Sequence Automation
+**Goal**: Multi-step email sequences with automatic follow-ups.
+**Demo**: Create 3-step sequence → enroll contact → automatic follow-ups sent on schedule.
+
+### Task 63.1: Persist Sequence Enrollments to Database
+**Files**: `src/models/sequence.py`, `infra/migrations/`
+- [ ] `Sequence` SQLAlchemy model
+- [ ] `SequenceEnrollment` model with step tracking
+- [ ] `SequenceStep` model
+- [ ] Create Alembic migration
+- [ ] Commit: "feat(models): sequence database models"
+
+### Task 63.2: Sequence Step Executor Celery Task
+**Files**: `src/tasks/sequence_executor.py`
+- [ ] Query enrollments with due steps
+- [ ] Generate and queue email for each
+- [ ] Update step status
+- [ ] Add to Celery beat (every 15 mins)
+- [ ] Commit: "feat(tasks): sequence step executor"
+
+### Task 63.3: Sequence Dashboard UI
+**Files**: `src/templates/sequences.html`
+- [ ] List all sequences with enrollee counts
+- [ ] Quick actions: pause, resume, stop
+- [ ] Commit: "feat(ui): sequence dashboard"
+
+### Task 63.4: Reply Detection for Auto-Pause
+**Files**: `src/webhooks/gmail_reply_detector.py`
+- [ ] Poll Gmail for replies to sent emails
+- [ ] Pause sequence on reply
+- [ ] Log as signal
+- [ ] Commit: "feat(webhooks): reply detection for sequences"
+
+### Task 63.5: Unit Tests for Sequence Automation
+**Files**: `tests/unit/test_sequence_executor.py`, `tests/unit/test_reply_detection.py`
+- [ ] Commit: "test: sequence automation tests"
+
+---
+
+## Sprint 64: SendGrid Integration (High Volume)
+**Goal**: Add SendGrid as email provider for high-volume campaigns.
+**Demo**: Send 100 emails → routed through SendGrid → delivery tracking.
+
+### Task 64.1: Create SendGrid Connector
+**Files**: `src/connectors/sendgrid.py`
+- [ ] Use `sendgrid` Python SDK
+- [ ] Implement `send_email()` matching Gmail interface
+- [ ] Commit: "feat(connectors): add SendGrid connector"
+
+### Task 64.2: Add SendGrid Configuration
+**Files**: `src/config.py`
+- [ ] Add `SENDGRID_API_KEY`, `SENDGRID_SENDER_EMAIL` env vars
+- [ ] Add `EMAIL_PROVIDER` enum (gmail, sendgrid, auto)
+- [ ] Commit: "feat(config): add SendGrid configuration"
+
+### Task 64.3: Create Email Router Service
+**Files**: `src/services/email_router.py`
+- [ ] Route emails based on config and volume
+- [ ] Commit: "feat(services): email provider router"
+
+### Task 64.4: SendGrid Webhook for Tracking
+**Files**: `src/webhooks/sendgrid_webhook.py`
+- [ ] Handle delivered, opened, clicked, bounced events
+- [ ] Update email status in database
+- [ ] Commit: "feat(webhooks): SendGrid delivery tracking"
+
+### Task 64.5: Unit Tests for SendGrid Integration
+**Files**: `tests/unit/test_sendgrid_connector.py`, `tests/unit/test_email_router.py`
+- [ ] Commit: "test: SendGrid integration tests"
+
+---
+
+## Sprint 65: HubSpot Integration Enhancement
+**Goal**: Better leverage HubSpot contact/company data for targeting.
+**Demo**: View contact in CaseyOS → see full HubSpot history, deals, activities.
+
+### Task 65.1: HubSpot Contact Deep Sync
+**Files**: `src/connectors/hubspot.py`, `src/tasks/hubspot_sync.py`
+- [ ] Sync: lifecycle_stage, lead_status, recent_deal_amount
+- [ ] Sync: num_contacted_times, analytics_source
+- [ ] Commit: "feat(hubspot): enhanced contact property sync"
+
+### Task 65.2: Contact Activity Timeline API
+**Files**: `src/routes/hubspot_routes.py`
+- [ ] GET `/api/hubspot/contacts/{id}/timeline` returns activities
+- [ ] Commit: "feat(api): contact activity timeline"
+
+### Task 65.3: Contact and Company Profile Pages
+**Files**: `src/templates/contact_profile.html`, `src/templates/company_profile.html`
+- [ ] Full profile with HubSpot data, activity timeline, deals
+- [ ] Commit: "feat(ui): contact and company profile pages"
+
+### Task 65.4: Smart Contact List Builder
+**Files**: `src/routes/contact_lists.py`, `src/templates/contact_list_builder.html`
+- [ ] Filter by title, company size, industry, lifecycle stage
+- [ ] Save as Smart List, export CSV, Add to Campaign
+- [ ] Commit: "feat(ui): smart contact list builder"
+
+### Task 65.5: Unit Tests for HubSpot Enhancements
+**Files**: `tests/unit/test_hubspot_deep_sync.py`
+- [ ] Commit: "test: HubSpot enhancement tests"
+
+---
+
+## Sprint 60-65 Dependency Graph
+
+```
+Sprint 60 (OAuth Fix + Real Send) ✅ COMPLETE
+    ↓
+Sprint 61 (Contact Enrichment)
+    ↓
+Sprint 62 (ABM Campaigns) ← Sprint 64 (SendGrid - optional)
+    ↓
+Sprint 63 (Sequence Automation)
+
+Sprint 65 (HubSpot Enhancement) ← Can run parallel
+```
+
+---
+
+*Updated: 2026-01-29 - Added Sprints 60-65 for integration fixes, ABM campaigns, sequences, SendGrid, and HubSpot enhancements*
+*Version: 2.6*

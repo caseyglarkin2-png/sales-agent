@@ -325,9 +325,10 @@ async def connect_integration(
     if not config.oauth_provider:
         raise HTTPException(status_code=400, detail="This integration does not require OAuth")
     
-    # Redirect to OAuth provider
+    # Redirect to OAuth provider with post-auth redirect back to integrations
     if config.oauth_provider == 'google':
-        return RedirectResponse(url="/api/auth/google/authorize")
+        # Sprint 60: Fixed - use correct OAuth route /auth/google (not /api/auth/google/authorize)
+        return RedirectResponse(url="/auth/google?redirect=/caseyos/integrations")
     elif config.oauth_provider == 'hubspot':
         # TODO: Create HubSpot OAuth endpoint
         raise HTTPException(status_code=501, detail="HubSpot OAuth not implemented yet")

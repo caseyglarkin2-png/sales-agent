@@ -252,7 +252,11 @@ async def reject_draft(draft_id: str, request: RejectDraftRequest) -> Dict[str, 
 
 @router.post("/drafts/{draft_id}/send", response_model=Dict[str, Any])
 async def send_draft(draft_id: str) -> Dict[str, Any]:
-    """Send an approved draft."""
+    """Send an approved draft via Gmail API.
+    
+    Sprint 60: Fixed to actually call Gmail API instead of just marking as sent.
+    """
+    import os
     try:
         queue = get_draft_queue()
         draft = await queue.get_draft(draft_id)
@@ -266,15 +270,67 @@ async def send_draft(draft_id: str) -> Dict[str, Any]:
                 detail=f"Cannot send draft with status: {draft['status']}"
             )
         
-        # Record rate limit
+        # Check rate limit before sending
         rate_limiter = get_rate_limiter()
-        await rate_limiter.record_send(draft["recipient"])
+        can_send, reason = await rate_limiter.check_can_send(draft["recipient"])
+        if not can_send:
+            raise HTTPException(status_code=429, detail=f"Rate limit exceeded: {reason}")
         
-        # Mark as sent
-        await queue.mark_sent(draft_id)
+        # Check if real sends are allowed
+        from src.config import get_settings
+        settings = get_settings()
         
-        logger.info(f"Draft sent: {draft_id} to {draft['recipient']}")
-        return await queue.get_draft(draft_id)
+        if not settings.allow_real_sends:
+            logger.warning(f"Real sends disabled - draft {draft_id} marked sent but not actually sent")
+            await queue.mark_sent(draft_id)
+            return {
+                **await queue.get_draft(draft_id),
+                "warning": "ALLOW_REAL_SENDS=false - email not actually sent",
+            }
+        
+        # Actually send via Gmail API
+        try:
+            from src.connectors.gmail import create_gmail_connector
+            gmail = create_gmail_connector()
+            
+            from_email = draft.get("from_email") or os.environ.get("GMAIL_DELEGATED_USER", "")
+            
+            result = await gmail.send_email(
+                from_email=from_email,
+                to_email=draft["recipient"],
+                subject=draft["subject"],
+                body_text=draft["body"],
+                body_html=draft.get("body_html"),
+                in_reply_to=draft.get("in_reply_to"),
+                references=draft.get("references"),
+            )
+            
+            if not result:
+                raise Exception("Gmail API returned no result")
+            
+            # Record rate limit and mark as sent
+            await rate_limiter.record_send(draft["recipient"])
+            await queue.mark_sent(draft_id)
+            
+            logger.info(
+                f"✅ Email sent: draft={draft_id}, to={draft['recipient']}, "
+                f"message_id={result.get('id')}, thread_id={result.get('threadId')}"
+            )
+            
+            return {
+                **await queue.get_draft(draft_id),
+                "gmail_message_id": result.get("id"),
+                "gmail_thread_id": result.get("threadId"),
+            }
+            
+        except Exception as gmail_error:
+            logger.error(f"Gmail send failed for draft {draft_id}: {gmail_error}")
+            # Don't mark as sent on failure - leave as approved for retry
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Gmail send failed: {str(gmail_error)}"
+            )
+            
     except HTTPException:
         raise
     except Exception as e:
