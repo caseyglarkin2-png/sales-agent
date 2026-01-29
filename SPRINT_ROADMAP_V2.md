@@ -1896,50 +1896,625 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 
 ---
 
-## Sprint 52: Legacy Cleanup & Polish
+## Sprint 52: Legacy Cleanup & Polish ✅ COMPLETE
 **Goal**: Remove deprecated files, fix UI inconsistencies, update versions.
 **Demo**: Clean codebase, no legacy static HTML, consistent UI.
+**Status**: Completed 2026-01-28 (commit `0a15b61`)
 
-### Task 52.1: Remove Legacy Static HTML
-**Description**: Delete deprecated SPA HTML files.
-**Files**: `src/static/*.html`
-**Validation**: Only `manifest.json`, `sw.js`, `icons/` remain
+### Task 52.1: Remove Legacy Static HTML ✅
+### Task 52.2: Remove Deprecated Route Files ✅
+### Task 52.3: Update Version Numbers ✅
+### Task 52.4: Navigation Polish ✅
+
+---
+
+## Sprint 53: User Profile & Email Signature System
+**Goal**: Ensure user profile data (name, title, signature) flows into draft generation - no placeholders!
+**Demo**: Generate draft → signature shows "Casey Larkin, CEO, Pesti" with calendar link, not placeholders.
+**Depends On**: Sprint 44 (Voice Profiles)
+
+### Task 53.1: User Model Profile Extension
+**Description**: Add profile fields to User model for signature data.
+**Files**: `src/models/user.py`, `infra/migrations/`
+**Validation**: `User.display_name`, `job_title`, `signature_html` columns exist
+**Tests**: `tests/unit/test_user_model.py::test_profile_fields`
 **Acceptance Criteria**:
-- [ ] Backup to `archive/legacy_spa/`
-- [ ] Delete: admin.html, agent-hub.html, agents.html, index.html
-- [ ] Delete: integrations.html, operator-dashboard.html, queue-item-detail.html
-- [ ] Delete: voice-profiles.html, voice-training.html
-- [ ] Commit: "chore: remove deprecated static HTML"
+- [ ] Add `display_name: Mapped[str] = mapped_column(String(255), nullable=True)` to User
+- [ ] Add `job_title: Mapped[str] = mapped_column(String(255), nullable=True)` to User
+- [ ] Add `signature_html: Mapped[str] = mapped_column(Text, nullable=True)` to User
+- [ ] Add `calendar_link: Mapped[str] = mapped_column(String(500), nullable=True)` to User
+- [ ] Add `default_voice_profile_id: Mapped[UUID] = mapped_column(ForeignKey("voice_profiles.id"), nullable=True)`
+- [ ] Create Alembic migration: `alembic revision --autogenerate -m "add_user_profile_fields"`
+- [ ] Run migration: `alembic upgrade head`
+- [ ] Commit: "feat(models): add user profile fields for signature"
 
-### Task 52.2: Remove Deprecated Route Files
-**Description**: Delete route files no longer in use.
-**Files**: `src/routes/ui_command_queue.py`, `src/routes/caseyos_ui.py`
-**Validation**: App starts without errors
+### Task 53.2: User Profile API Endpoints
+**Description**: REST API for reading and updating user profile.
+**Files**: `src/routes/users.py`
+**Validation**: `GET /api/users/me/profile` returns profile, `PUT` updates it
+**Tests**: `tests/unit/test_user_profile_api.py`
 **Acceptance Criteria**:
-- [ ] Remove route files
-- [ ] Remove imports from `main.py`
-- [ ] Verify no broken imports
-- [ ] Commit: "chore: remove deprecated route files"
+- [ ] Create `ProfileResponse` Pydantic model with all profile fields
+- [ ] Create `ProfileUpdate` Pydantic model for updates
+- [ ] Add `GET /api/users/me/profile` endpoint
+- [ ] Add `PUT /api/users/me/profile` endpoint
+- [ ] Return 401 if not authenticated
+- [ ] Test: Get profile returns display_name, job_title, signature_html, calendar_link
+- [ ] Test: Update profile persists changes
+- [ ] Commit: "feat(api): add user profile GET/PUT endpoints"
 
-### Task 52.3: Update Version Numbers
-**Description**: Update version in base.html footer and package files.
-**Files**: `src/templates/base.html`, `pyproject.toml`
-**Validation**: Footer shows "CaseyOS v4.0"
+### Task 53.3: Profile Settings UI Tab
+**Description**: Add Profile tab to Settings page with signature editor.
+**Files**: `src/templates/settings.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/settings` → Profile tab shows form with current values
+**Tests**: `tests/unit/test_profile_settings_ui.py`
 **Acceptance Criteria**:
-- [ ] Update base.html footer version
-- [ ] Update pyproject.toml version
-- [ ] Update README badges
-- [ ] Commit: "chore: bump version to 4.0"
+- [ ] Add "Profile" tab to Settings page (first tab)
+- [ ] Form fields: Display Name, Job Title, Calendar Link, Email Signature (textarea)
+- [ ] Pre-populate with current user values
+- [ ] HTMX PUT to `/api/users/me/profile` on save
+- [ ] Show success toast on save
+- [ ] Test: Profile tab renders with form
+- [ ] Test: Form submission updates profile
+- [ ] Commit: "feat(ui): add profile tab to settings page"
 
-### Task 52.4: Navigation Polish
-**Description**: Ensure consistent navigation across all pages.
+### Task 53.4: Signature Preview Component
+**Description**: Live preview of signature as user edits.
+**Files**: `src/templates/settings.html`
+**Validation**: Type in signature textarea → preview updates in real-time
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Add signature preview div next to textarea
+- [ ] JavaScript to update preview on input
+- [ ] Show formatted signature with name, title, calendar link
+- [ ] Support basic HTML formatting in preview
+- [ ] Commit: "feat(ui): add live signature preview in settings"
+
+### Task 53.5: Voice Profile Linkage to User
+**Description**: Link user's default voice profile and sync signature from it.
+**Files**: `src/models/user.py`, `src/voice_profile.py`
+**Validation**: User's default voice profile signature flows to profile
+**Tests**: `tests/unit/test_voice_profile_linkage.py`
+**Acceptance Criteria**:
+- [ ] Add relationship `default_voice_profile` to User model
+- [ ] Add dropdown in Profile settings to select default voice profile
+- [ ] When voice profile selected, optionally sync signature_style to User
+- [ ] Test: User with voice profile gets signature from profile
+- [ ] Commit: "feat(models): link user to default voice profile"
+
+### Task 53.6: Draft Generator Context Injection
+**Description**: Inject user profile data into draft generation context.
+**Files**: `src/draft_generator.py`, `src/email_generator/generator_service.py`
+**Validation**: Draft generated with proper sender_name, sender_title
+**Tests**: `tests/unit/test_draft_signature_injection.py`
+**Depends On**: Task 53.1, Task 53.2
+**Acceptance Criteria**:
+- [ ] Modify `generate_draft()` to accept `user: User` parameter
+- [ ] Inject `sender_name=user.display_name`, `sender_title=user.job_title`
+- [ ] Use `user.signature_html` if set, else `user.default_voice_profile.signature_style`
+- [ ] Include `user.calendar_link` in context
+- [ ] Test: Draft with user has proper signature
+- [ ] Test: Draft without user uses fallback
+- [ ] Commit: "feat(drafts): inject user profile into draft context"
+
+### Task 53.7: Queue Item Signature Display
+**Description**: Show properly formatted signature in queue detail view.
+**Files**: `src/templates/queue_detail.html`
+**Validation**: View draft in queue → signature block is formatted correctly
+**Tests**: `tests/unit/test_queue_signature_display.py`
+**Acceptance Criteria**:
+- [ ] Parse signature block from draft body
+- [ ] Display signature in styled block (different background)
+- [ ] Show calendar link as clickable button
+- [ ] Test: Queue detail shows signature block
+- [ ] Commit: "feat(ui): display formatted signature in queue detail"
+
+---
+
+## Sprint 54: OAuth Token Health & Persistence UI
+**Goal**: Keep Google account connected with visible status and automatic refresh.
+**Demo**: Login with Google → stay connected for days → see connection status in UI → auto-refresh works.
+**Depends On**: Sprint 33 (OAuth Consolidation)
+
+### Task 54.1: OAuth Token Status API
+**Description**: API endpoint to check OAuth token health per service.
+**Files**: `src/routes/integrations_api.py`, `src/oauth_manager.py`
+**Validation**: `GET /api/oauth/status` returns token health for each service
+**Tests**: `tests/unit/test_oauth_status_api.py`
+**Acceptance Criteria**:
+- [ ] Create `OAuthStatusResponse` with `service`, `connected`, `expires_at`, `scopes`, `needs_refresh`
+- [ ] Add `GET /api/oauth/status` endpoint
+- [ ] Query `oauth_tokens` table for current user
+- [ ] Return list of connected services with expiry
+- [ ] Include `needs_refresh: bool` if expires < 1 hour
+- [ ] Test: Returns connected services
+- [ ] Test: Returns needs_refresh=true when expiring
+- [ ] Commit: "feat(api): add OAuth token status endpoint"
+
+### Task 54.2: Integrations Page Status Cards
+**Description**: Show OAuth connection status with expiry on Integrations page.
+**Files**: `src/templates/integrations.html`
+**Validation**: `/caseyos/integrations` shows Gmail/HubSpot/Drive with connection status
+**Tests**: `tests/unit/test_integrations_status_cards.py`
+**Acceptance Criteria**:
+- [ ] Fetch status from `/api/oauth/status`
+- [ ] Display card per service: Gmail, HubSpot, Google Drive
+- [ ] Show ✅ Connected / ❌ Not Connected / ⚠️ Expiring Soon
+- [ ] Display `expires_at` in human-readable format ("in 2 hours")
+- [ ] Test: Cards render with correct status
+- [ ] Commit: "feat(ui): add OAuth status cards to integrations page"
+
+### Task 54.3: Reconnect Flow Button
+**Description**: "Reconnect" button appears when token needs refresh or is expired.
+**Files**: `src/templates/integrations.html`, `src/routes/auth_routes.py`
+**Validation**: Expired token → Reconnect button → OAuth flow → connected
+**Tests**: `tests/unit/test_reconnect_flow.py`
+**Acceptance Criteria**:
+- [ ] Show "Reconnect" button when `needs_refresh=true` or `connected=false`
+- [ ] Button triggers OAuth flow: `/api/auth/google/authorize`
+- [ ] After successful OAuth, update status card
+- [ ] Test: Reconnect button triggers OAuth
+- [ ] Commit: "feat(ui): add OAuth reconnect button"
+
+### Task 54.4: Token Expiry Notification
+**Description**: Send in-app notification when token is about to expire.
+**Files**: `src/tasks/oauth_refresh.py`, `src/services/notification_service.py`
+**Validation**: Token expiring in < 1 hour → notification appears
+**Tests**: `tests/unit/test_token_expiry_notification.py`
+**Acceptance Criteria**:
+- [ ] Modify existing `refresh-expiring-oauth-tokens` Celery task
+- [ ] If refresh fails, create notification: "Google connection expiring - reconnect"
+- [ ] Use `NotificationService.create()` with type="oauth_expiring"
+- [ ] Test: Failed refresh creates notification
+- [ ] Commit: "feat(notifications): notify on OAuth token expiry"
+
+### Task 54.5: Header Connection Status Indicator
+**Description**: Small indicator in header showing OAuth health.
 **Files**: `src/templates/base.html`
-**Validation**: All tabs work, active states correct
+**Validation**: Header shows 🟢/🟡/🔴 based on OAuth status
+**Tests**: Visual verification
 **Acceptance Criteria**:
-- [ ] Verify all active_tab values match
-- [ ] Add missing icons to tabs
-- [ ] Fix mobile responsive nav
-- [ ] Commit: "chore: polish navigation"
+- [ ] Add connection status icon next to notification bell
+- [ ] 🟢 = All connected, 🟡 = Expiring soon, 🔴 = Disconnected
+- [ ] Tooltip shows details on hover
+- [ ] Poll `/api/oauth/status` every 5 minutes
+- [ ] Commit: "feat(ui): add OAuth status indicator to header"
+
+---
+
+## Sprint 55: Draft Editing & Queue Polish
+**Goal**: Complete draft approval workflow with inline editing and proper formatting.
+**Demo**: View draft → edit subject/body → preview signature → approve → send with edits.
+**Depends On**: Sprint 53 (Signature System)
+
+### Task 55.1: Draft Subject Editing
+**Description**: Allow editing email subject in queue detail before approval.
+**Files**: `src/templates/queue_detail.html`, `src/routes/queue.py`
+**Validation**: Edit subject → save → subject updated in database
+**Tests**: `tests/unit/test_draft_subject_edit.py`
+**Acceptance Criteria**:
+- [ ] Make subject field editable (input instead of static text)
+- [ ] Add "Save" button that PUTs to `/api/command-queue/{id}/update`
+- [ ] Create `PUT /api/command-queue/{id}/update` endpoint
+- [ ] Accept `subject` and `body` in request body
+- [ ] Test: Subject edit persists
+- [ ] Commit: "feat(queue): enable draft subject editing"
+
+### Task 55.2: Draft Body Editing
+**Description**: Allow editing email body with rich text editor.
+**Files**: `src/templates/queue_detail.html`
+**Validation**: Edit body → preserve formatting → save → body updated
+**Tests**: `tests/unit/test_draft_body_edit.py`
+**Acceptance Criteria**:
+- [ ] Replace textarea with contenteditable div or simple markdown editor
+- [ ] Preserve line breaks and basic formatting
+- [ ] Save button updates body via API
+- [ ] Test: Body edit persists with formatting
+- [ ] Commit: "feat(queue): enable draft body editing"
+
+### Task 55.3: Preview vs Edit Mode Toggle
+**Description**: Toggle between preview mode (rendered) and edit mode (raw).
+**Files**: `src/templates/queue_detail.html`
+**Validation**: Click "Edit" → shows editable, click "Preview" → shows rendered
+**Tests**: `tests/unit/test_preview_edit_toggle.py`
+**Acceptance Criteria**:
+- [ ] Add "Edit" / "Preview" toggle buttons
+- [ ] Preview mode shows HTML-rendered email
+- [ ] Edit mode shows editable fields
+- [ ] Unsaved changes warning when leaving edit mode
+- [ ] Test: Toggle switches modes correctly
+- [ ] Commit: "feat(ui): add preview/edit mode toggle for drafts"
+
+### Task 55.4: Signature Block Formatting
+**Description**: Visually separate signature from email body.
+**Files**: `src/templates/queue_detail.html`
+**Validation**: Signature appears in distinct block at bottom of preview
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Parse signature block from body (after "Best," or "Best regards,")
+- [ ] Display in styled signature box
+- [ ] Include calendar link as button
+- [ ] Don't allow editing signature (comes from profile)
+- [ ] Commit: "feat(ui): format signature block in draft preview"
+
+### Task 55.5: Draft Send Confirmation Modal
+**Description**: Confirmation modal before sending approved draft.
+**Files**: `src/templates/queue_detail.html`
+**Validation**: Click "Send" → modal shows recipient, subject → confirm → sent
+**Tests**: `tests/unit/test_send_confirmation_modal.py`
+**Acceptance Criteria**:
+- [ ] Create confirmation modal component
+- [ ] Show: To, Subject, Preview of first 100 chars
+- [ ] "Cancel" and "Send Now" buttons
+- [ ] Send Now calls `/api/command-queue/{id}/send`
+- [ ] Test: Modal prevents accidental sends
+- [ ] Commit: "feat(ui): add draft send confirmation modal"
+
+### Task 55.6: Queue Sorting & Filtering
+**Description**: Sort and filter queue items for easier management.
+**Files**: `src/templates/queue.html`, `src/routes/queue.py`
+**Validation**: Sort by priority/date, filter by status/recipient
+**Tests**: `tests/unit/test_queue_sorting.py`
+**Acceptance Criteria**:
+- [ ] Add sort dropdown: Priority (high first), Date (newest), Date (oldest)
+- [ ] Add status filter: All, Pending, Approved, Sent, Rejected
+- [ ] Add search input for recipient email/name
+- [ ] Update API to accept `sort`, `status`, `search` params
+- [ ] Test: Sorting changes order
+- [ ] Test: Filtering reduces results
+- [ ] Commit: "feat(queue): add sorting and filtering"
+
+### Task 55.7: Bulk Queue Actions
+**Description**: Select multiple items for bulk approve/reject.
+**Files**: `src/templates/queue.html`, `src/routes/queue.py`
+**Validation**: Select 3 items → click "Approve Selected" → all approved
+**Tests**: `tests/unit/test_bulk_actions.py`
+**Acceptance Criteria**:
+- [ ] Add checkbox to each queue item
+- [ ] Add "Select All" checkbox in header
+- [ ] Show bulk action bar when items selected
+- [ ] "Approve Selected" and "Reject Selected" buttons
+- [ ] Create `POST /api/command-queue/bulk-action` endpoint
+- [ ] Test: Bulk approve updates all selected items
+- [ ] Commit: "feat(queue): add bulk approve/reject actions"
+
+---
+
+## Sprint 56: Data Hygiene Dashboard
+**Goal**: Surface existing data hygiene agents and quality metrics in CaseyOS UI.
+**Demo**: View duplicate contacts → merge → see data quality score improve.
+**Depends On**: Existing data hygiene agents at `src/agents/enrichment/`
+
+### Task 56.1: Data Quality API Endpoints
+**Description**: API to expose data quality metrics and duplicates.
+**Files**: `src/routes/data_hygiene.py` (new), `src/main.py`
+**Validation**: `GET /api/data-hygiene/quality` returns quality scores
+**Tests**: `tests/unit/test_data_hygiene_api.py`
+**Acceptance Criteria**:
+- [ ] Create `src/routes/data_hygiene.py`
+- [ ] Add `GET /api/data-hygiene/quality` - overall quality score
+- [ ] Add `GET /api/data-hygiene/duplicates` - list of potential duplicates
+- [ ] Add `POST /api/data-hygiene/merge` - merge two contacts
+- [ ] Register routes in `main.py`
+- [ ] Test: Quality endpoint returns score
+- [ ] Commit: "feat(api): add data hygiene endpoints"
+
+### Task 56.2: Data Hygiene Dashboard Page
+**Description**: Create dedicated page for data quality and hygiene.
+**Files**: `src/templates/data_hygiene.html`, `src/routes/ui.py`
+**Validation**: `/caseyos/data-hygiene` shows quality metrics and duplicates
+**Tests**: `tests/unit/test_data_hygiene_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `data_hygiene.html` extending base.html
+- [ ] Add route `/caseyos/data-hygiene`
+- [ ] Show overall data quality score (0-100)
+- [ ] Show completeness metrics: % with email, phone, title
+- [ ] Add to navigation: 🧹 Data Hygiene
+- [ ] Test: Page renders with quality metrics
+- [ ] Commit: "feat(ui): add data hygiene dashboard page"
+
+### Task 56.3: Duplicate Detection Panel
+**Description**: Show potential duplicate contacts for review.
+**Files**: `src/templates/data_hygiene.html`
+**Validation**: List of duplicate groups with match confidence
+**Tests**: `tests/unit/test_duplicate_panel.py`
+**Acceptance Criteria**:
+- [ ] Fetch duplicates from `/api/data-hygiene/duplicates`
+- [ ] Display as grouped cards (2+ contacts per group)
+- [ ] Show match reason: "Same email", "Similar name at same company"
+- [ ] Show match confidence percentage
+- [ ] Test: Duplicates displayed with groups
+- [ ] Commit: "feat(ui): add duplicate detection panel"
+
+### Task 56.4: Merge Duplicates UI
+**Description**: UI to review and merge duplicate contacts.
+**Files**: `src/templates/data_hygiene.html`
+**Validation**: Select master record → merge → duplicates removed
+**Tests**: `tests/unit/test_merge_ui.py`
+**Acceptance Criteria**:
+- [ ] Expand duplicate group to see all fields
+- [ ] Radio buttons to select "master" record
+- [ ] "Merge" button calls `/api/data-hygiene/merge`
+- [ ] Show merged result before confirming
+- [ ] Update list after successful merge
+- [ ] Test: Merge combines records correctly
+- [ ] Commit: "feat(ui): add duplicate merge functionality"
+
+### Task 56.5: Data Quality Improvement Suggestions
+**Description**: Show actionable suggestions to improve data quality.
+**Files**: `src/templates/data_hygiene.html`
+**Validation**: List of suggestions: "Add phone to 47 contacts"
+**Tests**: `tests/unit/test_quality_suggestions.py`
+**Acceptance Criteria**:
+- [ ] Add suggestions panel
+- [ ] Analyze missing fields and suggest actions
+- [ ] Prioritize by impact (phone, title, company)
+- [ ] Show count of records affected
+- [ ] Commit: "feat(ui): add data quality suggestions"
+
+### Task 56.6: External Hygiene API Connector (Optional)
+**Description**: If user has external hygiene repo, create connector.
+**Files**: `src/connectors/hygiene.py` (new)
+**Validation**: Call external API for hygiene checks
+**Tests**: `tests/unit/test_hygiene_connector.py`
+**Acceptance Criteria**:
+- [ ] Create `HygieneConnector` class
+- [ ] Accept `HYGIENE_API_URL` environment variable
+- [ ] Implement `check_quality()` method
+- [ ] Implement `find_duplicates()` method
+- [ ] Use in data hygiene routes if configured
+- [ ] Test: Connector calls external API
+- [ ] Commit: "feat(connectors): add external hygiene API connector"
+
+---
+
+## Sprint 57: Operator Experience Enhancement
+**Goal**: Make daily operator workflow smooth and efficient.
+**Demo**: Login → see pending count → keyboard navigate → approve → see confirmation toast.
+**Depends On**: Sprint 55 (Queue Polish)
+
+### Task 57.1: Dashboard Real Metrics
+**Description**: Ensure all dashboard numbers are real, not mocked.
+**Files**: `src/routes/dashboard_api.py`, `src/templates/dashboard.html`
+**Validation**: Dashboard shows actual pending count, sent today, etc.
+**Tests**: `tests/unit/test_dashboard_metrics_real.py`
+**Acceptance Criteria**:
+- [ ] Audit `/api/dashboard/stats` endpoint
+- [ ] Query `command_queue` table for real pending count
+- [ ] Query `drafts` table for real sent_today count
+- [ ] Remove any hardcoded/mock values
+- [ ] Test: Metrics change when data changes
+- [ ] Commit: "fix(dashboard): use real metrics not mocks"
+
+### Task 57.2: Keyboard Navigation
+**Description**: J/K to navigate queue, A to approve, R to reject.
+**Files**: `src/templates/queue.html`, `src/templates/queue_detail.html`
+**Validation**: Press J → next item selected, A → approve dialog
+**Tests**: `tests/unit/test_keyboard_nav.py`
+**Acceptance Criteria**:
+- [ ] Add keyboard event listeners
+- [ ] J = next item, K = previous item
+- [ ] Enter = open detail view
+- [ ] A = approve (in detail view)
+- [ ] R = reject (in detail view)
+- [ ] Escape = close modals
+- [ ] Show keyboard shortcuts hint in footer
+- [ ] Test: Keyboard events trigger actions
+- [ ] Commit: "feat(ui): add keyboard navigation shortcuts"
+
+### Task 57.3: Quick Actions from Queue
+**Description**: Approve/reject directly from queue list without opening detail.
+**Files**: `src/templates/queue.html`
+**Validation**: Click ✓ on queue item → approved without page change
+**Tests**: `tests/unit/test_quick_actions.py`
+**Acceptance Criteria**:
+- [ ] Add ✓ and ✗ icons to each queue row
+- [ ] Click ✓ → HTMX POST to approve → update row status
+- [ ] Click ✗ → show reason input → reject
+- [ ] No page reload needed
+- [ ] Test: Quick approve updates status inline
+- [ ] Commit: "feat(queue): add quick approve/reject buttons"
+
+### Task 57.4: Action Confirmation Toasts
+**Description**: Show toast notifications for all actions.
+**Files**: `src/templates/base.html`
+**Validation**: Approve → green toast "Email approved", Reject → orange toast
+**Tests**: Visual verification
+**Acceptance Criteria**:
+- [ ] Create toast component in base.html
+- [ ] JavaScript `showToast(message, type)` function
+- [ ] Types: success (green), error (red), warning (orange), info (blue)
+- [ ] Auto-dismiss after 3 seconds
+- [ ] Trigger from HTMX response headers
+- [ ] Commit: "feat(ui): add action confirmation toasts"
+
+### Task 57.5: Pending Items Badge
+**Description**: Show pending count badge on Command Queue nav item.
+**Files**: `src/templates/base.html`
+**Validation**: 5 pending → "Command Queue (5)" in nav
+**Tests**: `tests/unit/test_pending_badge.py`
+**Acceptance Criteria**:
+- [ ] Fetch pending count on page load
+- [ ] Display badge next to Command Queue nav
+- [ ] Update via polling every 30 seconds
+- [ ] Hide badge when count is 0
+- [ ] Test: Badge shows correct count
+- [ ] Commit: "feat(ui): add pending items badge to nav"
+
+### Task 57.6: Daily Summary Email
+**Description**: Morning email summarizing pending items and yesterday's activity.
+**Files**: `src/tasks/daily_summary.py` (new), `src/celery_app.py`
+**Validation**: 8am daily → email with summary arrives
+**Tests**: `tests/unit/test_daily_summary.py`
+**Acceptance Criteria**:
+- [ ] Create Celery beat task `send_daily_summary`
+- [ ] Schedule for 8am daily
+- [ ] Include: pending count, approved yesterday, sent yesterday, errors
+- [ ] Send via Gmail connector to operator email
+- [ ] Add setting to enable/disable
+- [ ] Test: Task generates correct summary
+- [ ] Commit: "feat(tasks): add daily summary email"
+
+---
+
+## Sprint 58: Resilience & Error Recovery
+**Goal**: Handle failures gracefully with clear recovery paths.
+**Demo**: Gmail API fails → see error in UI → click retry → success.
+**Depends On**: Sprint 30 (Observability)
+
+### Task 58.1: Error State UI Components
+**Description**: Consistent error state display across all pages.
+**Files**: `src/templates/base.html`, `src/templates/_partials/error.html`
+**Validation**: API error → shows error box with retry button
+**Tests**: `tests/unit/test_error_state_ui.py`
+**Acceptance Criteria**:
+- [ ] Create `_partials/error.html` component
+- [ ] Accept `message`, `details`, `retry_url` parameters
+- [ ] Show error icon, message, optional details toggle
+- [ ] "Retry" button makes HTMX request to retry_url
+- [ ] Include in all data-fetching templates
+- [ ] Test: Error component renders correctly
+- [ ] Commit: "feat(ui): add reusable error state component"
+
+### Task 58.2: Retry Queue for Failed Items
+**Description**: Failed sends go to retry queue with exponential backoff.
+**Files**: `src/models/retry_queue.py` (new), `src/services/retry_service.py` (new)
+**Validation**: Send fails → item in retry queue → retries 3x with backoff
+**Tests**: `tests/unit/test_retry_queue.py`
+**Acceptance Criteria**:
+- [ ] Create `RetryItem` model: id, original_id, type, payload, attempts, next_retry_at
+- [ ] Create migration
+- [ ] Create `RetryService` with `add_to_retry()`, `process_retries()`
+- [ ] Exponential backoff: 1min, 5min, 30min
+- [ ] Max 3 retries before permanent failure
+- [ ] Test: Failed item added to retry queue
+- [ ] Test: Backoff timing is correct
+- [ ] Commit: "feat(resilience): add retry queue with backoff"
+
+### Task 58.3: Retry Processing Task
+**Description**: Background task to process retry queue.
+**Files**: `src/tasks/retry_processor.py` (new), `src/celery_app.py`
+**Validation**: Items in retry queue processed on schedule
+**Tests**: `tests/unit/test_retry_processor.py`
+**Acceptance Criteria**:
+- [ ] Create Celery task `process_retry_queue`
+- [ ] Run every 1 minute
+- [ ] Process items where `next_retry_at < now()`
+- [ ] Update attempt count and next_retry_at on failure
+- [ ] Move to permanent failure after max attempts
+- [ ] Test: Task processes due items
+- [ ] Commit: "feat(tasks): add retry queue processor"
+
+### Task 58.4: Recovery Dashboard Panel
+**Description**: View items in recovery state with manual retry option.
+**Files**: `src/templates/admin.html`
+**Validation**: Admin page shows retry queue with "Retry Now" buttons
+**Tests**: `tests/unit/test_recovery_panel.py`
+**Acceptance Criteria**:
+- [ ] Add "Recovery Queue" section to admin page
+- [ ] List items: type, original action, attempts, next retry
+- [ ] "Retry Now" button to force immediate retry
+- [ ] "Abandon" button to mark as permanently failed
+- [ ] Filter by type (email, sync, etc.)
+- [ ] Test: Recovery panel shows retry items
+- [ ] Commit: "feat(ui): add recovery dashboard panel"
+
+### Task 58.5: Idempotency Keys for Sends
+**Description**: Prevent duplicate sends with idempotency keys.
+**Files**: `src/services/email_sender.py`, `src/models/idempotency.py`
+**Validation**: Same send request twice → only one email sent
+**Tests**: `tests/unit/test_idempotency.py`
+**Acceptance Criteria**:
+- [ ] Create `IdempotencyKey` model: key, resource_type, resource_id, created_at
+- [ ] Generate key from: user_id + recipient + subject + timestamp_bucket
+- [ ] Check key exists before send
+- [ ] Store key after successful send
+- [ ] TTL of 24 hours
+- [ ] Test: Duplicate request returns success without re-sending
+- [ ] Commit: "feat(resilience): add idempotency keys for email sends"
+
+### Task 58.6: Circuit Breaker for Gmail
+**Description**: Circuit breaker pattern for Gmail API calls.
+**Files**: `src/connectors/gmail.py`, `src/resilience.py`
+**Validation**: Gmail API fails 5x → circuit opens → fast-fail for 30s
+**Tests**: `tests/unit/test_gmail_circuit_breaker.py`
+**Acceptance Criteria**:
+- [ ] Implement circuit breaker: closed → open → half-open states
+- [ ] Open after 5 failures in 1 minute
+- [ ] Stay open for 30 seconds
+- [ ] Half-open: allow 1 request to test
+- [ ] Expose state via `/api/circuit-breakers`
+- [ ] Test: Circuit opens after failures
+- [ ] Test: Circuit closes after success in half-open
+- [ ] Commit: "feat(resilience): add circuit breaker for Gmail"
+
+### Task 58.7: Error Details Modal (Admin)
+**Description**: Click error to see full stack trace and context.
+**Files**: `src/templates/admin.html`
+**Validation**: Click failed item → modal with stack trace
+**Tests**: `tests/unit/test_error_details_modal.py`
+**Acceptance Criteria**:
+- [ ] Add "Details" link to failed items
+- [ ] Modal shows: timestamp, error type, message, stack trace
+- [ ] Show context: recipient, subject, attempt number
+- [ ] Copy button for error details
+- [ ] Test: Modal shows full error info
+- [ ] Commit: "feat(ui): add error details modal"
+
+---
+
+## Sprint 59: Mobile & Responsive Polish
+**Goal**: CaseyOS works well on tablet and mobile for on-the-go approvals.
+**Demo**: Open on phone → review queue → approve draft → smooth experience.
+
+### Task 59.1: Responsive Navigation
+**Description**: Hamburger menu for mobile, collapsible sidebar.
+**Files**: `src/templates/base.html`
+**Validation**: < 768px → hamburger menu, sidebar collapses
+**Tests**: Visual verification at various breakpoints
+**Acceptance Criteria**:
+- [ ] Add hamburger icon for mobile
+- [ ] Sidebar becomes overlay on mobile
+- [ ] Close sidebar when item selected
+- [ ] Smooth animation
+- [ ] Commit: "feat(ui): add responsive navigation"
+
+### Task 59.2: Touch-Friendly Queue Actions
+**Description**: Larger touch targets, swipe gestures.
+**Files**: `src/templates/queue.html`
+**Validation**: Swipe right → approve, swipe left → reject
+**Tests**: Manual testing on touch device
+**Acceptance Criteria**:
+- [ ] Increase button sizes on mobile
+- [ ] Add touch-action swipe handlers
+- [ ] Swipe right reveals approve button
+- [ ] Swipe left reveals reject button
+- [ ] Haptic feedback if available
+- [ ] Commit: "feat(ui): add touch-friendly queue actions"
+
+### Task 59.3: Mobile-Optimized Forms
+**Description**: Forms work well on mobile with proper keyboard types.
+**Files**: `src/templates/settings.html`, `src/templates/queue_detail.html`
+**Validation**: Email fields show email keyboard, proper spacing
+**Tests**: Manual testing on mobile device
+**Acceptance Criteria**:
+- [ ] Add `inputmode="email"` for email fields
+- [ ] Add `inputmode="url"` for URL fields
+- [ ] Increase form field heights on mobile
+- [ ] Add proper labels with `for` attributes
+- [ ] Commit: "feat(ui): optimize forms for mobile"
+
+### Task 59.4: Offline Indicator
+**Description**: Show when offline, queue actions for when online.
+**Files**: `src/templates/base.html`
+**Validation**: Go offline → see indicator → actions queued
+**Tests**: Manual testing with network throttling
+**Acceptance Criteria**:
+- [ ] Detect offline state with navigator.onLine
+- [ ] Show "Offline" banner when disconnected
+- [ ] Disable send actions when offline
+- [ ] Show "Back Online" toast when reconnected
+- [ ] Commit: "feat(ui): add offline indicator"
 
 ---
 
@@ -2020,10 +2595,61 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 - [ ] `tests/unit/test_audit_log_ui.py` - log viewing and export
 - [ ] `tests/unit/test_circuit_breaker_ui.py` - status display
 
-### Sprint 52 Tests
-- [ ] Verify app starts after file removal
-- [ ] Verify all nav tabs work
-- [ ] Visual regression testing
+### Sprint 52 Tests ✅ COMPLETE
+- [x] Verify app starts after file removal
+- [x] Verify all nav tabs work
+- [x] Visual regression testing
+
+### Sprint 53 Tests
+- [ ] `tests/unit/test_user_model.py::test_profile_fields` - new profile fields exist
+- [ ] `tests/unit/test_user_profile_api.py` - GET/PUT profile endpoints
+- [ ] `tests/unit/test_profile_settings_ui.py` - Profile tab in settings
+- [ ] `tests/unit/test_voice_profile_linkage.py` - User-VoiceProfile relationship
+- [ ] `tests/unit/test_draft_signature_injection.py` - Signature in drafts
+- [ ] `tests/unit/test_queue_signature_display.py` - Signature formatting in queue
+
+### Sprint 54 Tests
+- [ ] `tests/unit/test_oauth_status_api.py` - OAuth status endpoint
+- [ ] `tests/unit/test_integrations_status_cards.py` - Status cards rendering
+- [ ] `tests/unit/test_reconnect_flow.py` - OAuth reconnect button
+- [ ] `tests/unit/test_token_expiry_notification.py` - Expiry notification creation
+
+### Sprint 55 Tests
+- [ ] `tests/unit/test_draft_subject_edit.py` - Subject editing
+- [ ] `tests/unit/test_draft_body_edit.py` - Body editing
+- [ ] `tests/unit/test_preview_edit_toggle.py` - Mode toggle
+- [ ] `tests/unit/test_send_confirmation_modal.py` - Confirmation modal
+- [ ] `tests/unit/test_queue_sorting.py` - Sort and filter
+- [ ] `tests/unit/test_bulk_actions.py` - Bulk approve/reject
+
+### Sprint 56 Tests
+- [ ] `tests/unit/test_data_hygiene_api.py` - Hygiene API endpoints
+- [ ] `tests/unit/test_data_hygiene_ui.py` - Dashboard page
+- [ ] `tests/unit/test_duplicate_panel.py` - Duplicate detection display
+- [ ] `tests/unit/test_merge_ui.py` - Merge functionality
+- [ ] `tests/unit/test_quality_suggestions.py` - Suggestion panel
+- [ ] `tests/unit/test_hygiene_connector.py` - External API connector
+
+### Sprint 57 Tests
+- [ ] `tests/unit/test_dashboard_metrics_real.py` - Real metrics not mocks
+- [ ] `tests/unit/test_keyboard_nav.py` - Keyboard shortcuts
+- [ ] `tests/unit/test_quick_actions.py` - Inline approve/reject
+- [ ] `tests/unit/test_pending_badge.py` - Badge count
+- [ ] `tests/unit/test_daily_summary.py` - Daily email task
+
+### Sprint 58 Tests
+- [ ] `tests/unit/test_error_state_ui.py` - Error component
+- [ ] `tests/unit/test_retry_queue.py` - Retry queue model and service
+- [ ] `tests/unit/test_retry_processor.py` - Background processor
+- [ ] `tests/unit/test_recovery_panel.py` - Admin recovery UI
+- [ ] `tests/unit/test_idempotency.py` - Idempotency keys
+- [ ] `tests/unit/test_gmail_circuit_breaker.py` - Circuit breaker pattern
+- [ ] `tests/unit/test_error_details_modal.py` - Error details modal
+
+### Sprint 59 Tests
+- [ ] Visual testing on mobile breakpoints
+- [ ] Touch gesture testing
+- [ ] Offline mode testing
 
 ---
 
@@ -2148,5 +2774,88 @@ This document defines a comprehensive, atomic sprint breakdown for CaseyOS - the
 ---
 
 *Generated: 2026-01-27*
-*Version: 2.3*
-*Updated: 2026-01-28 - Added Sprints 44-52 for UI gap closure, Gap Analysis Appendix*
+*Version: 2.4*
+*Updated: 2026-01-29 - Added Sprints 53-59 for signature system, OAuth health, queue polish, data hygiene, operator UX, resilience, and mobile*
+
+## Appendix: Answer to User Questions (2026-01-29)
+
+### Q1: Will placeholders in email signature go out when approved?
+**Answer**: Currently YES - placeholders like `{sender_name}` could go out if the draft context wasn't properly populated. 
+
+**Solution (Sprint 53)**: 
+- Task 53.1-53.2: Add profile fields to User model and API
+- Task 53.6: Inject user profile into draft context so `sender_name=user.display_name`
+- Task 53.7: Display formatted signature in queue detail so operator can verify before send
+
+### Q2: How to keep Google Account connected?
+**Answer**: OAuth tokens are already stored encrypted in `oauth_tokens` table with auto-refresh via Celery task. However, the UI doesn't show connection status or handle refresh failures well.
+
+**Solution (Sprint 54)**:
+- Task 54.1-54.2: OAuth status API and UI cards showing connection health
+- Task 54.3: Reconnect button when token expires or refresh fails
+- Task 54.4: Notification when token is about to expire
+- Task 54.5: Header indicator showing overall OAuth health
+
+### Q3: What UI/UX gaps exist?
+**Answer**: Key gaps identified:
+1. **Draft Editing**: Can't edit subject/body before send (Sprint 55)
+2. **Data Visibility**: No data quality metrics or duplicate detection (Sprint 56)
+3. **Operator Efficiency**: No keyboard shortcuts, bulk actions, real metrics (Sprint 57)
+4. **Error Recovery**: No visible retry queue or recovery options (Sprint 58)
+5. **Mobile**: No responsive design for on-the-go approvals (Sprint 59)
+
+### Q4: Integrate external hygiene repo or build native?
+**Answer**: CaseyOS already has data hygiene agents at `src/agents/enrichment/`:
+- `duplicate_watcher.py`
+- `email_validator.py`
+- `enrichment.py`
+
+**Recommendation**: 
+- Sprint 56.1-56.5: Surface existing agents via UI (primary)
+- Sprint 56.6: Optional connector to external hygiene API if needed
+
+---
+
+## Appendix: Sprint Dependency Graph
+
+```
+Sprint 44 (Voice Profiles) ✅
+    ↓
+Sprint 53 (User Profile & Signature)
+    ↓
+Sprint 55 (Draft Editing & Queue Polish)
+    ↓
+Sprint 57 (Operator Experience)
+
+Sprint 33 (OAuth Consolidation) ✅
+    ↓
+Sprint 54 (OAuth Token Health)
+
+Sprint 30 (Observability) ✅
+    ↓
+Sprint 58 (Resilience & Recovery)
+
+Existing Hygiene Agents
+    ↓
+Sprint 56 (Data Hygiene Dashboard)
+
+Sprint 55-58
+    ↓
+Sprint 59 (Mobile & Responsive)
+```
+
+---
+
+## Appendix: New Technical Debt Items (2026-01-29)
+
+16. **User model missing profile fields** - display_name, job_title, signature_html (Sprint 53.1)
+17. **Draft generator doesn't use user profile** - hardcoded fallback signature (Sprint 53.6)
+18. **No OAuth status visibility** - users can't see if tokens are expired (Sprint 54.1-54.2)
+19. **Queue items not editable** - no inline subject/body editing (Sprint 55.1-55.2)
+20. **Data hygiene agents not surfaced** - no UI for duplicate detection (Sprint 56)
+21. **Dashboard uses mock metrics** - hardcoded values instead of real queries (Sprint 57.1)
+22. **No retry queue** - failed sends just fail, no automatic retry (Sprint 58.2-58.3)
+23. **No idempotency protection** - duplicate requests could send duplicate emails (Sprint 58.5)
+24. **Not mobile-responsive** - poor experience on phone/tablet (Sprint 59)
+
+---
