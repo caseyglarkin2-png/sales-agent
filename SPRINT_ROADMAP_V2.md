@@ -3089,14 +3089,421 @@ Sprint 60 (OAuth Fix + Real Send) ✅ COMPLETE
     ↓
 Sprint 61 (Contact Enrichment)
     ↓
-Sprint 62 (ABM Campaigns) ← Sprint 64 (SendGrid - optional)
+Sprint 62 (ABM Campaigns) ✅ COMPLETE ← Sprint 64 (SendGrid) ✅ COMPLETE
     ↓
-Sprint 63 (Sequence Automation)
+Sprint 63 (Sequence Automation) ✅ COMPLETE
 
-Sprint 65 (HubSpot Enhancement) ← Can run parallel
+Sprint 65 (HubSpot Enhancement) ✅ COMPLETE
 ```
 
 ---
 
-*Updated: 2026-01-29 - Added Sprints 60-65 for integration fixes, ABM campaigns, sequences, SendGrid, and HubSpot enhancements*
-*Version: 2.6*
+## Sprint 66: Exception Handling & Error Recovery
+**Goal**: Eliminate bare `except:` clauses and add proper error handling throughout the codebase.
+**Demo**: Show error logs with full context (email, user_id, stack trace) when triggering an exception in queue_routes.
+
+### Task 66.1: Fix bare except in queue_routes.py
+**Files**: `src/routes/queue_routes.py`
+**Lines**: 481, 505, 575
+**Work**:
+- [ ] Replace `except:` at L481 with `except (ValueError, KeyError) as e:` + `logger.error(f"Queue parse error: {e}")`
+- [ ] Replace `except:` at L505 with `except Exception as e:` + logging with context
+- [ ] Replace `except:` at L575 with specific exception + logging
+**Validation**: `grep -n "except:" src/routes/queue_routes.py | wc -l` returns 0
+**Commit**: "fix(queue_routes): replace bare except clauses with proper handling"
+
+### Task 66.2: Fix bare except in voice_trainer.py
+**Files**: `src/voice_trainer.py`
+**Lines**: 234, 246
+**Work**:
+- [ ] Replace `except:` at L234 with `except (ValueError, TypeError) as e:` + logging
+- [ ] Replace `except:` at L246 with `except json.JSONDecodeError as e:` + logging
+**Validation**: `grep -n "except:" src/voice_trainer.py | wc -l` returns 0
+**Commit**: "fix(voice_trainer): proper exception handling"
+
+### Task 66.3: Fix bare except in twitter.py connector
+**Files**: `src/connectors/twitter.py`
+**Line**: 370
+**Work**:
+- [ ] Replace `except:` with `except httpx.HTTPError as e:` + logging with API context
+- [ ] Add request URL and status code to error message
+**Validation**: `grep -n "except:" src/connectors/twitter.py | wc -l` returns 0
+**Commit**: "fix(twitter): proper exception handling in connector"
+
+### Task 66.4: Fix bare except in hubspot_sync.py
+**Files**: `src/hubspot_sync.py`
+**Line**: 335
+**Work**:
+- [ ] Replace `except:` with `except (KeyError, TypeError) as e:` + logging
+- [ ] Include contact_id in error context
+**Validation**: `grep -n "except:" src/hubspot_sync.py | wc -l` returns 0
+**Commit**: "fix(hubspot_sync): proper exception handling"
+
+### Task 66.5: Fix bare except in specialized.py agent
+**Files**: `src/agents/specialized.py`
+**Line**: 425
+**Work**:
+- [ ] Replace `except:` with `except Exception as e:` + logging
+- [ ] Include agent name and action context in error
+**Validation**: `grep -n "except:" src/agents/specialized.py | wc -l` returns 0
+**Commit**: "fix(specialized_agent): proper exception handling"
+
+### Task 66.6: Fix bare except in data_decay.py
+**Files**: `src/agents/data_hygiene/data_decay.py`
+**Lines**: 197, 277
+**Work**:
+- [ ] Replace `except:` at L197 with `except (ValueError, AttributeError) as e:` + logging
+- [ ] Replace `except:` at L277 with `except Exception as e:` + logging
+- [ ] Add record context (contact_id, field_name) to error messages
+**Validation**: `grep -n "except:" src/agents/data_hygiene/data_decay.py | wc -l` returns 0
+**Commit**: "fix(data_decay): proper exception handling"
+
+### Task 66.7: Add exception handling tests
+**Files**: `tests/unit/test_exception_handling.py` (new)
+**Work**:
+- [ ] Test queue_routes exception logs include email context
+- [ ] Test hubspot_sync exception logs include contact_id
+- [ ] Test specialized agent logs include agent name
+- [ ] Mock exceptions and verify logger.error called with context
+**Validation**: `pytest tests/unit/test_exception_handling.py -v` passes (≥6 tests)
+**Commit**: "test: exception handling coverage"
+
+---
+
+## Sprint 67: Connector Resilience - Retry & Backoff
+**Goal**: All connectors have retry with exponential backoff for transient failures.
+**Demo**: Trigger 429 from mocked HubSpot → logs show retry attempts with backoff → succeeds on 3rd try.
+
+### Task 67.0: Consolidate retry utilities
+**Files**: `src/connectors/retry.py`
+**Work**:
+- [ ] Audit existing retry patterns in `gmail.py`, `grok.py`
+- [ ] Extract best pattern into `src/connectors/retry.py`
+- [ ] Create `@with_retry(max_retries=3, backoff_base=1.0, retryable_statuses={429,500,502,503,504})` decorator
+- [ ] Ensure works with async functions
+**Validation**: `pytest tests/unit/test_retry_decorator.py -v -k "test_retries_on_429 and test_exponential_backoff"` passes
+**Commit**: "refactor(connectors): consolidate retry utilities"
+
+### Task 67.1: Apply retry to SendGrid connector
+**Files**: `src/connectors/sendgrid.py`
+**Work**:
+- [ ] Import `@with_retry` from `src/connectors/retry.py`
+- [ ] Apply to `send_email()` and `send_batch()` methods
+- [ ] Set timeout=30s on httpx client
+**Validation**: `pytest tests/unit/test_sendgrid_retry.py -v` passes (mock 429 → retry → success)
+**Commit**: "feat(sendgrid): add retry with backoff"
+
+### Task 67.2: Apply retry to Slack connector
+**Files**: `src/connectors/slack.py`
+**Work**:
+- [ ] Apply `@with_retry` to `send_message()` and `post_notification()` methods
+- [ ] Handle Slack rate limit headers (Retry-After)
+**Validation**: Unit test mocks rate limit → verifies retry with Retry-After delay
+**Commit**: "feat(slack): add retry with backoff"
+
+### Task 67.3: Apply retry to Calendar connector
+**Files**: `src/connectors/calendar.py`
+**Work**:
+- [ ] Add httpx timeout configuration (30s default)
+- [ ] Wrap API calls with retry logic (sync wrapper if needed)
+**Validation**: Unit test for timeout handling passes
+**Commit**: "feat(calendar): add retry and timeout"
+
+### Task 67.4: Apply retry to Drive connector
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add timeout configuration
+- [ ] Wrap API calls with retry logic
+**Validation**: Unit test for retry behavior passes
+**Commit**: "feat(drive): add retry and timeout"
+
+### Task 67.5: Connector retry integration tests
+**Files**: `tests/integration/test_connector_resilience.py` (new)
+**Work**:
+- [ ] Test SendGrid with mocked 429 → retry → 200 success
+- [ ] Test Slack with mocked rate limit → backoff correct
+- [ ] Verify exponential backoff timing (1s, 2s, 4s)
+- [ ] Verify max retries respected (fails after 3)
+**Validation**: `pytest tests/integration/test_connector_resilience.py -v` passes (≥4 tests)
+**Commit**: "test: connector resilience integration tests"
+
+---
+
+## Sprint 68: Connector Health Checks & Circuit Breakers
+**Goal**: All connectors have health checks; critical connectors use circuit breakers.
+**Demo**: Hit `/health/connectors` → see real-time JSON status of all 7 integrations with latency.
+
+### Task 68.1: Add health check to Gmail connector
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Add `async def health_check() -> Dict[str, Any]` method
+- [ ] Call `users.getProfile(userId="me")` for lightweight check
+- [ ] Return: `{"status": "healthy|unhealthy", "latency_ms": int, "error": str|None}`
+**Validation**: `connector.health_check()` returns valid dict in <5s
+**Commit**: "feat(gmail): add health check"
+
+### Task 68.2: Extend health check in Slack connector
+**Files**: `src/connectors/slack.py`
+**Work**:
+- [ ] Rename existing `health_check` to follow standard return format
+- [ ] Return: `{"status": "healthy|unhealthy", "latency_ms": int, "bot_name": str, "error": str|None}`
+**Validation**: Returns consistent format with other connectors
+**Commit**: "feat(slack): standardize health check format"
+
+### Task 68.3: Add health check to SendGrid connector
+**Files**: `src/connectors/sendgrid.py`
+**Work**:
+- [ ] Add `async def health_check() -> Dict[str, Any]` method
+- [ ] Use API status endpoint or lightweight send test
+- [ ] Return: `{"status": "healthy|unhealthy", "latency_ms": int, "error": str|None}`
+**Validation**: Unit test verifies health check returns valid dict
+**Commit**: "feat(sendgrid): add health check"
+
+### Task 68.4: Add health check to Calendar connector
+**Files**: `src/connectors/calendar.py`
+**Work**:
+- [ ] Add `async def health_check() -> Dict[str, Any]` method
+- [ ] List calendars with maxResults=1 for lightweight check
+- [ ] Return: `{"status": "healthy|unhealthy", "latency_ms": int, "error": str|None}`
+**Validation**: Unit test verifies health check
+**Commit**: "feat(calendar): add health check"
+
+### Task 68.5: Add health check to Drive connector
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add `async def health_check() -> Dict[str, Any]` method
+- [ ] Query about(fields="user") for lightweight check
+- [ ] Return: `{"status": "healthy|unhealthy", "latency_ms": int, "error": str|None}`
+**Validation**: Unit test verifies health check
+**Commit**: "feat(drive): add health check"
+
+### Task 68.6: Create connector health API endpoint
+**Files**: `src/routes/health.py`
+**Depends on**: 68.1-68.5
+**Work**:
+- [ ] Add `GET /health/connectors` endpoint
+- [ ] Call `health_check()` on all connectors in parallel (asyncio.gather)
+- [ ] Return: `{"gmail": {...}, "hubspot": {...}, "sendgrid": {...}, ...}`
+- [ ] Include overall status: healthy if all healthy, degraded if some fail
+**Validation**: `curl /health/connectors` returns JSON with all 7 connectors
+**Commit**: "feat(api): connector health endpoint"
+
+### Task 68.7: Integrate circuit breaker with Gmail connector
+**Files**: `src/connectors/gmail.py`, `src/resilience.py`
+**Work**:
+- [ ] Use existing `CircuitBreaker` from `src/resilience.py`
+- [ ] Wrap `send_email()` with circuit breaker
+- [ ] Configure: failure_threshold=5, recovery_timeout=60s
+- [ ] Log state changes (closed→open, open→half-open, half-open→closed)
+**Validation**: Test: 5 failures → circuit opens → returns error without API call
+**Commit**: "feat(gmail): integrate circuit breaker"
+
+### Task 68.8: Integrate circuit breaker with HubSpot connector
+**Files**: `src/connectors/hubspot.py`, `src/resilience.py`
+**Work**:
+- [ ] Wrap critical methods (search_contacts, create_contact) with circuit breaker
+- [ ] Share configuration with Gmail circuit breaker
+- [ ] Add half-open state probe logic
+**Validation**: Test: 5 failures → circuit opens → auto-recovers after 60s
+**Commit**: "feat(hubspot): integrate circuit breaker"
+
+### Task 68.9: Add circuit breaker status to health endpoint
+**Files**: `src/routes/health.py`
+**Depends on**: 68.6, 68.7, 68.8
+**Work**:
+- [ ] Include circuit breaker state in health response
+- [ ] Add: `"circuit_breaker": {"state": "closed|open|half_open", "failure_count": int}`
+- [ ] Only show for connectors with circuit breakers (gmail, hubspot)
+**Validation**: Health endpoint shows circuit state for gmail and hubspot
+**Commit**: "feat(health): include circuit breaker status"
+
+---
+
+## Sprint 69: Casey Voice - Socratic Patterns & Few-Shot Examples
+**Goal**: Casey's emails consistently use Socratic questioning and provocative insights.
+**Demo**: Generate 5 sample emails via API → each has question-led opener and challenges status quo.
+
+### Task 69.1: Create few-shot examples file
+**Files**: `src/voice_profiles/casey_examples.json` (new)
+**Work**:
+- [ ] Create 5 exemplar cold emails with Socratic/provocative style
+- [ ] Include: `{"persona": str, "subject": str, "body": str, "opener_style": "question", "notes": str}`
+- [ ] Personas: VP Marketing, Sales Leader, Event Manager, RevOps, Founder
+- [ ] Each example shows: question opener, contrarian insight, single CTA
+**Validation**: `python -c "import json; d=json.load(open('src/voice_profiles/casey_examples.json')); assert len(d)>=5; assert all(e['opener_style']=='question' for e in d)"`
+**Commit**: "feat(voice): add Casey few-shot examples"
+
+### Task 69.2: Integrate few-shot examples into draft_generator
+**Files**: `src/draft_generator.py`
+**Depends on**: 69.1
+**Work**:
+- [ ] Load examples from `casey_examples.json` at init
+- [ ] Match 2-3 examples by persona similarity
+- [ ] Add examples to system prompt as `EXAMPLE EMAIL:` blocks
+- [ ] Test that LLM output quality improves
+**Validation**: Generate email for "VP Marketing" → output contains question opener
+**Commit**: "feat(draft_generator): integrate few-shot examples"
+
+### Task 69.3: Extend VoiceProfile with Socratic fields
+**Files**: `src/voice_profile.py`
+**Work**:
+- [ ] Add `socratic_level: int = 3` field (1-5 scale)
+- [ ] Add `opener_style: str = "question"` field
+- [ ] Add `challenge_intensity: str = "balanced"` field (gentle, balanced, bold)
+- [ ] Update `to_prompt_context()` to include new fields
+- [ ] Update Casey default profile with new settings
+**Validation**: `VoiceProfile(...).to_prompt_context()` includes Socratic fields
+**Commit**: "feat(voice_profile): add Socratic configuration"
+
+### Task 69.4: Create persona-specific challenger hooks
+**Files**: `src/agents/persona_router.py`
+**Work**:
+- [ ] Add `CHALLENGER_HOOKS: Dict[str, List[str]]` constant
+- [ ] VP Marketing: "Your competitors outspend you 3:1 on brand. What if that's not the problem?"
+- [ ] Sales Leader: "Pipeline reviews won't fix pipeline. Here's what will."
+- [ ] Event Manager: "Events don't generate leads. Relationships do."
+- [ ] RevOps: "Your tech stack isn't broken. Your process is."
+- [ ] Include 3-5 hooks per persona
+**Validation**: `from src.agents.persona_router import CHALLENGER_HOOKS; assert len(CHALLENGER_HOOKS) >= 5`
+**Commit**: "feat(persona): add challenger hooks per persona"
+
+### Task 69.5: Use challenger hooks in draft generation
+**Files**: `src/draft_generator.py`
+**Depends on**: 69.4
+**Work**:
+- [ ] Import CHALLENGER_HOOKS from persona_router
+- [ ] Detect persona from context or default to generic
+- [ ] Include 1-2 relevant challenger hooks in user prompt
+- [ ] Instruct LLM: "Use this hook as inspiration, not literal copy"
+**Validation**: Generate email for "VP Marketing" → output challenges status quo
+**Commit**: "feat(draft_generator): use persona challenger hooks"
+
+### Task 69.6: Add voice quality scoring
+**Files**: `src/voice_trainer.py`
+**Work**:
+- [ ] Add `score_socratic(text: str) -> float` method (0-100)
+- [ ] Count questions (especially "What if", "Have you", "Why do")
+- [ ] Add `score_provocative(text: str) -> float` method (0-100)
+- [ ] Detect status quo challenges, contrarian statements
+- [ ] Add `voice_quality_score(text: str) -> Dict` returning both scores + combined
+**Validation**: `assert score_socratic("What if you're measuring the wrong thing?") > 70`; `assert score_socratic("We offer solutions") < 30`
+**Commit**: "feat(voice_trainer): add quality scoring"
+
+### Task 69.7: Voice quality tests
+**Files**: `tests/unit/test_voice_quality.py` (new)
+**Work**:
+- [ ] Test Socratic scoring on 5 sample emails (2 high, 3 low)
+- [ ] Test provocative scoring on 5 sample emails
+- [ ] Test Casey profile generates high-scoring emails
+- [ ] Test generic emails produce low scores
+**Validation**: `pytest tests/unit/test_voice_quality.py -v` passes (≥8 tests)
+**Commit**: "test: voice quality scoring"
+
+---
+
+## Sprint 70: TODO Cleanup & Production Hardening
+**Goal**: Critical TODOs resolved; system ready for production.
+**Demo**: Complete OAuth flow end-to-end: connect Gmail → token in DB → draft approved → email in Sent folder.
+
+### Task 70.1a: Implement OAuth token query
+**Files**: `src/routes/integrations_api.py`
+**Lines**: 111, 296
+**Work**:
+- [ ] L111: Query `oauth_tokens` table for user's tokens using OAuthManager
+- [ ] L296: Check database for OAuth token presence
+- [ ] Return token status (connected/disconnected) per integration
+**Validation**: `/api/integrations` returns real token status from DB
+**Commit**: "feat(integrations): implement OAuth token query"
+
+### Task 70.1b: Implement OAuth revocation
+**Files**: `src/routes/integrations_api.py`
+**Lines**: 355, 374
+**Work**:
+- [ ] L355: Delete OAuth token from database
+- [ ] L374: Implement sync trigger per integration (call connector.sync())
+**Validation**: Revoke token → confirm deleted from DB
+**Commit**: "feat(integrations): implement OAuth revocation and sync"
+
+### Task 70.2: Implement dashboard pending approvals
+**Files**: `src/routes/dashboard_api.py`
+**Line**: 118
+**Work**:
+- [ ] Query `CommandQueueItem` for `status='pending_approval'`
+- [ ] Return actual count in `pending_approvals` field
+**Validation**: Create pending item → dashboard shows count=1
+**Commit**: "feat(dashboard): implement pending approvals count"
+
+### Task 70.3: Implement admin Slack alerts
+**Files**: `src/routes/admin.py`
+**Line**: 90
+**Work**:
+- [ ] Use Slack connector to send alert to ops channel
+- [ ] Configure `OPS_SLACK_CHANNEL` in settings
+- [ ] Alert on: kill switch activated, auth failure surge, circuit open
+**Validation**: `pytest tests/unit/test_admin_alerts.py -v` passes (mock Slack → verify message sent)
+**Commit**: "feat(admin): implement ops team alerts"
+
+### Task 70.4: Implement reply detection
+**Files**: `src/auto_approval.py`
+**Line**: 230
+**Work**:
+- [ ] Use Gmail connector to search thread by thread_id
+- [ ] Detect if reply exists within 48h window
+- [ ] Return reply metadata if found
+**Validation**: Create test thread with reply → detect_reply() returns True
+**Commit**: "feat(auto_approval): implement reply detection"
+
+### Task 70.5: Production config validation
+**Files**: `src/config.py`
+**Work**:
+- [ ] Add `validate_production_config()` function
+- [ ] Check required env vars: `DATABASE_URL`, `SECRET_KEY`, `OPENAI_API_KEY`
+- [ ] Warn on missing optional: `HUBSPOT_API_KEY`, `SENDGRID_API_KEY`
+- [ ] Call on startup if `ENVIRONMENT=production`
+**Validation**: Missing `SECRET_KEY` → app fails with clear error message
+**Commit**: "feat(config): production validation"
+
+### Task 70.6: Final test sweep
+**Files**: `tests/`
+**Work**:
+- [ ] Run: `make test-unit && make test-integration`
+- [ ] Run: `make coverage` → ensure ≥40%
+- [ ] Fix any failing tests
+- [ ] Document skipped tests with reasons in `tests/SKIPPED.md`
+**Validation**: All tests pass; coverage ≥40%
+**Commit**: "test: final sweep and validation"
+
+---
+
+## Sprint 66-70 Dependency Graph
+
+```
+Sprint 66 (Exception Handling)
+    ↓
+Sprint 67 (Retry & Backoff) ← Depends on 66 for clean error handling
+    ↓
+Sprint 68 (Health Checks & Circuit Breakers) ← Depends on 67 for retry
+    │
+    ├── Sprint 69 (Casey Voice) ← Runs parallel with 68 (no conflicts)
+    │
+Sprint 70 (TODO Cleanup) ← Final hardening, depends on 66-69
+```
+
+---
+
+## Success Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Bare `except:` clauses | 10 | 0 |
+| TODO placeholders (critical) | 32 | <10 |
+| Connectors with retry | 2 | 7 |
+| Connectors with health check | 3 | 7 |
+| Connectors with circuit breaker | 0 | 2 |
+| Voice quality score (Casey) | ~50 | >80 |
+| Test coverage | 40% | 45% |
+
+---
+
+*Updated: 2026-01-29 - Added Sprints 66-70 for code quality, connector resilience, and Casey voice*
+*Version: 2.7*
