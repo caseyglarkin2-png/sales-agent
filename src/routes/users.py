@@ -728,3 +728,57 @@ async def get_signature_preview():
             "html": user.signature_html,
             "context": user.get_signature_context(),
         }
+
+
+class DraftGenerateRequest(BaseModel):
+    """Request to generate a draft email (Sprint 55)."""
+    prospect_email: str
+    prospect_name: str = "there"
+    company_name: str = ""
+    thread_context: Optional[str] = None
+    talking_points: Optional[list] = None
+
+
+@router.post("/drafts/generate")
+async def generate_draft(request: DraftGenerateRequest):
+    """Generate a draft email using the draft generator (Sprint 55).
+    
+    Uses user profile context for sender information.
+    """
+    from src.draft_generator import create_draft_generator
+    from src.db import get_session
+    from src.models.user import User
+    from sqlalchemy import select
+    
+    # Get user profile for sender context
+    sender_context = None
+    async with get_session() as session:
+        stmt = select(User).where(User.email == "casey.l@pesti.io")
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if user:
+            sender_context = user.get_signature_context()
+    
+    # Generate draft
+    generator = create_draft_generator()
+    
+    try:
+        draft = await generator.generate_draft(
+            prospect_email=request.prospect_email,
+            prospect_name=request.prospect_name,
+            company_name=request.company_name or "your company",
+            thread_context=request.thread_context,
+            talking_points=request.talking_points,
+            sender_context=sender_context,
+        )
+        
+        return {
+            "subject": draft.get("subject", ""),
+            "body": draft.get("body", ""),
+            "model": draft.get("model", "unknown"),
+            "voice_profile": draft.get("voice_profile"),
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate draft: {str(e)}")

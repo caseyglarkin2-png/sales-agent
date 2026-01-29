@@ -154,6 +154,21 @@
         background: #f9fafb;
     }
 
+    .btn-outline {
+        background: transparent;
+        color: #4f46e5;
+        border-color: #4f46e5;
+    }
+
+    .btn-outline:hover {
+        background: #eef2ff;
+    }
+
+    .btn-outline:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
     .reasoning-box {
         background: #f0f9ff;
         border: 1px solid #bfdbfe;
@@ -306,11 +321,20 @@
             <div class="draft-section">
                 <h3>Subject</h3>
                 <input type="text" id="draft-subject" class="draft-input" placeholder="Email subject">
+                <div class="flex justify-between mt-1 text-xs text-gray-500">
+                    <span>Keep subject concise (5-9 words ideal)</span>
+                    <span id="subject-chars">0 chars</span>
+                </div>
             </div>
 
             <div class="draft-section">
                 <h3>Body</h3>
-                <textarea id="draft-body" class="draft-input draft-textarea" placeholder="Email body..."></textarea>
+                <textarea id="draft-body" class="draft-input draft-textarea" placeholder="Email body..." 
+                    oninput="updateBodyStats()"></textarea>
+                <div class="flex justify-between mt-1 text-xs text-gray-500">
+                    <span id="body-words">0 words</span>
+                    <span id="body-chars">0 chars</span>
+                </div>
             </div>
             
             <!-- Signature Preview (Sprint 53) -->
@@ -328,6 +352,9 @@
             </div>
 
             <div class="action-buttons">
+                <button onclick="regenerateDraft()" class="btn btn-outline" id="btn-regenerate">
+                    🔄 Regenerate
+                </button>
                 <button onclick="saveDraft()" class="btn btn-primary">
                     💾 Save Draft
                 </button>
@@ -570,6 +597,59 @@
             }
         } catch (err) {
             showToast('Failed to skip item', 'error');
+        }
+    }
+
+    // Sprint 55: Update body stats
+    function updateBodyStats() {
+        const body = document.getElementById('draft-body').value;
+        const words = body.trim().split(/\s+/).filter(w => w.length > 0).length;
+        const chars = body.length;
+        
+        document.getElementById('body-words').textContent = `${words} words`;
+        document.getElementById('body-chars').textContent = `${chars} chars`;
+    }
+    
+    // Sprint 55: Update subject char count
+    document.getElementById('draft-subject')?.addEventListener('input', function() {
+        const chars = this.value.length;
+        document.getElementById('subject-chars').textContent = `${chars} chars`;
+    });
+    
+    // Sprint 55: Regenerate draft
+    async function regenerateDraft() {
+        const btn = document.getElementById('btn-regenerate');
+        btn.disabled = true;
+        btn.textContent = '⏳ Generating...';
+        
+        try {
+            const ctx = currentItem.action_context || {};
+            const res = await fetch('/api/users/drafts/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prospect_email: ctx.recipient || ctx.to,
+                    prospect_name: ctx.prospect_name || ctx.contact_name || 'there',
+                    company_name: ctx.company_name || ctx.company || 'your company',
+                    thread_context: ctx.thread_context,
+                })
+            });
+            
+            if (res.ok) {
+                const draft = await res.json();
+                document.getElementById('draft-subject').value = draft.subject || '';
+                document.getElementById('draft-body').value = draft.body || '';
+                updateBodyStats();
+                showToast('Draft regenerated!', 'success');
+            } else {
+                throw new Error('Failed to generate draft');
+            }
+        } catch (err) {
+            console.error('Regenerate failed:', err);
+            showToast('Failed to regenerate. Try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔄 Regenerate';
         }
     }
 
