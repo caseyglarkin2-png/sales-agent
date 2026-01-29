@@ -56,6 +56,11 @@
 
 <body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
 
+    <!-- Offline Indicator -->
+    <div id="offline-indicator" class="fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center py-2 text-sm font-medium z-50 hidden">
+        ⚠️ You're offline - some features may be unavailable
+    </div>
+
     <!-- Global Navigation -->
     <nav class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,71 +69,60 @@
                     <div class="flex-shrink-0 flex items-center">
                         <span class="text-xl font-bold text-primary">CaseyOS</span>
                     </div>
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <!-- Desktop Navigation -->
+                    <div class="hidden lg:ml-6 lg:flex lg:space-x-4 xl:space-x-6 overflow-x-auto">
                         <a href="/caseyos"
-                            class="{% if active_tab == 'dashboard' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            class="{% if active_tab == 'dashboard' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
                             Dashboard
                         </a>
                         <a href="/caseyos/queue"
-                            class="{% if active_tab == 'queue' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            Command Queue
+                            class="{% if active_tab == 'queue' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
+                            Queue
                             <span id="pending-badge" class="ml-1 px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full hidden">0</span>
                         </a>
                         <a href="/caseyos/gemini"
-                            class="{% if active_tab == 'gemini' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            class="{% if active_tab == 'gemini' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
                             ✨ Gemini
                         </a>
                         <a href="/caseyos/drive"
-                            class="{% if active_tab == 'drive' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            class="{% if active_tab == 'drive' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
                             📁 Drive
                         </a>
                         <a href="/caseyos/agents"
-                            class="{% if active_tab == 'agents' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            class="{% if active_tab == 'agents' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
                             🤖 Agents
                         </a>
                         <a href="/caseyos/executions"
-                            class="{% if active_tab == 'executions' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            ⚡ Executions
+                            class="{% if active_tab == 'executions' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
+                            ⚡ Exec
                         </a>
                         <a href="/caseyos/signals"
-                            class="{% if active_tab == 'signals' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            class="{% if active_tab == 'signals' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
                             📡 Signals
                         </a>
-                        <a href="/caseyos/overview"
-                            class="{% if active_tab == 'overview' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            📊 Overview
-                        </a>
                         <a href="/caseyos/memory"
-                            class="{% if active_tab == 'memory' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            class="{% if active_tab == 'memory' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
                             🧠 Memory
                         </a>
-                        <a href="/caseyos/voice-training"
-                            class="{% if active_tab == 'voice' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            🎭 Voice
-                        </a>
-                        <a href="/caseyos/integrations"
-                            class="{% if active_tab == 'integrations' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            🔌 Integrations
-                        </a>
-                        <a href="/caseyos/analytics"
-                            class="{% if active_tab == 'analytics' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            📈 Analytics
-                        </a>
-                        <a href="/caseyos/workflows"
-                            class="{% if active_tab == 'workflows' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            🔄 Workflows
-                        </a>
                         <a href="/caseyos/settings"
-                            class="{% if active_tab == 'settings' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            ⚙️ Settings
-                        </a>
-                        <a href="/caseyos/admin"
-                            class="{% if active_tab == 'admin' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            👑 Admin
+                            class="{% if active_tab == 'settings' %}border-primary text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap">
+                            ⚙️
                         </a>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Mobile menu button -->
+                    <button type="button" id="mobile-menu-button" class="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary">
+                        <span class="sr-only">Open main menu</span>
+                        <!-- Hamburger icon -->
+                        <svg class="h-6 w-6" id="menu-icon-open" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <!-- X icon (hidden by default) -->
+                        <svg class="h-6 w-6 hidden" id="menu-icon-close" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                     <!-- Notification Bell -->
                     <a href="/caseyos/notifications" class="relative text-gray-500 hover:text-gray-700">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,12 +130,64 @@
                         </svg>
                         <span id="nav-notification-badge" class="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
                     </a>
-                    <!-- Status Indicator -->
-                    <div class="flex items-center space-x-2">
+                    <!-- Status Indicator (hidden on mobile) -->
+                    <div class="hidden sm:flex items-center space-x-2">
                         <span class="h-2.5 w-2.5 rounded-full bg-green-400"></span>
-                        <span class="text-sm text-gray-500">System Online</span>
+                        <span class="text-sm text-gray-500">Online</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Mobile menu -->
+        <div class="lg:hidden hidden" id="mobile-menu">
+            <div class="pt-2 pb-3 space-y-1 max-h-[70vh] overflow-y-auto">
+                <a href="/caseyos" class="{% if active_tab == 'dashboard' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    📊 Dashboard
+                </a>
+                <a href="/caseyos/queue" class="{% if active_tab == 'queue' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    📋 Command Queue
+                    <span id="pending-badge-mobile" class="ml-2 px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full hidden">0</span>
+                </a>
+                <a href="/caseyos/gemini" class="{% if active_tab == 'gemini' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    ✨ Gemini AI
+                </a>
+                <a href="/caseyos/drive" class="{% if active_tab == 'drive' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    📁 Drive
+                </a>
+                <a href="/caseyos/agents" class="{% if active_tab == 'agents' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    🤖 Agents
+                </a>
+                <a href="/caseyos/executions" class="{% if active_tab == 'executions' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    ⚡ Executions
+                </a>
+                <a href="/caseyos/signals" class="{% if active_tab == 'signals' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    📡 Signals
+                </a>
+                <a href="/caseyos/overview" class="{% if active_tab == 'overview' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    📊 Overview
+                </a>
+                <a href="/caseyos/memory" class="{% if active_tab == 'memory' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    🧠 Memory
+                </a>
+                <a href="/caseyos/voice-training" class="{% if active_tab == 'voice' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    🎭 Voice Training
+                </a>
+                <a href="/caseyos/integrations" class="{% if active_tab == 'integrations' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    🔌 Integrations
+                </a>
+                <a href="/caseyos/analytics" class="{% if active_tab == 'analytics' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    📈 Analytics
+                </a>
+                <a href="/caseyos/workflows" class="{% if active_tab == 'workflows' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    🔄 Workflows
+                </a>
+                <a href="/caseyos/settings" class="{% if active_tab == 'settings' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    ⚙️ Settings
+                </a>
+                <a href="/caseyos/admin" class="{% if active_tab == 'admin' %}bg-primary text-white{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-800{% endif %} block pl-3 pr-4 py-3 text-base font-medium">
+                    👑 Admin
+                </a>
             </div>
         </div>
     </nav>
@@ -159,20 +205,65 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 py-4">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-sm text-gray-500">
-            <div>CaseyOS v4.2 (Sprint 58)</div>
-            <div>&copy; 2026 Dude What's The Bid?! LLC</div>
+            <div>CaseyOS v4.3 (Sprint 59)</div>
+            <div class="hidden sm:block">&copy; 2026 Dude What's The Bid?! LLC</div>
         </div>
     </footer>
 
     <!-- Global Scripts -->
     <script>
-        // Pending badge update
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuIconOpen = document.getElementById('menu-icon-open');
+        const menuIconClose = document.getElementById('menu-icon-close');
+        
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', function() {
+                const isOpen = !mobileMenu.classList.contains('hidden');
+                mobileMenu.classList.toggle('hidden');
+                menuIconOpen.classList.toggle('hidden');
+                menuIconClose.classList.toggle('hidden');
+            });
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                if (!mobileMenuButton.contains(e.target) && !mobileMenu.contains(e.target)) {
+                    mobileMenu.classList.add('hidden');
+                    menuIconOpen.classList.remove('hidden');
+                    menuIconClose.classList.add('hidden');
+                }
+            }
+        });
+
+        // Offline indicator
+        const offlineIndicator = document.getElementById('offline-indicator');
+        function updateOnlineStatus() {
+            if (offlineIndicator) {
+                if (navigator.onLine) {
+                    offlineIndicator.classList.add('hidden');
+                    document.body.style.paddingTop = '0';
+                } else {
+                    offlineIndicator.classList.remove('hidden');
+                    document.body.style.paddingTop = '40px';
+                }
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus();
+
+        // Pending badge update (desktop + mobile)
         async function updatePendingBadge() {
             try {
                 const response = await fetch('/api/command-queue');
                 if (response.ok) {
                     const data = await response.json();
                     const pending = data.items ? data.items.filter(i => i.status === 'pending').length : 0;
+                    
+                    // Update desktop badge
                     const badge = document.getElementById('pending-badge');
                     if (badge) {
                         if (pending > 0) {
@@ -180,6 +271,17 @@
                             badge.classList.remove('hidden');
                         } else {
                             badge.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Update mobile badge
+                    const mobileBadge = document.getElementById('pending-badge-mobile');
+                    if (mobileBadge) {
+                        if (pending > 0) {
+                            mobileBadge.textContent = pending > 99 ? '99+' : pending;
+                            mobileBadge.classList.remove('hidden');
+                        } else {
+                            mobileBadge.classList.add('hidden');
                         }
                     }
                 }
@@ -191,6 +293,25 @@
         // Update on load and every 30 seconds
         updatePendingBadge();
         setInterval(updatePendingBadge, 30000);
+
+        // Touch-friendly swipe to close mobile menu
+        let touchStartX = 0;
+        if (mobileMenu) {
+            mobileMenu.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+            
+            mobileMenu.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].screenX;
+                const diff = touchStartX - touchEndX;
+                // Swipe left to close
+                if (diff > 50) {
+                    mobileMenu.classList.add('hidden');
+                    menuIconOpen.classList.remove('hidden');
+                    menuIconClose.classList.add('hidden');
+                }
+            }, { passive: true });
+        }
     </script>
 
     {% block scripts %}{% endblock %}
