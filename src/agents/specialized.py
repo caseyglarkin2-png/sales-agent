@@ -422,7 +422,8 @@ class DraftWriterAgent:
                             start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
                             formatted_time = start_dt.strftime("%A, %B %d at %I:%M %p") + " EST"
                             body_parts.append(f"  {i}. {formatted_time}")
-                        except:
+                        except (ValueError, AttributeError) as e:
+                            logger.warning("slot_time_format_error", slot_index=i, raw_start=start, error=str(e))
                             body_parts.append(f"  {i}. {start}")
 
             body_parts.extend([

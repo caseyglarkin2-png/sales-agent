@@ -194,7 +194,8 @@ class DataDecayAgent(BaseAgent):
                 try:
                     created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
                     days_since = (now - created_dt).days
-                except:
+                except (ValueError, AttributeError) as e:
+                    logger.warning("contact_createdate_parse_error", contact_id=contact.get("id"), raw_date=created, error=str(e))
                     days_since = 999
             else:
                 days_since = 999
@@ -274,7 +275,8 @@ class DataDecayAgent(BaseAgent):
                     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
                     if latest is None or dt > latest:
                         latest = dt
-                except:
+                except (ValueError, AttributeError) as e:
+                    logger.debug("activity_date_parse_skip", field=field, error=str(e))
                     continue
         
         return latest

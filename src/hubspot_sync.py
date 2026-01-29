@@ -332,7 +332,8 @@ class HubSpotContactSyncService:
                 if isinstance(updated_at, str):
                     try:
                         updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
-                    except:
+                    except (ValueError, AttributeError) as e:
+                        logger.warning("contact_date_parse_error", contact_id=contact.get("id"), field="updated_at", error=str(e))
                         updated_at = None
                 
                 if updated_at:

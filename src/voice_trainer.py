@@ -231,8 +231,8 @@ class VoiceProfileTrainer:
                 return base64.urlsafe_b64decode(
                     payload["body"]["data"]
                 ).decode("utf-8")
-            except:
-                pass
+            except (ValueError, UnicodeDecodeError, TypeError) as e:
+                logger.warning("email_body_decode_error", error=str(e))
         
         # Try parts
         for part in payload.get("parts", []):
@@ -243,8 +243,8 @@ class VoiceProfileTrainer:
                         return base64.urlsafe_b64decode(
                             part["body"]["data"]
                         ).decode("utf-8")
-                    except:
-                        pass
+                    except (ValueError, UnicodeDecodeError, TypeError) as e:
+                        logger.warning("email_part_decode_error", mime_type=mime_type, error=str(e))
         
         return ""
     

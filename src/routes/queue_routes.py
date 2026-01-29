@@ -478,8 +478,8 @@ async def get_queue_stats(
             created = datetime.fromisoformat(j.get("created_at", "").replace("Z", "+00:00"))
             if created >= cutoff:
                 recent_jobs.append(j)
-        except:
-            pass
+        except (ValueError, TypeError) as e:
+            logger.warning("job_date_parse_error", job_id=j.get("id"), error=str(e))
     
     # Count by status
     by_status = {}
@@ -502,8 +502,8 @@ async def get_queue_stats(
                 start = datetime.fromisoformat(j["started_at"].replace("Z", "+00:00"))
                 end = datetime.fromisoformat(j["completed_at"].replace("Z", "+00:00"))
                 total_duration += (end - start).total_seconds()
-            except:
-                pass
+            except (ValueError, KeyError, TypeError) as e:
+                logger.warning("job_duration_calc_error", job_id=j.get("id"), error=str(e))
         avg_duration = total_duration / len(completed)
     else:
         avg_duration = 0
@@ -572,8 +572,8 @@ async def purge_completed_jobs(
             created = datetime.fromisoformat(job.get("created_at", "").replace("Z", "+00:00"))
             if created < cutoff:
                 to_delete.append(job_id)
-        except:
-            pass
+        except (ValueError, TypeError) as e:
+            logger.warning("job_purge_date_error", job_id=job_id, error=str(e))
     
     for job_id in to_delete:
         del jobs[job_id]

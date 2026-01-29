@@ -367,7 +367,8 @@ class TwitterConnector:
             created_str = tweet_data.get("created_at", "")
             try:
                 created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-            except:
+            except (ValueError, AttributeError) as e:
+                logger.warning("tweet_timestamp_parse_error", tweet_id=tweet_data.get("id"), raw_timestamp=created_str, error=str(e))
                 created_at = datetime.utcnow()
             
             tweet = Tweet(
