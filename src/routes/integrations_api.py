@@ -303,6 +303,7 @@ async def get_integration_status(
     )
 
 
+@router.get("/{app_name}/connect")
 @router.post("/{app_name}/connect")
 async def connect_integration(
     app_name: str,
@@ -312,6 +313,7 @@ async def connect_integration(
     Initiate OAuth connection for an integration.
     
     Redirects to appropriate OAuth provider.
+    Accepts both GET (browser navigation) and POST (API call).
     """
     
     if app_name not in AVAILABLE_INTEGRATIONS:
