@@ -9,10 +9,12 @@ Ship Ship Ship: Each integration ships independently.
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 from src.deps import get_current_user_id
+from src.db import get_db
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 
@@ -100,23 +102,60 @@ AVAILABLE_INTEGRATIONS = {
 
 @router.get("/status", response_model=IntegrationsStatusResponse)
 async def get_integrations_status(
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
 ) -> IntegrationsStatusResponse:
     """
     Get user's integration connection status.
     
     Returns which apps are connected and available.
     """
-    
-    # TODO: Query database for user's OAuth tokens
-    # For now, return mock data showing YouTube as connected
+    from src.oauth_manager import OAuthToken
+    from sqlalchemy import select
+    from uuid import UUID
     
     connected = {}
     
-    # Check if user has Google OAuth token
-    # If yes, mark google-drive and google-workspace as connected
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        # Invalid UUID, return empty connections
+        return IntegrationsStatusResponse(
+            user_id=user_id,
+            connected=connected,
+            available=list(AVAILABLE_INTEGRATIONS.keys())
+        )
     
-    # For demo: YouTube is always "connected" (no auth needed)
+    # Query database for user's OAuth tokens (Sprint 70)
+    query = select(OAuthToken).where(
+        OAuthToken.user_id == user_uuid,
+        OAuthToken.revoked == False
+    )
+    result = await db.execute(query)
+    tokens = result.scalars().all()
+    
+    # Map tokens to integration status
+    service_map = {
+        'gmail': ['gmail', 'google-workspace'],
+        'drive': ['google-drive'],
+        'calendar': ['google-calendar'],
+        'hubspot': ['hubspot'],
+    }
+    
+    for token in tokens:
+        # Map service to integration names
+        integration_names = service_map.get(token.service, [token.service])
+        for app_name in integration_names:
+            if app_name in AVAILABLE_INTEGRATIONS:
+                connected[app_name] = IntegrationStatus(
+                    app_name=app_name,
+                    connected=True,
+                    connected_at=token.created_at,
+                    last_sync=token.updated_at,
+                    status='active' if not token.revoked else 'expired'
+                )
+    
+    # YouTube is always "connected" (no auth needed)
     connected['youtube'] = IntegrationStatus(
         app_name='youtube',
         connected=True,
@@ -284,17 +323,72 @@ async def refresh_token(
 @router.get("/{app_name}/status", response_model=IntegrationStatus)
 async def get_integration_status(
     app_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
 ) -> IntegrationStatus:
     """
     Get status of a specific integration for the user.
     """
+    from src.oauth_manager import OAuthToken
+    from sqlalchemy import select
+    from uuid import UUID
     
     if app_name not in AVAILABLE_INTEGRATIONS:
         raise HTTPException(status_code=404, detail=f"Integration '{app_name}' not found")
     
-    # TODO: Check database for OAuth token
-    # For now, return disconnected status
+    # Map integration name to service name (Sprint 70)
+    app_to_service = {
+        'gmail': 'gmail',
+        'google-workspace': 'gmail',
+        'google-drive': 'drive',
+        'google-calendar': 'calendar',
+        'hubspot': 'hubspot',
+    }
+    
+    service = app_to_service.get(app_name)
+    
+    # YouTube doesn't need OAuth
+    if app_name == 'youtube':
+        return IntegrationStatus(
+            app_name=app_name,
+            connected=True,
+            connected_at=datetime.utcnow(),
+            status='active'
+        )
+    
+    if not service:
+        return IntegrationStatus(
+            app_name=app_name,
+            connected=False,
+            status='disconnected'
+        )
+    
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        return IntegrationStatus(
+            app_name=app_name,
+            connected=False,
+            status='disconnected'
+        )
+    
+    # Query database for OAuth token (Sprint 70)
+    query = select(OAuthToken).where(
+        OAuthToken.user_id == user_uuid,
+        OAuthToken.service == service,
+        OAuthToken.revoked == False
+    )
+    result = await db.execute(query)
+    token = result.scalar_one_or_none()
+    
+    if token:
+        return IntegrationStatus(
+            app_name=app_name,
+            connected=True,
+            connected_at=token.created_at,
+            last_sync=token.updated_at,
+            status='active' if not token.revoked else 'expired'
+        )
     
     return IntegrationStatus(
         app_name=app_name,
@@ -345,36 +439,110 @@ async def connect_integration(
 @router.delete("/{app_name}/disconnect")
 async def disconnect_integration(
     app_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Disconnect an integration (revoke OAuth token).
     """
+    from src.oauth_manager import OAuthToken
+    from sqlalchemy import select
+    from uuid import UUID
     
     if app_name not in AVAILABLE_INTEGRATIONS:
         raise HTTPException(status_code=404, detail=f"Integration '{app_name}' not found")
     
-    # TODO: Revoke OAuth token from database
+    # Map integration name to service name (Sprint 70)
+    app_to_service = {
+        'gmail': 'gmail',
+        'google-workspace': 'gmail',
+        'google-drive': 'drive',
+        'google-calendar': 'calendar',
+        'hubspot': 'hubspot',
+    }
     
-    return {"success": True, "message": f"Disconnected from {app_name}"}
+    service = app_to_service.get(app_name)
+    
+    if not service:
+        return {"success": True, "message": f"No OAuth token needed for {app_name}"}
+    
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    
+    # Revoke OAuth token from database (Sprint 70)
+    query = select(OAuthToken).where(
+        OAuthToken.user_id == user_uuid,
+        OAuthToken.service == service
+    )
+    result = await db.execute(query)
+    token = result.scalar_one_or_none()
+    
+    if token:
+        # Mark as revoked (soft delete) rather than hard delete
+        token.revoked = True
+        await db.commit()
+        return {"success": True, "message": f"Disconnected from {app_name}"}
+    
+    return {"success": True, "message": f"No connection found for {app_name}"}
 
 
 @router.post("/{app_name}/sync")
 async def trigger_sync(
     app_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Manually trigger a sync for an integration.
     
     Ship Ship Ship: Build sync logic as each integration is added.
     """
+    from src.oauth_manager import OAuthToken
+    from sqlalchemy import select
+    from uuid import UUID
     
     if app_name not in AVAILABLE_INTEGRATIONS:
         raise HTTPException(status_code=404, detail=f"Integration '{app_name}' not found")
     
-    # TODO: Implement sync logic per integration
-    # For now, return success
+    # Map integration name to service name (Sprint 70)
+    app_to_service = {
+        'gmail': 'gmail',
+        'google-workspace': 'gmail',
+        'google-drive': 'drive',
+        'google-calendar': 'calendar',
+        'hubspot': 'hubspot',
+    }
+    
+    service = app_to_service.get(app_name)
+    
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    
+    # Verify user has connected this integration (Sprint 70)
+    if service:
+        query = select(OAuthToken).where(
+            OAuthToken.user_id == user_uuid,
+            OAuthToken.service == service,
+            OAuthToken.revoked == False
+        )
+        result = await db.execute(query)
+        token = result.scalar_one_or_none()
+        
+        if not token:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Please connect {app_name} before syncing"
+            )
+        
+        # Update last_sync timestamp
+        token.updated_at = datetime.utcnow()
+        await db.commit()
+    
+    # TODO: Add actual sync logic per connector (call connector.sync() when implemented)
     
     return {
         "success": True,

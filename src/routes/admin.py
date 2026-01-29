@@ -23,6 +23,57 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 _KILL_SWITCH_ACTIVE = False
 
 
+async def send_ops_alert(
+    message: str,
+    severity: str = "warning",
+    context: Optional[Dict[str, Any]] = None
+) -> bool:
+    """
+    Send alert to operations team via Slack (Sprint 70).
+    
+    Args:
+        message: Alert message
+        severity: Alert severity (info, warning, critical)
+        context: Optional additional context
+        
+    Returns:
+        True if alert sent successfully
+    """
+    try:
+        from src.connectors.slack import SlackConnector
+        
+        ops_channel = os.environ.get("OPS_SLACK_CHANNEL", "#ops-alerts")
+        slack_token = os.environ.get("SLACK_BOT_TOKEN")
+        
+        if not slack_token:
+            logger.warning("SLACK_BOT_TOKEN not configured, cannot send ops alert")
+            return False
+        
+        # Format message with severity emoji
+        emoji_map = {
+            "info": "ℹ️",
+            "warning": "⚠️",
+            "critical": "🚨",
+        }
+        emoji = emoji_map.get(severity, "📢")
+        
+        formatted_message = f"{emoji} *CaseyOS Alert* ({severity.upper()})\n\n{message}"
+        
+        if context:
+            context_str = "\n".join(f"• {k}: {v}" for k, v in context.items())
+            formatted_message += f"\n\n*Context:*\n{context_str}"
+        
+        connector = SlackConnector(token=slack_token)
+        await connector.send_message(ops_channel, formatted_message)
+        
+        logger.info(f"Ops alert sent to {ops_channel}: {message[:50]}...")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send ops alert: {e}")
+        return False
+
+
 class EmergencyStopRequest(BaseModel):
     """Request to activate emergency kill switch."""
 
@@ -87,12 +138,15 @@ async def emergency_stop(
         admin_ip=request.client.host if request.client else "unknown",
     )
 
-    # TODO: Send email/Slack alert to operations team
-    # await send_alert(
-    #     subject="EMERGENCY: Auto-Approval Disabled",
-    #     message=f"Emergency stop activated. Reason: {stop_request.reason}",
-    #     severity="critical"
-    # )
+    # Send Slack alert to operations team (Sprint 70)
+    await send_ops_alert(
+        message=f"🛑 EMERGENCY STOP ACTIVATED\n\nAuto-approval has been disabled.\n\nReason: {stop_request.reason}",
+        severity="critical",
+        context={
+            "triggered_by": request.client.host if request.client else "unknown",
+            "action": "All drafts now require manual review",
+        }
+    )
 
     return EmergencyStopResponse(
         status="emergency_stop_active",

@@ -173,17 +173,27 @@ class Settings(BaseSettings):
         populate_by_name = True  # Allow both alias and field name
 
     def validate_required_fields(self) -> None:
-        """Validate that required fields are set."""
+        """Validate that required fields are set (Sprint 70: Enhanced)."""
+        import warnings
+        
         if self.api_env == "production":
+            # Critical required fields - app won't start without these
             required = [
+                "database_url",
+                "secret_key",
                 "google_client_id",
                 "google_client_secret",
-                "hubspot_api_key",
-                "openai_api_key",
             ]
             missing = [f for f in required if not getattr(self, f, None)]
             if missing:
                 raise ValueError(f"Missing required fields for production: {missing}")
+            
+            # Check for placeholder DATABASE_URL
+            if "localhost" in self.database_url or "127.0.0.1" in self.database_url:
+                raise ValueError(
+                    "Production DATABASE_URL cannot point to localhost. "
+                    "Set DATABASE_URL to your production PostgreSQL instance."
+                )
             
             # Production safety checks
             if self.secret_key == "dev-secret-key-change-in-production":
@@ -196,6 +206,20 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "Production safety: Cannot enable AUTO_SEND without DRAFT_ONLY and REQUIRE_APPROVAL"
                 )
+            
+            # Warn on missing optional but recommended fields
+            optional_recommended = {
+                "openai_api_key": "AI draft generation won't work",
+                "hubspot_api_key": "CRM integration won't work",
+                "sendgrid_api_key": "Email sending fallback won't work",
+                "slack_bot_token": "Slack notifications won't work",
+            }
+            for field, impact in optional_recommended.items():
+                if not getattr(self, field, None):
+                    warnings.warn(
+                        f"Production warning: {field.upper()} not set. Impact: {impact}",
+                        UserWarning
+                    )
 
     def is_draft_only_enforced(self) -> bool:
         """Check if DRAFT_ONLY mode is enforced (no auto-send possible)."""

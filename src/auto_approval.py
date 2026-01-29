@@ -227,8 +227,7 @@ class AutoApprovalEngine:
         """
         days_lookback = conditions.get("days_lookback", 90)
 
-        # TODO: Implement Gmail API search for replies
-        # For now, check approved_recipients table as proxy
+        # First check approved_recipients table (fast path)
         result = await self.session.execute(
             select(ApprovedRecipient).where(
                 ApprovedRecipient.email == recipient_email,
@@ -239,8 +238,92 @@ class AutoApprovalEngine:
 
         if recipient and recipient.total_replies > 0:
             return True, f"Recipient has replied {recipient.total_replies} times previously"
+        
+        # Check Gmail for actual replies (Sprint 70)
+        try:
+            has_reply, reply_reason = await self._check_gmail_for_replies(
+                recipient_email, days_lookback
+            )
+            if has_reply:
+                # Update the approved_recipients cache
+                await self._record_reply(recipient_email)
+                return True, reply_reason
+        except Exception as e:
+            logger.warning(f"Gmail reply check failed: {e}")
 
         return False, "No reply history found"
+    
+    async def _check_gmail_for_replies(
+        self,
+        recipient_email: str,
+        days_lookback: int = 90,
+    ) -> Tuple[bool, str]:
+        """
+        Search Gmail for replies from a recipient (Sprint 70).
+        
+        Args:
+            recipient_email: Email address to check
+            days_lookback: Number of days to search
+            
+        Returns:
+            Tuple of (has_replied, reasoning)
+        """
+        import os
+        
+        try:
+            from src.connectors.gmail import GmailConnector
+            
+            # Need valid credentials to search Gmail
+            gmail_user = os.environ.get("GMAIL_USER_EMAIL")
+            if not gmail_user:
+                return False, "Gmail not configured"
+            
+            connector = GmailConnector()
+            
+            # Search for emails FROM the recipient (their replies to us)
+            from datetime import datetime, timedelta
+            after_date = datetime.utcnow() - timedelta(days=days_lookback)
+            after_str = after_date.strftime("%Y/%m/%d")
+            
+            query = f"from:{recipient_email} after:{after_str}"
+            
+            # Use Gmail search
+            messages = await connector.search_messages(query, max_results=1)
+            
+            if messages:
+                return True, f"Found reply from {recipient_email} within {days_lookback} days"
+            
+            return False, "No replies found in Gmail"
+            
+        except Exception as e:
+            logger.debug(f"Gmail reply search error: {e}")
+            return False, f"Gmail search unavailable: {e}"
+    
+    async def _record_reply(self, recipient_email: str) -> None:
+        """Record a reply from a recipient in the cache table."""
+        try:
+            result = await self.session.execute(
+                select(ApprovedRecipient).where(
+                    ApprovedRecipient.email == recipient_email
+                )
+            )
+            recipient = result.scalar_one_or_none()
+            
+            if recipient:
+                recipient.total_replies += 1
+                recipient.last_reply_at = datetime.utcnow()
+            else:
+                new_recipient = ApprovedRecipient(
+                    email=recipient_email,
+                    total_sends=0,
+                    total_replies=1,
+                    last_reply_at=datetime.utcnow(),
+                )
+                self.session.add(new_recipient)
+            
+            await self.session.commit()
+        except Exception as e:
+            logger.warning(f"Failed to record reply: {e}")
 
     async def _check_known_good_recipient(
         self,

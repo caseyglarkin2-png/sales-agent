@@ -104,6 +104,23 @@ async def get_dashboard_stats():
         )
         failed_workflows = failed_result.scalar() or 0
         
+        # Count pending approvals from pending_drafts table (Sprint 70)
+        pending_approvals = 0
+        try:
+            from src.db.workflow_db import get_workflow_db
+            workflow_db = await get_workflow_db()
+            if workflow_db and workflow_db.pool:
+                async with workflow_db.get_connection() as conn:
+                    if conn:
+                        result = await conn.fetchval(
+                            "SELECT COUNT(*) FROM pending_drafts WHERE status = 'PENDING_APPROVAL'"
+                        )
+                        pending_approvals = result or 0
+        except Exception as e:
+            # Log but don't fail the request
+            import logging
+            logging.getLogger(__name__).warning(f"Could not count pending approvals: {e}")
+        
         # Calculate success rate
         if total_workflows > 0:
             success_rate = (completed_workflows / total_workflows) * 100
@@ -115,7 +132,7 @@ async def get_dashboard_stats():
             pending_workflows=pending_workflows,
             completed_workflows=completed_workflows,
             failed_workflows=failed_workflows,
-            pending_approvals=0,  # TODO: Implement approval queue
+            pending_approvals=pending_approvals,  # Sprint 70: Real count from DB
             success_rate=round(success_rate, 2)
         )
 
