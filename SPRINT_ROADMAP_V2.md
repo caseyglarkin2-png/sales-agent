@@ -3820,5 +3820,768 @@ Sprint 75 (Coverage Hardening) ← Final push, depends on 71-74
 
 ---
 
-*Updated: 2025-01-29 - Added Sprints 71-75 for coverage push; phased success metrics; connector priority matrix*
-*Version: 2.8*
+## Phase 3: Connector Resilience (Sprints 76-80)
+
+**Focus**: Gmail, HubSpot, Drive, LLM - production-grade resilience with circuit breakers, health checks, and comprehensive tests.
+
+---
+
+## Sprint 76: Shared Resilience Infrastructure
+**Goal**: Establish shared retry, circuit breaker, and exception patterns for all connectors.
+**Demo**: `GET /health/connectors` returns aggregated health for all connectors; unit tests for shared infrastructure pass.
+
+### Task 76.1: Create unified retry decorator
+**Files**: `src/connectors/retry.py` (new)
+**Work**:
+- [ ] Create `@with_retry(max_retries=3, backoff_base=1.0, retryable_statuses={429,500,502,503,504})` async decorator
+- [ ] Support both `httpx.HTTPStatusError` and Google API `HttpError`
+- [ ] Add jitter (±20%) to prevent thundering herd
+- [ ] Parse `Retry-After` header and respect delay
+- [ ] Log retry attempts with structured context (attempt, delay, error_type)
+- [ ] Return `RetryExhaustedError` after max retries
+**Validation**: `pytest tests/unit/test_retry_infrastructure.py -v` passes (≥5 tests)
+**Commit**: "feat(connectors): add unified retry decorator with backoff and jitter"
+**Dependencies**: None
+
+### Task 76.2: Create shared exception hierarchy
+**Files**: `src/connectors/exceptions.py` (new)
+**Work**:
+- [ ] Create `ConnectorError(Exception)` base class with `connector_name`, `operation`, `context` attrs
+- [ ] Create `RateLimitError(ConnectorError)` with `retry_after` attribute
+- [ ] Create `AuthenticationError(ConnectorError)` for 401/403 errors
+- [ ] Create `NotFoundError(ConnectorError)` for 404 errors
+- [ ] Create `ServiceUnavailableError(ConnectorError)` for 5xx errors
+- [ ] Create `CircuitOpenError(ConnectorError)` for circuit breaker open state
+- [ ] Add `to_dict()` method on all exceptions for API serialization
+**Validation**: All exceptions importable and have correct inheritance
+**Commit**: "feat(connectors): add shared exception hierarchy"
+**Dependencies**: None
+
+### Task 76.3: Standardize circuit breaker configuration
+**Files**: `src/connectors/circuit_config.py` (new)
+**Work**:
+- [ ] Import `CircuitBreaker` from `src/resilience.py`
+- [ ] Create `CircuitBreakerFactory` class with `get_or_create(name, failure_threshold, recovery_timeout)`
+- [ ] Define defaults: `CONNECTOR_CIRCUIT_DEFAULTS = {"gmail": (5, 60), "hubspot": (5, 60), "llm": (5, 300), "drive": (5, 60)}`
+- [ ] Add singleton pattern to share circuit state across connector instances
+- [ ] Add `get_all_circuit_states() -> Dict[str, str]` for health endpoint
+**Validation**: Same circuit breaker returned for same name across calls
+**Commit**: "feat(connectors): add circuit breaker factory with shared state"
+**Dependencies**: None
+
+### Task 76.4: Create BaseConnector abstract class
+**Files**: `src/connectors/base.py` (new)
+**Work**:
+- [ ] Create `BaseConnector(ABC)` with abstract methods: `health_check()`, `get_name()`
+- [ ] Add concrete methods: `get_circuit_state()`, `reset_circuit()`
+- [ ] Add `_circuit_breaker` property with lazy initialization from factory
+- [ ] Add `_retry` decorator reference for subclasses
+- [ ] Add timeout configuration with default (30s)
+**Validation**: Cannot instantiate BaseConnector directly; subclasses must implement abstract methods
+**Commit**: "feat(connectors): add BaseConnector abstract class"
+**Dependencies**: Task 76.3
+
+### Task 76.5: Define timeout defaults per connector type
+**Files**: `src/connectors/timeouts.py` (new), `src/config.py`
+**Work**:
+- [ ] Create `CONNECTOR_TIMEOUTS = {"google": 60.0, "hubspot": 30.0, "llm": 120.0, "slack": 15.0}`
+- [ ] Add env var overrides: `GMAIL_TIMEOUT`, `HUBSPOT_TIMEOUT`, `LLM_TIMEOUT`
+- [ ] Add `get_timeout(connector_name: str) -> float` function
+- [ ] Document timeout rationale in docstrings
+**Validation**: `get_timeout("gmail")` returns 60.0 by default, respects env override
+**Commit**: "feat(connectors): add standardized timeout configuration"
+**Dependencies**: None
+
+### Task 76.6: Create connector health aggregation endpoint
+**Files**: `src/routes/health.py`
+**Work**:
+- [ ] Add `GET /health/connectors` endpoint
+- [ ] Import all connector factories and call `health_check()` in parallel
+- [ ] Include circuit breaker state for each connector
+- [ ] Return `{"gmail": {...}, "hubspot": {...}, "drive": {...}, "llm": {...}}`
+- [ ] Add overall status: `healthy` if all healthy, `degraded` if any unhealthy
+- [ ] Cache results for 30s to prevent excessive API calls
+**Validation**: `curl /health/connectors` returns JSON with all 4 priority connectors
+**Commit**: "feat(health): add connector health aggregation endpoint"
+**Dependencies**: Task 76.4
+
+### Task 76.7: Create shared infrastructure tests
+**Files**: `tests/unit/test_connector_infrastructure.py` (new)
+**Work**:
+- [ ] Test `@with_retry` decorator: retries on 429, respects Retry-After, exhausts after max
+- [ ] Test exception hierarchy: correct inheritance, `to_dict()` serialization
+- [ ] Test `CircuitBreakerFactory`: singleton behavior, state tracking
+- [ ] Test `BaseConnector`: abstract method enforcement
+- [ ] Test timeout configuration: defaults and env overrides
+**Validation**: `pytest tests/unit/test_connector_infrastructure.py -v` passes (≥10 tests)
+**Commit**: "test(connectors): add shared infrastructure tests"
+**Dependencies**: Task 76.1 - 76.5
+
+---
+
+## Sprint 77: Gmail Connector Resilience
+**Goal**: Production-grade Gmail connector with health check, circuit breaker, and structured logging.
+**Demo**: Show Gmail health in `/health/connectors`, simulate 5 failures → circuit opens → health shows degraded.
+
+### Task 77.1: Add health_check() method skeleton
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Add `async def health_check() -> Dict[str, Any]` method
+- [ ] Validate credentials exist (return `unhealthy` if `self._credentials` is None)
+- [ ] Return structure: `{"status": "healthy|unhealthy|degraded", "latency_ms": int, "error": str|None}`
+**Validation**: Method returns valid dict structure
+**Commit**: "feat(gmail): add health_check method skeleton"
+**Dependencies**: Sprint 76
+
+### Task 77.2: Implement Gmail API health check call
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Call `users().getProfile(userId="me")` for lightweight validation
+- [ ] Measure latency with `time.time()` start/end
+- [ ] Handle error codes: 401 → `unhealthy` + "Invalid credentials", 403 → `unhealthy` + "Permission denied", 429 → `degraded` + "Rate limited", 5xx → `degraded` + server error
+- [ ] Set 10s timeout for health check specifically
+- [ ] Return email address from profile in response for verification
+**Validation**: `connector.health_check()` returns healthy with valid credentials
+**Commit**: "feat(gmail): implement health check API call"
+**Dependencies**: Task 77.1
+
+### Task 77.3: Handle Gmail quota detection (403 vs 429)
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Detect "userRateLimitExceeded" reason in 403 errors
+- [ ] Detect "quotaExceeded" reason separately (requires 24h backoff)
+- [ ] Update `_is_retryable_error()` to distinguish quota from rate limit
+- [ ] Log quota errors with longer suggested wait time
+**Validation**: 403 quota error logged with "24h backoff suggested"
+**Commit**: "feat(gmail): add quota detection distinct from rate limits"
+**Dependencies**: Task 77.2
+
+### Task 77.4: Add circuit breaker to GmailConnector
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Import `CircuitBreakerFactory` from `src/connectors/circuit_config`
+- [ ] Add `self._circuit = CircuitBreakerFactory.get_or_create("gmail")` in `__init__`
+- [ ] Add property `circuit_state` returning current state
+- [ ] Add `reset_circuit()` method for admin use
+**Validation**: `GmailConnector()` initializes with circuit in "closed" state
+**Commit**: "feat(gmail): add circuit breaker instance"
+**Dependencies**: Task 76.3
+
+### Task 77.5: Wrap send_email with circuit breaker
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Create `_send_email_internal()` with existing logic
+- [ ] Wrap call in `self._circuit.call(_send_email_internal, ...)`
+- [ ] Catch `CircuitBreakerError` and raise `GmailCircuitOpenError`
+- [ ] Log circuit state changes: closed→open, open→half-open, half-open→closed
+- [ ] Include failure count in logs
+**Validation**: After 5 consecutive 5xx errors, subsequent calls raise `CircuitOpenError`
+**Commit**: "feat(gmail): wrap send_email with circuit breaker protection"
+**Dependencies**: Task 77.4
+
+### Task 77.6: Add circuit breaker to read operations
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Wrap `get_messages()` with circuit breaker
+- [ ] Wrap `get_thread()` with circuit breaker
+- [ ] Wrap `search_messages()` with circuit breaker
+- [ ] Wrap `get_attachments()` with circuit breaker
+- [ ] Use same circuit instance (shared state for all Gmail ops)
+**Validation**: Read operations also respect circuit state
+**Commit**: "feat(gmail): extend circuit breaker to read operations"
+**Dependencies**: Task 77.5
+
+### Task 77.7: Add structured context logging
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Enhance `send_email()` logging with extra dict: `to_email`, `thread_id`, `subject_preview`, `retry_attempt`, `latency_ms`, `circuit_state`
+- [ ] Add correlation ID propagation from request context if available
+- [ ] Log health check results with latency and status
+- [ ] Use consistent levels: INFO=success, WARNING=retry, ERROR=failure
+**Validation**: Logs contain structured JSON fields parseable by log aggregators
+**Commit**: "feat(gmail): add structured context logging"
+**Dependencies**: Task 77.5
+
+### Task 77.8: Include circuit breaker in health check
+**Files**: `src/connectors/gmail.py`
+**Work**:
+- [ ] Add `circuit_breaker` sub-object to health response: `{"state": str, "failure_count": int, "last_failure": str|None}`
+- [ ] If circuit is open, return `status: "degraded"` without making API call
+- [ ] Include time until recovery attempt in response
+**Validation**: Health check reflects circuit breaker status accurately
+**Commit**: "feat(gmail): include circuit breaker state in health check"
+**Dependencies**: Task 77.4, Task 77.2
+
+### Task 77.9: Gmail health check tests
+**Files**: `tests/unit/test_gmail_health.py` (new)
+**Work**:
+- [ ] Test `health_check()` success path: mock `getProfile` → returns healthy
+- [ ] Test `health_check()` no credentials: returns unhealthy
+- [ ] Test `health_check()` 401 error: returns unhealthy + "Invalid credentials"
+- [ ] Test `health_check()` 403 error: returns unhealthy + "Permission denied"
+- [ ] Test `health_check()` 429 error: returns degraded + "Rate limited"
+- [ ] Test `health_check()` 503 error: returns degraded + server error
+- [ ] Test `health_check()` timeout: returns degraded + "Timeout"
+**Validation**: `pytest tests/unit/test_gmail_health.py -v` passes (7 tests)
+**Commit**: "test(gmail): add health check tests"
+**Dependencies**: Task 77.8
+
+### Task 77.10: Gmail circuit breaker tests
+**Files**: `tests/unit/test_gmail_circuit.py` (new)
+**Work**:
+- [ ] Test circuit opens after 5 consecutive 5xx errors
+- [ ] Test circuit blocks calls when open, raises `CircuitOpenError`
+- [ ] Test circuit enters half-open after recovery timeout
+- [ ] Test circuit closes after success in half-open
+- [ ] Test circuit resets on success streak
+- [ ] Test non-retryable errors (400, 401) don't trip breaker
+**Validation**: `pytest tests/unit/test_gmail_circuit.py -v` passes (6 tests)
+**Commit**: "test(gmail): add circuit breaker tests"
+**Dependencies**: Task 77.6
+
+### Task 77.11: Gmail coverage verification
+**Files**: `src/connectors/gmail.py`, tests/
+**Work**:
+- [ ] Run `make coverage` focused on gmail.py
+- [ ] Identify uncovered lines/branches
+- [ ] Add edge case tests to reach 80%+ coverage
+- [ ] Document any intentionally uncovered paths
+**Validation**: `pytest --cov=src/connectors/gmail --cov-report=term-missing` shows ≥80%
+**Commit**: "test(gmail): achieve 80%+ test coverage"
+**Dependencies**: Task 77.9, Task 77.10
+
+---
+
+## Sprint 78: HubSpot Connector Enhancement
+**Goal**: Enhanced HubSpot with circuit breaker, batch partial failure handling, and entity context in errors.
+**Demo**: Batch import 200 contacts → show partial failure report → demonstrate retry of failed items.
+
+### Task 78.1: Add HubSpot-specific exceptions using shared hierarchy
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Import base classes from `src/connectors/exceptions`
+- [ ] Create `HubSpotAPIError(ConnectorError)` with `contact_id`, `deal_id`, `company_id` context
+- [ ] Create `HubSpotRateLimitError(RateLimitError)` with HubSpot-specific retry parsing
+- [ ] Create `HubSpotAuthError(AuthenticationError)` for OAuth token issues
+- [ ] Create `HubSpotNotFoundError(NotFoundError)` for 404 responses
+- [ ] Override `__str__` to include entity IDs
+**Validation**: `HubSpotAPIError(contact_id="123").__str__()` includes "contact_id=123"
+**Commit**: "feat(hubspot): add HubSpot-specific exception classes with entity context"
+**Dependencies**: Task 76.2
+
+### Task 78.2: Add Retry-After header parsing
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Create `_parse_retry_after(response: httpx.Response) -> float` function
+- [ ] Handle numeric seconds format ("60")
+- [ ] Handle HTTP date format ("Wed, 29 Jan 2026 12:00:00 GMT")
+- [ ] Return default (60.0) if header missing/malformed
+- [ ] Add debug logging for parsed values
+**Validation**: Unit test with both header formats returns correct float
+**Commit**: "feat(hubspot): add Retry-After header parsing for rate limits"
+**Dependencies**: None
+
+### Task 78.3: Integrate circuit breaker into HubSpotConnector
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Import `CircuitBreakerFactory` from `src/connectors/circuit_config`
+- [ ] Add `self._circuit = CircuitBreakerFactory.get_or_create("hubspot")` in `__init__`
+- [ ] Add `circuit_breaker_enabled: bool = True` parameter for testing
+- [ ] Add `get_circuit_stats() -> Dict` method
+**Validation**: Connector initializes with circuit breaker accessible
+**Commit**: "feat(hubspot): integrate circuit breaker"
+**Dependencies**: Task 76.3
+
+### Task 78.4: Create resilient execution wrapper
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Create `async _execute_with_resilience(coro, *, contact_id=None, deal_id=None, company_id=None)`
+- [ ] Wrap call in circuit breaker if enabled
+- [ ] Catch `httpx.HTTPStatusError` and convert to domain exceptions with entity context
+- [ ] Parse Retry-After on 429, raise `HubSpotRateLimitError`
+- [ ] Raise `HubSpotAuthError` on 401, `HubSpotNotFoundError` on 404
+- [ ] Log all errors with entity IDs
+**Validation**: Test wrapper with mocked 429 → raises HubSpotRateLimitError with retry_after
+**Commit**: "feat(hubspot): add resilient execution wrapper with entity context"
+**Dependencies**: Task 78.1, Task 78.2, Task 78.3
+
+### Task 78.5: Migrate read methods to resilience wrapper
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Refactor `get_contact()` to use `_execute_with_resilience(contact_id=id)`
+- [ ] Refactor `get_contact_with_properties()` similarly
+- [ ] Refactor `get_company()` and `get_company_with_properties()` with `company_id`
+- [ ] Refactor `search_contacts()` and `search_companies()` (no entity context)
+- [ ] Preserve existing return types (Optional[Dict])
+**Validation**: Existing tests still pass; errors now include entity context
+**Commit**: "refactor(hubspot): migrate read methods to resilience wrapper"
+**Dependencies**: Task 78.4
+
+### Task 78.6: Add BatchOperationResult dataclass
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Create `@dataclass BatchOperationResult` with: `succeeded: List[str]`, `failed: List[Dict]`, `partial: bool`, `rate_limited: bool`, `retry_after: Optional[float]`
+- [ ] Add `retry_eligible` field to each failed item dict
+- [ ] Add `to_dict()` method for JSON serialization
+- [ ] Add `get_retry_ids() -> List[str]` helper method
+**Validation**: Dataclass instantiates and serializes correctly
+**Commit**: "feat(hubspot): add BatchOperationResult for partial failure tracking"
+**Dependencies**: None
+
+### Task 78.7: Enhance batch_create_contacts with partial failure
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Wrap each chunk in circuit breaker check
+- [ ] On 429, parse Retry-After, mark remaining chunks as `retry_eligible`
+- [ ] On 207 partial success, extract per-item errors from response
+- [ ] Return `BatchOperationResult` instead of raw dict
+- [ ] Stop processing if circuit opens mid-batch
+**Validation**: Mock batch with 100 items, 50 fail → result shows 50 succeeded, 50 failed
+**Commit**: "feat(hubspot): add partial failure tracking to batch_create_contacts"
+**Dependencies**: Task 78.6, Task 78.3
+
+### Task 78.8: Enhance batch_update_contacts with partial failure
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Apply same pattern as batch_create_contacts
+- [ ] Track which contact IDs failed with error reasons
+- [ ] Return `BatchOperationResult`
+**Validation**: Test with mock partial failure response
+**Commit**: "feat(hubspot): add partial failure tracking to batch_update_contacts"
+**Dependencies**: Task 78.7
+
+### Task 78.9: Add batch retry helper
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Create `async retry_failed_batch(result: BatchOperationResult, operation: str) -> BatchOperationResult`
+- [ ] Filter to `retry_eligible` items only
+- [ ] Apply exponential backoff using `retry_after` if set
+- [ ] Re-execute only failed items
+- [ ] Merge results with original succeeded list
+**Validation**: Retry helper processes only failed items, respects retry_after delay
+**Commit**: "feat(hubspot): add batch retry helper for failed items"
+**Dependencies**: Task 78.8
+
+### Task 78.10: Add circuit breaker to health_check
+**Files**: `src/connectors/hubspot.py`
+**Work**:
+- [ ] Modify existing `health_check()` to include circuit state
+- [ ] Add `circuit_state`, `circuit_stats` to response
+- [ ] If circuit open, return `status: "degraded"` with reason
+**Validation**: Health check includes circuit info
+**Commit**: "feat(hubspot): add circuit breaker status to health check"
+**Dependencies**: Task 78.3
+
+### Task 78.11: HubSpot circuit breaker tests
+**Files**: `tests/unit/test_hubspot_circuit.py` (new)
+**Work**:
+- [ ] Test circuit opens after 5 consecutive 500 errors
+- [ ] Test 6th call raises `CircuitOpenError` without HTTP call
+- [ ] Test circuit recovery after timeout
+- [ ] Test auth errors (401) do NOT trip circuit breaker
+- [ ] Test rate limit detection with Retry-After parsing
+- [ ] Test entity context in error messages
+**Validation**: `pytest tests/unit/test_hubspot_circuit.py -v` passes (6 tests)
+**Commit**: "test(hubspot): add circuit breaker integration tests"
+**Dependencies**: Task 78.10
+
+### Task 78.12: HubSpot batch operation tests
+**Files**: `tests/unit/test_hubspot_batch.py` (new)
+**Work**:
+- [ ] Test batch stops when circuit opens mid-batch
+- [ ] Test partial failure result structure
+- [ ] Test retry helper processes only failed items
+- [ ] Test 207 response parsing extracts per-item errors
+- [ ] Test rate_limited flag set correctly
+**Validation**: `pytest tests/unit/test_hubspot_batch.py -v` passes (5 tests)
+**Commit**: "test(hubspot): add batch operation tests"
+**Dependencies**: Task 78.9
+
+### Task 78.13: HubSpot coverage verification
+**Files**: `src/connectors/hubspot.py`, tests/
+**Work**:
+- [ ] Run coverage focused on hubspot.py
+- [ ] Add tests for uncovered branches
+- [ ] Target 80%+ coverage
+**Validation**: Coverage report shows ≥80% for hubspot.py
+**Commit**: "test(hubspot): achieve 80%+ test coverage"
+**Dependencies**: Task 78.11, Task 78.12
+
+---
+
+## Sprint 79: Drive Connector Resilience
+**Goal**: Add retry, health check, large file handling, and quota management to Drive connector.
+**Demo**: Upload 25MB file with progress → interrupt mid-upload → resume → complete successfully.
+
+### Task 79.1: Add timeout and error classification
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add `DEFAULT_TIMEOUT = 60.0` class constant (Google services need longer timeout)
+- [ ] Add `RETRYABLE_ERROR_CODES = {429, 500, 502, 503, 504}` constant
+- [ ] Add `timeout: float` parameter to `__init__()` with env override
+- [ ] Create `_is_retryable_error(error: HttpError) -> bool` method
+- [ ] Import exceptions from `src/connectors/exceptions`
+**Validation**: `DriveConnector(timeout=90).timeout == 90`
+**Commit**: "feat(drive): add timeout configuration and error classification"
+**Dependencies**: Task 76.2
+
+### Task 79.2: Integrate shared retry logic
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Import `@with_retry` from `src/connectors/retry`
+- [ ] Configure: max_retries=3, backoff_base=2.0
+- [ ] Wrap `search_assets()` internal API call with retry
+- [ ] Wrap `get_file_link()` with retry
+- [ ] Wrap `get_file_content()` download operations with retry
+- [ ] Ensure retries respect remaining timeout budget
+**Validation**: Mock 429 → 3 retries → success on 4th attempt
+**Commit**: "feat(drive): integrate shared retry logic"
+**Dependencies**: Task 76.1, Task 79.1
+
+### Task 79.3: Add health_check() method
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add `async def health_check() -> Dict[str, Any]` method
+- [ ] Validate credentials exist and are not expired
+- [ ] Make lightweight API call (`files().list(pageSize=1)`)
+- [ ] Return `{status, latency_ms, error}` structure
+- [ ] Handle timeout (10s max for health checks)
+**Validation**: Health check returns valid structure for all scenarios
+**Commit**: "feat(drive): add health_check() for credential validation"
+**Dependencies**: Task 79.1
+
+### Task 79.4: Add circuit breaker
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Import `CircuitBreakerFactory` from `src/connectors/circuit_config`
+- [ ] Add `self._circuit = CircuitBreakerFactory.get_or_create("drive")`
+- [ ] Wrap `_search_folder()` with circuit breaker
+- [ ] Wrap `get_file_content()` with circuit breaker
+- [ ] Add `circuit_status() -> str` method
+**Validation**: Circuit opens after 5 failures, resets after timeout
+**Commit**: "feat(drive): add circuit breaker for cascading failure prevention"
+**Dependencies**: Task 76.3
+
+### Task 79.5: Add OAuth token refresh handling
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Detect token expiration during long operations
+- [ ] Implement automatic credential refresh using `credentials.refresh()`
+- [ ] Retry operation after refresh
+- [ ] Log token refresh events
+- [ ] Handle refresh failure gracefully
+**Validation**: Long operation with expired token → auto-refresh → completes
+**Commit**: "feat(drive): handle OAuth token refresh during long operations"
+**Dependencies**: Task 79.2
+
+### Task 79.6: Add chunked download for large files
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add `MAX_CHUNK_SIZE = 10 * 1024 * 1024` (10MB) constant
+- [ ] Modify `get_file_content()` for files >10MB with chunked download
+- [ ] Add `on_progress: Callable[[int, int], None]` callback parameter
+- [ ] Handle partial download recovery (resume from last chunk on failure)
+- [ ] Add `max_file_size: int = 100MB` parameter to prevent OOM
+**Validation**: Download 25MB mock file → 3 chunks → progress callback invoked
+**Commit**: "feat(drive): add chunked download support for large files"
+**Dependencies**: Task 79.5
+
+### Task 79.7: Add resumable file upload
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add `async def upload_file(file_path, folder_id, resumable=True)` method
+- [ ] Use `MediaFileUpload` with `resumable=True` for files >5MB
+- [ ] Implement resume-on-failure with `next_chunk()` retry logic
+- [ ] Add `on_progress` callback for upload progress
+- [ ] Handle 308 Resume Incomplete responses
+**Validation**: Mock interruption → resume from correct byte offset → completes
+**Commit**: "feat(drive): add resumable file upload with retry support"
+**Dependencies**: Task 79.5
+
+### Task 79.8: Add quota exceeded handling
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Detect 403 "userRateLimitExceeded" and "quotaExceeded" reasons
+- [ ] Create `QuotaExceededError` exception
+- [ ] Parse `Retry-After` header when present
+- [ ] Implement longer backoff for quota errors (start at 60s, max 24h)
+- [ ] Add `is_quota_error(error) -> bool` helper
+**Validation**: Mock 403 quota → QuotaExceededError with appropriate wait time
+**Commit**: "feat(drive): add quota exceeded detection and handling"
+**Dependencies**: Task 79.2
+
+### Task 79.9: Include circuit breaker in health check
+**Files**: `src/connectors/drive.py`
+**Work**:
+- [ ] Add circuit breaker state to health response
+- [ ] If circuit open, return degraded without API call
+**Validation**: Health reflects circuit state
+**Commit**: "feat(drive): include circuit breaker state in health check"
+**Dependencies**: Task 79.3, Task 79.4
+
+### Task 79.10: Drive basic operation tests
+**Files**: `tests/unit/test_drive_connector.py` (new)
+**Work**:
+- [ ] Test `__init__()` with various timeout configurations
+- [ ] Test `_is_retryable_error()` for all error codes
+- [ ] Test `_build_service()` with valid/invalid credentials
+- [ ] Test `health_check()` for healthy/unhealthy/degraded states
+**Validation**: `pytest tests/unit/test_drive_connector.py -v` passes
+**Commit**: "test(drive): add basic operation tests"
+**Dependencies**: Task 79.9
+
+### Task 79.11: Drive retry and circuit breaker tests
+**Files**: `tests/unit/test_drive_connector.py`
+**Work**:
+- [ ] Test retry exhaustion after max_retries
+- [ ] Test exponential backoff timing (mock sleep)
+- [ ] Test circuit opens after threshold failures
+- [ ] Test circuit half-open and recovery
+- [ ] Test non-retryable errors bypass retry
+**Validation**: All resilience tests pass
+**Commit**: "test(drive): add retry and circuit breaker tests"
+**Dependencies**: Task 79.10
+
+### Task 79.12: Drive large file and quota tests
+**Files**: `tests/unit/test_drive_connector.py`
+**Work**:
+- [ ] Test chunked download with progress callback
+- [ ] Test resumable upload with interruption and resume
+- [ ] Test quota exceeded detection
+- [ ] Test max_file_size enforcement
+**Validation**: Large file handling tests pass
+**Commit**: "test(drive): add large file and quota tests"
+**Dependencies**: Task 79.11
+
+### Task 79.13: Drive coverage verification
+**Files**: `src/connectors/drive.py`, tests/
+**Work**:
+- [ ] Run coverage focused on drive.py
+- [ ] Target 70%+ coverage (lower due to Google API complexity)
+- [ ] Document uncovered integration paths
+**Validation**: Coverage report shows ≥70%
+**Commit**: "test(drive): achieve 70%+ test coverage"
+**Dependencies**: Task 79.12
+
+---
+
+## Sprint 80: LLM Connector Production-Grade
+**Goal**: Production-ready LLM connector with token tracking, cost monitoring, fallback chain, and streaming.
+**Demo**: LLM dashboard showing token usage, cost breakdown, model availability; trigger failure → fallback to alternate model.
+
+### Task 80.1: Add OpenAI error imports and custom exceptions
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Import `RateLimitError`, `APIStatusError`, `APITimeoutError`, `APIConnectionError` from openai
+- [ ] Import base classes from `src/connectors/exceptions`
+- [ ] Create `LLMError`, `LLMRateLimitError`, `LLMServiceError` custom exceptions
+- [ ] Map OpenAI errors to custom exceptions for uniform handling
+**Validation**: Exception mapping unit test passes
+**Commit**: "feat(llm): add OpenAI error mapping and custom exceptions"
+**Dependencies**: Task 76.2
+
+### Task 80.2: Implement retry with exponential backoff
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Import `@with_retry` from `src/connectors/retry`
+- [ ] Configure: max_retries=3, backoff_base=2.0, max_delay=60s
+- [ ] Wrap `generate_text()` and `generate_with_messages()` with retry
+- [ ] Parse and respect `Retry-After` header from OpenAI
+- [ ] Add jitter (±20%)
+**Validation**: Mock 429 → 3 retries → success on 4th
+**Commit**: "feat(llm): add retry with exponential backoff for rate limits"
+**Dependencies**: Task 76.1, Task 80.1
+
+### Task 80.3: Integrate circuit breaker
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Import `CircuitBreakerFactory` from `src/connectors/circuit_config`
+- [ ] Create `openai_circuit` and `gemini_circuit` instances (recovery_timeout=300s for LLM)
+- [ ] Wrap generation methods with appropriate circuit
+- [ ] On circuit open, attempt failover to alternate provider
+- [ ] Expose `get_circuit_status() -> Dict[str, str]` for both circuits
+**Validation**: 5 failures → circuit opens → failover attempted
+**Commit**: "feat(llm): integrate circuit breaker for extended outages"
+**Dependencies**: Task 76.3
+
+### Task 80.4: Create LLMUsage model for token tracking
+**Files**: `src/models/llm_usage.py` (new), `infra/migrations/` (new migration)
+**Work**:
+- [ ] Create `LLMUsage` SQLAlchemy model: `id`, `user_id`, `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`, `operation`, `latency_ms`, `created_at`
+- [ ] Use `SafeJSON` for metadata column (request context)
+- [ ] Add database migration via Alembic
+- [ ] Add index on `created_at` for aggregation queries
+**Validation**: `make test-integration` passes; migration applies cleanly
+**Commit**: "feat(models): add LLMUsage model for token tracking"
+**Dependencies**: None
+
+### Task 80.5: Record token usage on each generation
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Add `_record_usage()` async method that persists `LLMUsage` record
+- [ ] Extract token counts from OpenAI response (`usage.prompt_tokens`, etc.)
+- [ ] Extract token counts from Gemini response
+- [ ] Call `_record_usage()` after every successful generation
+- [ ] Log token usage with structured logging (provider, model, tokens, latency_ms)
+**Validation**: Generate text → `llm_usage` table has row with correct counts
+**Commit**: "feat(llm): record token usage on each generation"
+**Dependencies**: Task 80.4
+
+### Task 80.6: Add cost calculation and tracking
+**Files**: `src/connectors/llm.py`, `src/config.py`
+**Work**:
+- [ ] Add `LLM_PRICING` config dict with per-1K-token costs (input/output) per model
+- [ ] Implement `_calculate_cost()`: `(prompt_tokens * input_rate + completion_tokens * output_rate) / 1000`
+- [ ] Include `cost_usd` in usage record
+- [ ] Add `get_usage_stats(period: str) -> Dict` returning totals for day/week/month
+- [ ] Add configurable cost alert threshold in settings
+**Validation**: Generate with known token count → cost matches formula
+**Commit**: "feat(llm): add cost calculation and tracking"
+**Dependencies**: Task 80.5
+
+### Task 80.7: Add token limit validation (pre-flight check)
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Add `MODEL_TOKEN_LIMITS` dict mapping models to max context windows
+- [ ] Implement `_estimate_tokens(text: str) -> int` using tiktoken for OpenAI
+- [ ] Add pre-flight check: if estimated > 80% of limit, truncate or raise
+- [ ] Create `LLMTokenLimitError` with helpful message
+- [ ] Log warnings when approaching 70% of limit
+**Validation**: Oversized prompt → raises `LLMTokenLimitError`
+**Commit**: "feat(llm): add token limit validation before API calls"
+**Dependencies**: Task 80.1
+
+### Task 80.8: Enhance health check with model availability
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Refactor `health_check()` to test actual model availability
+- [ ] Add `models.list()` call to verify API key
+- [ ] Include circuit breaker status for OpenAI and Gemini
+- [ ] Add latency measurement from recent calls
+- [ ] Return: `{status, latency_ms, circuits: {openai: str, gemini: str}, models: [str]}`
+**Validation**: Mock API down → health returns degraded with error
+**Commit**: "feat(llm): enhance health check with model availability"
+**Dependencies**: Task 80.3
+
+### Task 80.9: Add streaming response support
+**Files**: `src/connectors/llm.py`
+**Work**:
+- [ ] Add `async def generate_text_stream() -> AsyncGenerator[str, None]` method
+- [ ] Implement OpenAI streaming via `stream=True` parameter
+- [ ] Yield chunks as they arrive
+- [ ] Track cumulative tokens during stream
+- [ ] Record final usage after stream completes
+**Validation**: Stream → yields 5+ chunks → final token count accurate
+**Commit**: "feat(llm): add streaming response support"
+**Dependencies**: Task 80.5
+
+### Task 80.10: Add fallback model chain
+**Files**: `src/connectors/llm.py`, `src/config.py`
+**Work**:
+- [ ] Add `LLM_FALLBACK_CHAIN` config: `["gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]`
+- [ ] Implement `_try_with_fallback()` that iterates through chain on failure
+- [ ] Log each fallback attempt with reason
+- [ ] Track which model ultimately succeeded in usage record
+- [ ] Expose `get_available_models() -> List[str]` listing healthy models
+**Validation**: Primary 429 → fallback to secondary → succeeds
+**Commit**: "feat(llm): add fallback model chain for resilience"
+**Dependencies**: Task 80.3
+
+### Task 80.11: Add LLM usage API endpoints
+**Files**: `src/routes/llm_api.py` (new), `src/main.py`
+**Work**:
+- [ ] Create `GET /api/llm/usage` returning aggregated stats (tokens, cost, by model)
+- [ ] Add `GET /api/llm/health` exposing connector health check
+- [ ] Add `GET /api/llm/circuits` for circuit breaker states
+- [ ] Register routes in main app
+- [ ] Add authentication (require admin role)
+**Validation**: `/api/llm/usage` returns JSON with aggregates
+**Commit**: "feat(api): add LLM usage and health endpoints"
+**Dependencies**: Task 80.6, Task 80.8
+
+### Task 80.12: LLM retry logic tests
+**Files**: `tests/unit/test_llm_connector.py` (new)
+**Work**:
+- [ ] Test retry on 429 (mock 2 failures → success)
+- [ ] Test retry respects Retry-After header
+- [ ] Test max retries exhausted raises `LLMRateLimitError`
+- [ ] Test 5xx errors trigger retry
+- [ ] Test 4xx (non-429) do NOT retry
+**Validation**: All retry tests pass
+**Commit**: "test(llm): add retry logic tests"
+**Dependencies**: Task 80.2
+
+### Task 80.13: LLM circuit breaker tests
+**Files**: `tests/unit/test_llm_connector.py`
+**Work**:
+- [ ] Test circuit opens after 5 failures
+- [ ] Test circuit blocks when open
+- [ ] Test circuit half-open after recovery
+- [ ] Test fallback to alternate provider when open
+**Validation**: All circuit tests pass
+**Commit**: "test(llm): add circuit breaker tests"
+**Dependencies**: Task 80.12
+
+### Task 80.14: LLM token tracking and cost tests
+**Files**: `tests/unit/test_llm_connector.py`
+**Work**:
+- [ ] Test usage recorded after generation
+- [ ] Test cost calculation accuracy
+- [ ] Test usage aggregation (daily/monthly)
+- [ ] Test token limit validation
+- [ ] Test usage stats endpoint
+**Validation**: All token/cost tests pass
+**Commit**: "test(llm): add token tracking and cost tests"
+**Dependencies**: Task 80.13
+
+### Task 80.15: LLM coverage verification
+**Files**: `src/connectors/llm.py`, tests/
+**Work**:
+- [ ] Run coverage focused on llm.py
+- [ ] Target 80%+ coverage
+- [ ] Add missing edge case tests
+**Validation**: Coverage ≥80%
+**Commit**: "test(llm): achieve 80%+ test coverage"
+**Dependencies**: Task 80.14
+
+---
+
+## Sprint 76-80 Dependency Graph
+
+```
+Sprint 76 (Shared Infrastructure) ← MUST complete first
+    │
+    ├─→ Sprint 77 (Gmail) ← Uses shared retry, circuit breaker, exceptions
+    │
+    ├─→ Sprint 78 (HubSpot) ← Uses shared exceptions, circuit config
+    │
+    ├─→ Sprint 79 (Drive) ← Uses shared retry, health pattern
+    │
+    └─→ Sprint 80 (LLM) ← Uses all shared infrastructure
+
+Note: Sprints 77-80 can run in parallel after Sprint 76 completes.
+```
+
+---
+
+## Phase 3 Success Metrics
+
+| Metric | Sprint 75 | Sprint 80 Target |
+|--------|-----------|------------------|
+| Gmail health_check | ❌ | ✅ |
+| Gmail circuit breaker | ❌ | ✅ |
+| HubSpot circuit breaker | ❌ | ✅ |
+| HubSpot batch partial failure | ❌ | ✅ |
+| Drive retry | ❌ | ✅ |
+| Drive health_check | ❌ | ✅ |
+| LLM retry | ❌ | ✅ |
+| LLM token tracking | ❌ | ✅ |
+| LLM cost monitoring | ❌ | ✅ |
+| LLM fallback chain | ❌ | ✅ |
+| Connector test coverage | 30% | **80%** (Gmail, HubSpot, LLM), **70%** (Drive) |
+| `/health/connectors` endpoint | ❌ | ✅ |
+
+---
+
+*Updated: 2025-01-29 - Added Sprints 76-80 for Connector Resilience (Gmail, HubSpot, Drive, LLM)*
+*Version: 2.9*
