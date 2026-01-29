@@ -83,10 +83,13 @@ def create_hubspot_connector() -> "HubSpotConnector":
 
 
 class HubSpotConnector:
-    """Connector for HubSpot API."""
+    """Connector for HubSpot API with circuit breaker protection."""
 
     BASE_URL = "https://api.hubapi.com"
     DEFAULT_TIMEOUT = 30.0  # seconds
+    
+    # Shared circuit breaker for all HubSpot connectors
+    _circuit_breaker = None
 
     def __init__(self, api_key: str):
         """Initialize HubSpot connector."""
@@ -95,6 +98,22 @@ class HubSpotConnector:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+        
+        # Initialize shared circuit breaker
+        if HubSpotConnector._circuit_breaker is None:
+            from src.resilience import CircuitBreaker
+            HubSpotConnector._circuit_breaker = CircuitBreaker(
+                failure_threshold=5,
+                recovery_timeout=60.0,
+                name="hubspot",
+            )
+
+    @classmethod
+    def get_circuit_breaker_state(cls) -> dict:
+        """Get current circuit breaker state for monitoring."""
+        if cls._circuit_breaker:
+            return cls._circuit_breaker.get_state()
+        return {"state": "uninitialized", "failure_count": 0}
 
     async def health_check(self) -> Dict[str, Any]:
         """Check HubSpot API connectivity and authentication.
@@ -125,7 +144,15 @@ class HubSpotConnector:
                 return {"status": "unhealthy", "error": str(e), "latency_ms": -1}
 
     async def search_contacts(self, email: str) -> Optional[Dict[str, Any]]:
-        """Search for a contact by email address."""
+        """Search for a contact by email address with circuit breaker protection."""
+        from src.resilience import CircuitBreakerOpenError
+        
+        # Check circuit breaker
+        if self._circuit_breaker and self._circuit_breaker.state == "open":
+            if not self._circuit_breaker._should_attempt_reset():
+                raise CircuitBreakerOpenError("HubSpot circuit breaker is open")
+            self._circuit_breaker.state = "half_open"
+        
         async with httpx.AsyncClient() as client:
             try:
                 payload = {
@@ -149,6 +176,11 @@ class HubSpotConnector:
                 )
                 response.raise_for_status()
                 results = response.json()
+                
+                # Record success
+                if self._circuit_breaker:
+                    self._circuit_breaker._on_success()
+                
                 if results.get("results"):
                     contact = results["results"][0]
                     logger.info(f"Found contact {contact['id']} with email {email}")
@@ -156,6 +188,9 @@ class HubSpotConnector:
                 logger.info(f"No contact found with email {email}")
                 return None
             except Exception as e:
+                # Record failure
+                if self._circuit_breaker:
+                    self._circuit_breaker._on_failure()
                 logger.error(f"Error searching contacts by email: {e}")
                 return None
 

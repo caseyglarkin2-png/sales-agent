@@ -50,6 +50,8 @@ async def test_retry_with_backoff_exhausted():
 @pytest.mark.asyncio
 async def test_circuit_breaker_opens_on_failures():
     """Test circuit breaker opens after threshold failures."""
+    from src.resilience import CircuitBreakerOpenError
+    
     breaker = CircuitBreaker(failure_threshold=2)
     
     async def failing_func():
@@ -68,5 +70,5 @@ async def test_circuit_breaker_opens_on_failures():
     assert breaker.state == "open"
     
     # Third call: circuit is open
-    with pytest.raises(RuntimeError, match="Circuit breaker is open"):
+    with pytest.raises(CircuitBreakerOpenError):
         await breaker.call(failing_func)

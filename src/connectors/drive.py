@@ -98,6 +98,51 @@ class DriveConnector:
         """Build Drive service from credentials."""
         if self.credentials and not self.service:
             self.service = build("drive", "v3", credentials=self.credentials)
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Check Drive API connectivity and return health status.
+        
+        Uses about endpoint for a lightweight check.
+        
+        Returns:
+            Dict with status, latency_ms, and optional error
+        """
+        import time
+        
+        start_time = time.time()
+        
+        if not self.credentials:
+            return {
+                "status": "unhealthy",
+                "latency_ms": 0,
+                "error": "No credentials configured",
+            }
+        
+        try:
+            if not self.service:
+                self._build_service()
+            
+            # Lightweight call: get user info
+            about = self.service.about().get(fields="user,storageQuota").execute()
+            
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            user = about.get("user", {})
+            return {
+                "status": "healthy",
+                "latency_ms": latency_ms,
+                "user_email": user.get("emailAddress"),
+                "error": None,
+            }
+        
+        except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.error(f"Drive health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "latency_ms": latency_ms,
+                "error": str(e),
+            }
     
     @with_drive_retry(max_retries=3, backoff_base=1.0)
     async def search_assets(

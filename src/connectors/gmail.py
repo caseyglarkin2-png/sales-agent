@@ -70,6 +70,10 @@ def create_gmail_connector() -> "GmailConnector":
 
 class GmailConnector:
     """Connector for Google Gmail API with OAuth token management."""
+    
+    # Shared circuit breaker for all Gmail connectors
+    # Prevents cascading failures when Gmail API is having issues
+    _circuit_breaker = None
 
     def __init__(self, credentials: Optional[Credentials] = None, user_email: Optional[str] = None):
         """Initialize Gmail connector.
@@ -82,6 +86,22 @@ class GmailConnector:
         self.service = None
         self.user_email = user_email
         self._token_storage = None  # Will be set when needed
+        
+        # Initialize shared circuit breaker
+        if GmailConnector._circuit_breaker is None:
+            from src.resilience import CircuitBreaker
+            GmailConnector._circuit_breaker = CircuitBreaker(
+                failure_threshold=5,
+                recovery_timeout=60.0,
+                name="gmail",
+            )
+
+    @classmethod
+    def get_circuit_breaker_state(cls) -> dict:
+        """Get current circuit breaker state for monitoring."""
+        if cls._circuit_breaker:
+            return cls._circuit_breaker.get_state()
+        return {"state": "uninitialized", "failure_count": 0}
 
     async def refresh_token_if_needed(self) -> bool:
         """Refresh OAuth token if expired or about to expire.
@@ -259,6 +279,51 @@ class GmailConnector:
             
             self.service = build("gmail", "v1", credentials=self.credentials)
 
+    async def health_check(self) -> Dict[str, Any]:
+        """Check Gmail API connectivity and return health status.
+        
+        Uses a lightweight getProfile call to verify API access.
+        
+        Returns:
+            Dict with status, latency_ms, and optional error
+        """
+        import time
+        
+        start_time = time.time()
+        
+        if not self.credentials:
+            return {
+                "status": "unhealthy",
+                "latency_ms": 0,
+                "error": "No credentials configured",
+            }
+        
+        try:
+            if not self.service:
+                self._build_service()
+            
+            # Lightweight profile check
+            profile = self.service.users().getProfile(userId="me").execute()
+            
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            return {
+                "status": "healthy",
+                "latency_ms": latency_ms,
+                "email": profile.get("emailAddress"),
+                "messages_total": profile.get("messagesTotal"),
+                "error": None,
+            }
+        
+        except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.error(f"Gmail health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "latency_ms": latency_ms,
+                "error": str(e),
+            }
+
     async def search_threads(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         """Search for email threads matching query (e.g., from:email@example.com)."""
         if not self.service:
@@ -360,7 +425,11 @@ class GmailConnector:
         references: Optional[str] = None,
         max_retries: int = 3,
     ) -> Optional[Dict[str, Any]]:
-        """Send email via Gmail API with proper MIME formatting and retry logic.
+        """Send email via Gmail API with circuit breaker and retry logic.
+        
+        The circuit breaker protects against cascading failures when Gmail
+        API is experiencing issues. After 5 consecutive failures, the circuit
+        opens and requests fail fast for 60 seconds before attempting recovery.
         
         Args:
             from_email: Sender email address
@@ -377,7 +446,19 @@ class GmailConnector:
             
         Raises:
             Exception: On unrecoverable errors (after retries exhausted)
+            CircuitBreakerOpenError: When circuit breaker is open
         """
+        from src.resilience import CircuitBreakerOpenError
+        
+        # Check circuit breaker before attempting send
+        if self._circuit_breaker and self._circuit_breaker.state == "open":
+            if not self._circuit_breaker._should_attempt_reset():
+                logger.warning(f"Gmail circuit breaker is open, failing fast for email to {to_email}")
+                raise CircuitBreakerOpenError("Gmail circuit breaker is open - failing fast")
+            else:
+                logger.info("Gmail circuit breaker transitioning to half-open, attempting send")
+                self._circuit_breaker.state = "half_open"
+        
         if not self.service:
             self._build_service()
         
@@ -401,7 +482,7 @@ class GmailConnector:
         # Encode for Gmail API
         encoded_message = base64.urlsafe_b64encode(mime_message.encode()).decode()
         
-        # Retry logic with exponential backoff
+        # Retry logic with exponential backoff (circuit breaker tracks failures)
         for attempt in range(max_retries):
             try:
                 result = self.service.users().messages().send(
@@ -417,6 +498,10 @@ class GmailConnector:
                     f"subject='{subject[:50]}...', message_id={message_id}, thread_id={thread_id}"
                 )
                 
+                # Record success for circuit breaker
+                if self._circuit_breaker:
+                    self._circuit_breaker._on_success()
+                
                 return {
                     "id": message_id,
                     "threadId": thread_id,
@@ -425,6 +510,10 @@ class GmailConnector:
             
             except HttpError as e:
                 error_reason = self._parse_http_error(e)
+                
+                # Record failure for circuit breaker
+                if self._circuit_breaker:
+                    self._circuit_breaker._on_failure()
                 
                 # Check if error is retryable
                 if self._is_retryable_error(e):

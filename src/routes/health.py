@@ -93,88 +93,133 @@ async def connector_health_check() -> Dict[str, Any]:
     """
     Check health of all external API connectors.
     
-    Validates that API keys are present and connectors can authenticate.
-    Used for debugging integration issues.
+    Calls health_check() on each connector and returns aggregated status.
+    Used for debugging integration issues and monitoring.
+    
+    Sprint 68: Enhanced with real health checks from connectors.
     """
+    import asyncio
+    from datetime import datetime
+    
     settings = get_settings()
     connectors = {}
     
-    # Check OpenAI
-    try:
-        if settings.openai_api_key:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    "https://api.openai.com/v1/models",
-                    headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-                    timeout=10.0
-                )
-                if resp.status_code == 200:
-                    connectors["openai"] = {"status": "connected", "message": "API key valid"}
-                else:
-                    connectors["openai"] = {"status": "error", "message": f"HTTP {resp.status_code}"}
-        else:
-            connectors["openai"] = {"status": "not_configured", "message": "OPENAI_API_KEY not set"}
-    except Exception as e:
-        connectors["openai"] = {"status": "error", "message": str(e)}
+    # Collect all health check tasks
+    async def check_gmail():
+        try:
+            from src.connectors.gmail import GmailConnector
+            connector = GmailConnector()
+            return await connector.health_check()
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
     
-    # Check HubSpot
-    try:
-        if settings.hubspot_api_key:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    "https://api.hubapi.com/crm/v3/objects/contacts?limit=1",
-                    headers={"Authorization": f"Bearer {settings.hubspot_api_key}"},
-                    timeout=10.0
-                )
-                if resp.status_code == 200:
-                    connectors["hubspot"] = {"status": "connected", "message": "API key valid"}
-                elif resp.status_code == 401:
-                    connectors["hubspot"] = {"status": "auth_required", "message": "Needs OAuth - legacy key format"}
-                else:
-                    connectors["hubspot"] = {"status": "error", "message": f"HTTP {resp.status_code}"}
-        else:
-            connectors["hubspot"] = {"status": "not_configured", "message": "HUBSPOT_API_KEY not set"}
-    except Exception as e:
-        connectors["hubspot"] = {"status": "error", "message": str(e)}
+    async def check_hubspot():
+        try:
+            from src.connectors.hubspot import HubSpotConnector
+            connector = HubSpotConnector(api_key=settings.hubspot_api_key)
+            return await connector.health_check()
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
     
-    # Check Google (Service Account)
-    try:
-        import os
-        google_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON") or settings.google_client_id
-        if google_creds:
-            connectors["google"] = {"status": "configured", "message": "Credentials present (needs OAuth flow for user access)"}
-        else:
-            connectors["google"] = {"status": "not_configured", "message": "GOOGLE_CREDENTIALS_JSON not set"}
-    except Exception as e:
-        connectors["google"] = {"status": "error", "message": str(e)}
+    async def check_sendgrid():
+        try:
+            from src.connectors.sendgrid import SendGridConnector
+            connector = SendGridConnector()
+            return await connector.health_check()
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
     
-    # Check Slack
-    try:
-        if settings.slack_bot_token:
-            connectors["slack"] = {"status": "configured", "message": "Bot token present"}
-        else:
-            connectors["slack"] = {"status": "not_configured", "message": "SLACK_BOT_TOKEN not set"}
-    except Exception as e:
-        connectors["slack"] = {"status": "error", "message": str(e)}
+    async def check_slack():
+        try:
+            from src.connectors.slack import SlackConnector
+            connector = SlackConnector()
+            return await connector.health_check()
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
     
-    # Check Gemini (failover LLM)
-    try:
-        if settings.gemini_api_key:
-            connectors["gemini"] = {"status": "configured", "message": "API key present (failover LLM)"}
-        else:
-            connectors["gemini"] = {"status": "not_configured", "message": "GEMINI_API_KEY not set (optional)"}
-    except Exception as e:
-        connectors["gemini"] = {"status": "error", "message": str(e)}
+    async def check_calendar():
+        try:
+            from src.connectors.calendar_connector import create_calendar_connector
+            connector = create_calendar_connector()
+            return await connector.health_check()
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
     
-    # Overall status
-    connected_count = sum(1 for c in connectors.values() if c["status"] in ["connected", "configured"])
+    async def check_drive():
+        try:
+            from src.connectors.drive import create_drive_connector
+            connector = create_drive_connector()
+            return await connector.health_check()
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
+    
+    async def check_llm():
+        try:
+            from src.connectors.llm import get_llm
+            connector = get_llm()
+            if hasattr(connector, 'health_check'):
+                return await connector.health_check()
+            # Fallback: just check if configured
+            if settings.openai_api_key:
+                return {"status": "configured", "latency_ms": 0, "error": None}
+            return {"status": "unhealthy", "latency_ms": 0, "error": "No API key configured"}
+        except Exception as e:
+            return {"status": "error", "latency_ms": 0, "error": str(e)}
+    
+    # Run all health checks in parallel
+    results = await asyncio.gather(
+        check_gmail(),
+        check_hubspot(),
+        check_sendgrid(),
+        check_slack(),
+        check_calendar(),
+        check_drive(),
+        check_llm(),
+        return_exceptions=True,
+    )
+    
+    connector_names = ["gmail", "hubspot", "sendgrid", "slack", "calendar", "drive", "llm"]
+    
+    for name, result in zip(connector_names, results):
+        if isinstance(result, Exception):
+            connectors[name] = {"status": "error", "latency_ms": 0, "error": str(result)}
+        else:
+            connectors[name] = result
+    
+    # Add circuit breaker status for gmail and hubspot
+    try:
+        from src.connectors.gmail import GmailConnector
+        connectors["gmail"]["circuit_breaker"] = GmailConnector.get_circuit_breaker_state()
+    except Exception:
+        pass
+    
+    try:
+        from src.connectors.hubspot import HubSpotConnector
+        connectors["hubspot"]["circuit_breaker"] = HubSpotConnector.get_circuit_breaker_state()
+    except Exception:
+        pass
+    
+    # Calculate overall status
+    healthy_count = sum(1 for c in connectors.values() if c.get("status") in ["healthy", "configured"])
+    degraded_count = sum(1 for c in connectors.values() if c.get("status") == "degraded")
     total_count = len(connectors)
     
+    # Check if any circuit breaker is open - that's degraded
+    circuit_breakers_open = sum(
+        1 for c in connectors.values()
+        if c.get("circuit_breaker", {}).get("state") == "open"
+    )
+    
+    if healthy_count == total_count and circuit_breakers_open == 0:
+        overall_status = "healthy"
+    elif healthy_count + degraded_count >= total_count * 0.5:
+        overall_status = "degraded"
+    else:
+        overall_status = "unhealthy"
+    
     return {
-        "status": "ok" if connected_count >= 2 else "degraded",
-        "summary": f"{connected_count}/{total_count} connectors ready",
+        "status": overall_status,
+        "summary": f"{healthy_count}/{total_count} connectors healthy, {circuit_breakers_open} circuit breakers open",
         "connectors": connectors,
         "timestamp": datetime.utcnow().isoformat(),
     }

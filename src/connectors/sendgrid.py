@@ -55,6 +55,60 @@ class SendGridConnector:
         """Check if SendGrid is properly configured."""
         return bool(self.api_key and self.sender_email)
 
+    async def health_check(self) -> Dict[str, Any]:
+        """Check SendGrid API connectivity and return health status.
+        
+        Uses the scopes endpoint for a lightweight check.
+        
+        Returns:
+            Dict with status, latency_ms, and optional error
+        """
+        import time
+        
+        start_time = time.time()
+        
+        if not self.api_key:
+            return {
+                "status": "unhealthy",
+                "latency_ms": 0,
+                "error": "SendGrid API key not configured",
+            }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/scopes",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    timeout=10.0,
+                )
+            
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            if response.status_code == 200:
+                scopes = response.json().get("scopes", [])
+                return {
+                    "status": "healthy",
+                    "latency_ms": latency_ms,
+                    "scopes_count": len(scopes),
+                    "sender_configured": bool(self.sender_email),
+                    "error": None,
+                }
+            else:
+                return {
+                    "status": "unhealthy",
+                    "latency_ms": latency_ms,
+                    "error": f"API returned status {response.status_code}",
+                }
+        
+        except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.error(f"SendGrid health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "latency_ms": latency_ms,
+                "error": str(e),
+            }
+
     async def send_email(
         self,
         to_email: str,

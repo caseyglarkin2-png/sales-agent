@@ -120,6 +120,51 @@ class CalendarConnector:
         if self.credentials:
             self.service = build("calendar", "v3", credentials=self.credentials)
 
+    async def health_check(self) -> Dict[str, Any]:
+        """Check Calendar API connectivity and return health status.
+        
+        Uses a lightweight calendar list call.
+        
+        Returns:
+            Dict with status, latency_ms, and optional error
+        """
+        import time
+        
+        start_time = time.time()
+        
+        if not self.credentials:
+            return {
+                "status": "unhealthy",
+                "latency_ms": 0,
+                "error": "No credentials configured",
+            }
+        
+        try:
+            if not self.service:
+                self._build_service()
+            
+            # Lightweight call: list calendars with minimal results
+            result = self.service.calendarList().list(maxResults=1).execute()
+            
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            calendars = result.get("items", [])
+            return {
+                "status": "healthy",
+                "latency_ms": latency_ms,
+                "calendars_accessible": len(calendars) > 0,
+                "error": None,
+            }
+        
+        except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.error(f"Calendar health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "latency_ms": latency_ms,
+                "error": str(e),
+            }
+
     @with_google_api_retry(max_retries=3, backoff_base=1.0)
     async def get_freebusy(
         self,

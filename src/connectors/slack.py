@@ -72,21 +72,56 @@ class SlackConnector:
         else:
             self.client = AsyncWebClient(token=self.token)
 
-    async def get_health(self) -> Dict[str, Any]:
-        """Check connection health."""
+    async def health_check(self) -> Dict[str, Any]:
+        """Check Slack API connectivity and return health status.
+        
+        Uses auth.test for a lightweight connectivity check.
+        
+        Returns:
+            Dict with status, latency_ms, bot_name, and optional error
+        """
+        import time
+        
+        start_time = time.time()
+        
         if not self.client:
-            return {"status": "disabled", "error": "Missing token"}
+            return {
+                "status": "unhealthy",
+                "latency_ms": 0,
+                "bot_name": None,
+                "error": "Slack client not configured (missing token)",
+            }
         
         try:
-            await self._health_check()
-            return {"status": "healthy"}
+            response = await self._health_check_with_retry()
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            return {
+                "status": "healthy",
+                "latency_ms": latency_ms,
+                "bot_name": response.get("user"),
+                "team": response.get("team"),
+                "error": None,
+            }
         except SlackApiError as e:
-            return {"status": "error", "error": str(e)}
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.error(f"Slack health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "latency_ms": latency_ms,
+                "bot_name": None,
+                "error": str(e.response.get("error", str(e))),
+            }
+
+    # Keep deprecated alias for backward compatibility
+    async def get_health(self) -> Dict[str, Any]:
+        """Deprecated: Use health_check() instead."""
+        return await self.health_check()
 
     @with_slack_retry(max_retries=2, backoff_base=1.0)
-    async def _health_check(self) -> None:
-        """Health check with retry."""
-        await self.client.auth_test()
+    async def _health_check_with_retry(self) -> Dict[str, Any]:
+        """Health check with retry - returns auth test response."""
+        return await self.client.auth_test()
 
     @with_slack_retry(max_retries=3, backoff_base=1.0)
     async def fetch_channel_history(
