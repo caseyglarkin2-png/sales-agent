@@ -498,12 +498,28 @@ async def launch_campaign(
         raise HTTPException(status_code=400, detail="No draft emails to queue")
     
     # Create queue items for each email
+    # Build contact lookup to avoid repeated queries
+    contact_ids = {email.contact_id for email in emails if email.contact_id}
+    contact_map = {}
+    if contact_ids:
+        contact_rows = await db.execute(
+            select(ABMCampaignContact).where(ABMCampaignContact.id.in_(list(contact_ids)))
+        )
+        contact_map = {c.id: c for c in contact_rows.scalars().all()}
+
     queued_count = 0
     for email in emails:
+        contact_email = None
+        if email.contact_id and email.contact_id in contact_map:
+            contact_email = contact_map[email.contact_id].email
+        if not contact_email:
+            logger.error("ABM email missing contact email; cannot queue", extra={"email_id": str(email.id)})
+            raise HTTPException(status_code=400, detail="Missing contact email for generated email")
+
         queue_item = CommandQueueItem(
             action_type="send_email",
             priority=50,  # Medium priority for ABM
-            recipient=email.body[:100] + "...",  # Use contact email from email record
+            recipient=contact_email,
             subject=email.subject,
             body=email.body,
             status=QueueItemStatus.PENDING.value,
@@ -511,6 +527,7 @@ async def launch_campaign(
                 "abm_campaign_id": str(campaign.id),
                 "abm_email_id": str(email.id),
                 "personalization_score": email.personalization_score,
+                "contact_email": contact_email,
             },
         )
         db.add(queue_item)
