@@ -150,6 +150,203 @@ class HubSpotConnector:
                 logger.error(f"Error retrieving contact {contact_id}: {e}")
                 return None
 
+    async def get_contact_with_properties(
+        self, contact_id: str, properties: List[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Get contact with specific properties from HubSpot.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            properties: List of property names to fetch
+            
+        Returns:
+            Contact data with requested properties
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v3/objects/contacts/{contact_id}",
+                    headers=self.headers,
+                    params={"properties": ",".join(properties)},
+                )
+                response.raise_for_status()
+                logger.info(f"Retrieved contact {contact_id} with {len(properties)} properties")
+                return response.json()
+            except Exception as e:
+                logger.error(f"Error retrieving contact {contact_id} with properties: {e}")
+                return None
+
+    async def get_company_with_properties(
+        self, company_id: str, properties: List[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Get company with specific properties from HubSpot.
+        
+        Args:
+            company_id: HubSpot company ID
+            properties: List of property names to fetch
+            
+        Returns:
+            Company data with requested properties
+        """
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/crm/v3/objects/companies/{company_id}",
+                    headers=self.headers,
+                    params={"properties": ",".join(properties)},
+                )
+                response.raise_for_status()
+                logger.info(f"Retrieved company {company_id} with {len(properties)} properties")
+                return response.json()
+            except Exception as e:
+                logger.error(f"Error retrieving company {company_id} with properties: {e}")
+                return None
+
+    async def get_contact_timeline(
+        self, contact_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get timeline activities for a contact.
+        
+        Fetches engagements, emails, calls, meetings, notes associated with contact.
+        
+        Args:
+            contact_id: HubSpot contact ID
+            limit: Max activities to return
+            
+        Returns:
+            List of timeline activity objects sorted by timestamp
+        """
+        activities: List[Dict[str, Any]] = []
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            try:
+                # Get emails
+                emails = await self._get_contact_object_timeline(
+                    client, contact_id, "emails", 
+                    ["hs_email_subject", "hs_email_direction", "hs_timestamp", "hs_email_status"],
+                    limit // 3
+                )
+                for email in emails:
+                    props = email.get("properties", {})
+                    activities.append({
+                        "type": "email",
+                        "id": email.get("id"),
+                        "timestamp": props.get("hs_timestamp"),
+                        "subject": props.get("hs_email_subject"),
+                        "direction": props.get("hs_email_direction"),
+                        "status": props.get("hs_email_status"),
+                    })
+                
+                # Get calls
+                calls = await self._get_contact_object_timeline(
+                    client, contact_id, "calls",
+                    ["hs_call_title", "hs_call_duration", "hs_timestamp", "hs_call_disposition"],
+                    limit // 3
+                )
+                for call in calls:
+                    props = call.get("properties", {})
+                    activities.append({
+                        "type": "call",
+                        "id": call.get("id"),
+                        "timestamp": props.get("hs_timestamp"),
+                        "title": props.get("hs_call_title"),
+                        "duration": props.get("hs_call_duration"),
+                        "disposition": props.get("hs_call_disposition"),
+                    })
+                
+                # Get meetings
+                meetings = await self._get_contact_object_timeline(
+                    client, contact_id, "meetings",
+                    ["hs_meeting_title", "hs_meeting_start_time", "hs_meeting_end_time", "hs_meeting_outcome"],
+                    limit // 3
+                )
+                for meeting in meetings:
+                    props = meeting.get("properties", {})
+                    activities.append({
+                        "type": "meeting",
+                        "id": meeting.get("id"),
+                        "timestamp": props.get("hs_meeting_start_time"),
+                        "title": props.get("hs_meeting_title"),
+                        "end_time": props.get("hs_meeting_end_time"),
+                        "outcome": props.get("hs_meeting_outcome"),
+                    })
+                
+                # Get notes
+                notes = await self._get_contact_object_timeline(
+                    client, contact_id, "notes",
+                    ["hs_note_body", "hs_timestamp"],
+                    limit // 4
+                )
+                for note in notes:
+                    props = note.get("properties", {})
+                    activities.append({
+                        "type": "note",
+                        "id": note.get("id"),
+                        "timestamp": props.get("hs_timestamp"),
+                        "body": props.get("hs_note_body", "")[:200],  # Truncate for preview
+                    })
+                
+                # Sort by timestamp descending
+                activities.sort(
+                    key=lambda x: x.get("timestamp") or "", 
+                    reverse=True
+                )
+                
+                logger.info(f"Retrieved {len(activities)} timeline activities for contact {contact_id}")
+                return activities[:limit]
+                
+            except Exception as e:
+                logger.error(f"Error getting contact timeline: {e}")
+                return []
+
+    async def _get_contact_object_timeline(
+        self,
+        client: httpx.AsyncClient,
+        contact_id: str,
+        object_type: str,
+        properties: List[str],
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        """Helper to get associated objects for timeline.
+        
+        Args:
+            client: HTTP client
+            contact_id: HubSpot contact ID
+            object_type: Type of object (emails, calls, meetings, notes)
+            properties: Properties to fetch
+            limit: Max objects to return
+            
+        Returns:
+            List of object data
+        """
+        try:
+            # Get associations
+            assoc_response = await client.get(
+                f"{self.BASE_URL}/crm/v4/objects/contacts/{contact_id}/associations/{object_type}",
+                headers=self.headers,
+                params={"limit": limit},
+            )
+            assoc_response.raise_for_status()
+            assoc_data = assoc_response.json()
+            
+            objects = []
+            for result in assoc_data.get("results", [])[:limit]:
+                obj_id = result.get("toObjectId")
+                if obj_id:
+                    obj_response = await client.get(
+                        f"{self.BASE_URL}/crm/v3/objects/{object_type}/{obj_id}",
+                        headers=self.headers,
+                        params={"properties": ",".join(properties)},
+                    )
+                    if obj_response.status_code == 200:
+                        objects.append(obj_response.json())
+            
+            return objects
+            
+        except Exception as e:
+            logger.warning(f"Error getting {object_type} for contact {contact_id}: {e}")
+            return []
+
     async def create_task(
         self, contact_id: str, title: str, body: str, due_date: Optional[str] = None
     ) -> Optional[str]:

@@ -317,6 +317,7 @@ from src.routes import data_hygiene  # Sprint 56: Data Hygiene Dashboard
 from src.routes import retry_queue  # Sprint 58: Resilience & Error Recovery
 from src.routes import abm_campaigns  # Sprint 62: ABM Campaigns
 from src.routes import sequences_api  # Sprint 63: Sequence Automation
+from src.routes import hubspot_routes  # Sprint 65: HubSpot Integration Enhancement
 
 # Configure logging
 settings = get_settings()
@@ -381,6 +382,7 @@ app.include_router(data_hygiene.router)  # Sprint 56: Data Hygiene Dashboard
 app.include_router(retry_queue.router)  # Sprint 58: Resilience & Error Recovery
 app.include_router(abm_campaigns.router)  # Sprint 62: ABM Campaigns
 app.include_router(sequences_api.router)  # Sprint 63: Sequence Automation
+app.include_router(hubspot_routes.router)  # Sprint 65: HubSpot Integration Enhancement
 app.include_router(voice_routes.router)
 app.include_router(contact_queue.router)
 app.include_router(forms_routes.router)

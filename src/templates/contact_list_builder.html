@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Contact List Builder - CaseyOS{% endblock %}
+
+{% block head %}
+<style>
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
+        background: #eef2ff;
+        color: #4f46e5;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .filter-chip button {
+        margin-left: 0.5rem;
+        color: #6366f1;
+        font-weight: bold;
+    }
+
+    .filter-chip button:hover {
+        color: #4338ca;
+    }
+
+    .contact-row {
+        transition: background-color 0.2s;
+    }
+
+    .contact-row:hover {
+        background-color: #f9fafb;
+    }
+
+    .checkbox-cell {
+        width: 40px;
+    }
+
+    .selected-count {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: #4f46e5;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        z-index: 50;
+    }
+
+    .selected-count.hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">🔍 Contact List Builder</h1>
+            <p class="text-gray-500">Build smart lists by filtering contacts</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="exportCSV()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition">
+                📥 Export CSV
+            </button>
+            <button onclick="addToCampaign()" class="px-4 py-2 bg-primary hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition">
+                ➕ Add to Campaign
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters Panel -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="font-semibold text-gray-900 mb-4">Filters</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <!-- Job Title -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Job Title Contains</label>
+                <input type="text" id="filter-job-title" placeholder="e.g. VP, Director, Manager"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            
+            <!-- Company Domain -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Company Domain</label>
+                <input type="text" id="filter-domain" placeholder="e.g. acme.com"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            
+            <!-- Industry -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                <input type="text" id="filter-industry" placeholder="e.g. Technology, Healthcare"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            
+            <!-- Lifecycle Stage -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Lifecycle Stage</label>
+                <select id="filter-lifecycle" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">All Stages</option>
+                </select>
+            </div>
+            
+            <!-- Lead Status -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Lead Status</label>
+                <select id="filter-lead-status" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">All Statuses</option>
+                </select>
+            </div>
+            
+            <!-- Min Deal Amount -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Min Deal Amount</label>
+                <input type="number" id="filter-min-deal" placeholder="e.g. 10000"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+        </div>
+        
+        <!-- Active Filters -->
+        <div id="active-filters" class="mb-4 hidden">
+            <p class="text-sm text-gray-500 mb-2">Active filters:</p>
+            <div id="filter-chips"></div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <button onclick="applyFilters()" class="px-6 py-2 bg-primary hover:bg-indigo-700 text-white rounded-lg font-medium transition">
+                🔍 Search
+            </button>
+            <button onclick="clearFilters()" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition">
+                Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h3 class="font-semibold text-gray-900">Results</h3>
+                <span id="result-count" class="text-sm text-gray-500">0 contacts</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <label class="flex items-center space-x-2 text-sm">
+                    <input type="checkbox" id="select-all" class="form-checkbox h-4 w-4 text-primary rounded" onchange="toggleSelectAll()">
+                    <span class="text-gray-600">Select All</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="checkbox-cell px-4 py-3"></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job Title</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lifecycle</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                            Use filters above to search contacts
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="p-4 border-t border-gray-200 flex items-center justify-between">
+            <button onclick="prevPage()" id="btn-prev" disabled
+                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+                ← Previous
+            </button>
+            <span id="page-info" class="text-sm text-gray-500">Page 1</span>
+            <button onclick="nextPage()" id="btn-next" disabled
+                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+                Next →
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Selected Count Floating Bar -->
+<div id="selected-bar" class="selected-count hidden">
+    <span><strong id="selected-count">0</strong> contacts selected</span>
+    <button onclick="addToCampaign()" class="px-4 py-1 bg-white text-primary rounded-lg font-medium hover:bg-gray-100">
+        Add to Campaign
+    </button>
+    <button onclick="clearSelection()" class="text-white/80 hover:text-white">
+        ✕
+    </button>
+</div>
+
+<script>
+    // State
+    let contacts = [];
+    let selectedIds = new Set();
+    let currentPage = 0;
+    const pageSize = 50;
+    let totalContacts = 0;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+        loadFilterOptions();
+    });
+
+    async function loadFilterOptions() {
+        // Load lifecycle stages
+        try {
+            const stagesRes = await fetch('/api/hubspot/contacts/list/lifecycle-stages');
+            const stagesData = await stagesRes.json();
+            const stageSelect = document.getElementById('filter-lifecycle');
+            stagesData.stages.forEach(s => {
+                stageSelect.innerHTML += `<option value="${s.value}">${s.label}</option>`;
+            });
+        } catch (e) {
+            console.error('Failed to load lifecycle stages:', e);
+        }
+
+        // Load lead statuses
+        try {
+            const statusRes = await fetch('/api/hubspot/contacts/list/lead-statuses');
+            const statusData = await statusRes.json();
+            const statusSelect = document.getElementById('filter-lead-status');
+            statusData.statuses.forEach(s => {
+                statusSelect.innerHTML += `<option value="${s.value}">${s.label}</option>`;
+            });
+        } catch (e) {
+            console.error('Failed to load lead statuses:', e);
+        }
+    }
+
+    function getFilters() {
+        return {
+            job_title_contains: document.getElementById('filter-job-title').value || null,
+            company_domain: document.getElementById('filter-domain').value || null,
+            industry: document.getElementById('filter-industry').value || null,
+            lifecycle_stage: document.getElementById('filter-lifecycle').value || null,
+            lead_status: document.getElementById('filter-lead-status').value || null,
+            min_deal_amount: document.getElementById('filter-min-deal').value ? parseFloat(document.getElementById('filter-min-deal').value) : null,
+        };
+    }
+
+    async function applyFilters() {
+        currentPage = 0;
+        await loadContacts();
+        updateFilterChips();
+    }
+
+    async function loadContacts() {
+        const filters = getFilters();
+        const body = document.getElementById('results-body');
+        body.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center"><div class="animate-spin inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div></td></tr>`;
+
+        try {
+            const res = await fetch(`/api/hubspot/contacts/list?limit=${pageSize}&offset=${currentPage * pageSize}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(filters)
+            });
+
+            if (!res.ok) throw new Error('Search failed');
+            const data = await res.json();
+
+            contacts = data.contacts;
+            totalContacts = data.total;
+
+            renderContacts();
+            updatePagination();
+
+        } catch (e) {
+            console.error('Search failed:', e);
+            body.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-red-500">Search failed. Please try again.</td></tr>`;
+        }
+    }
+
+    function renderContacts() {
+        const body = document.getElementById('results-body');
+        document.getElementById('result-count').textContent = `${totalContacts} contacts`;
+
+        if (contacts.length === 0) {
+            body.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-gray-500">No contacts found matching your filters</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = contacts.map(c => {
+            const props = c.custom_properties || {};
+            const isSelected = selectedIds.has(c.id);
+
+            return `
+                <tr class="contact-row">
+                    <td class="checkbox-cell px-4 py-3">
+                        <input type="checkbox" class="form-checkbox h-4 w-4 text-primary rounded" 
+                            ${isSelected ? 'checked' : ''} 
+                            onchange="toggleSelect('${c.id}')">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <a href="/caseyos/contacts/${c.id}" class="font-medium text-gray-900 hover:text-primary">
+                            ${escapeHtml(c.full_name)}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${escapeHtml(c.email)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${escapeHtml(props.job_title || '--')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                            ${escapeHtml(props.lifecycle_stage || '--')}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+                            ${escapeHtml(props.lead_status || '--')}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <a href="/caseyos/contacts/${c.id}" class="text-primary hover:underline">View</a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function updatePagination() {
+        const totalPages = Math.ceil(totalContacts / pageSize);
+        document.getElementById('page-info').textContent = `Page ${currentPage + 1} of ${Math.max(1, totalPages)}`;
+        document.getElementById('btn-prev').disabled = currentPage === 0;
+        document.getElementById('btn-next').disabled = (currentPage + 1) * pageSize >= totalContacts;
+    }
+
+    function prevPage() {
+        if (currentPage > 0) {
+            currentPage--;
+            loadContacts();
+        }
+    }
+
+    function nextPage() {
+        if ((currentPage + 1) * pageSize < totalContacts) {
+            currentPage++;
+            loadContacts();
+        }
+    }
+
+    function updateFilterChips() {
+        const filters = getFilters();
+        const chips = [];
+
+        if (filters.job_title_contains) chips.push({ key: 'job_title_contains', label: `Title: ${filters.job_title_contains}` });
+        if (filters.company_domain) chips.push({ key: 'company_domain', label: `Domain: ${filters.company_domain}` });
+        if (filters.industry) chips.push({ key: 'industry', label: `Industry: ${filters.industry}` });
+        if (filters.lifecycle_stage) chips.push({ key: 'lifecycle_stage', label: `Stage: ${filters.lifecycle_stage}` });
+        if (filters.lead_status) chips.push({ key: 'lead_status', label: `Status: ${filters.lead_status}` });
+        if (filters.min_deal_amount) chips.push({ key: 'min_deal_amount', label: `Min Deal: $${filters.min_deal_amount}` });
+
+        const container = document.getElementById('filter-chips');
+        const activeFilters = document.getElementById('active-filters');
+
+        if (chips.length > 0) {
+            activeFilters.classList.remove('hidden');
+            container.innerHTML = chips.map(c => `
+                <span class="filter-chip">
+                    ${escapeHtml(c.label)}
+                    <button onclick="removeFilter('${c.key}')">×</button>
+                </span>
+            `).join('');
+        } else {
+            activeFilters.classList.add('hidden');
+        }
+    }
+
+    function removeFilter(key) {
+        const fieldMap = {
+            'job_title_contains': 'filter-job-title',
+            'company_domain': 'filter-domain',
+            'industry': 'filter-industry',
+            'lifecycle_stage': 'filter-lifecycle',
+            'lead_status': 'filter-lead-status',
+            'min_deal_amount': 'filter-min-deal',
+        };
+        document.getElementById(fieldMap[key]).value = '';
+        applyFilters();
+    }
+
+    function clearFilters() {
+        document.getElementById('filter-job-title').value = '';
+        document.getElementById('filter-domain').value = '';
+        document.getElementById('filter-industry').value = '';
+        document.getElementById('filter-lifecycle').value = '';
+        document.getElementById('filter-lead-status').value = '';
+        document.getElementById('filter-min-deal').value = '';
+        document.getElementById('active-filters').classList.add('hidden');
+        document.getElementById('results-body').innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-gray-500">Use filters above to search contacts</td></tr>`;
+        document.getElementById('result-count').textContent = '0 contacts';
+    }
+
+    // Selection
+    function toggleSelect(id) {
+        if (selectedIds.has(id)) {
+            selectedIds.delete(id);
+        } else {
+            selectedIds.add(id);
+        }
+        updateSelectionBar();
+    }
+
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('select-all').checked;
+        if (selectAll) {
+            contacts.forEach(c => selectedIds.add(c.id));
+        } else {
+            contacts.forEach(c => selectedIds.delete(c.id));
+        }
+        renderContacts();
+        updateSelectionBar();
+    }
+
+    function clearSelection() {
+        selectedIds.clear();
+        document.getElementById('select-all').checked = false;
+        renderContacts();
+        updateSelectionBar();
+    }
+
+    function updateSelectionBar() {
+        const bar = document.getElementById('selected-bar');
+        const count = document.getElementById('selected-count');
+        count.textContent = selectedIds.size;
+        bar.classList.toggle('hidden', selectedIds.size === 0);
+    }
+
+    // Actions
+    function exportCSV() {
+        if (contacts.length === 0) {
+            alert('No contacts to export. Run a search first.');
+            return;
+        }
+
+        const rows = [['Email', 'First Name', 'Last Name', 'Job Title', 'Lifecycle Stage', 'Lead Status']];
+        const toExport = selectedIds.size > 0 
+            ? contacts.filter(c => selectedIds.has(c.id))
+            : contacts;
+
+        toExport.forEach(c => {
+            const props = c.custom_properties || {};
+            rows.push([
+                c.email,
+                c.firstname || '',
+                c.lastname || '',
+                props.job_title || '',
+                props.lifecycle_stage || '',
+                props.lead_status || '',
+            ]);
+        });
+
+        const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contacts.csv';
+        a.click();
+    }
+
+    function addToCampaign() {
+        if (selectedIds.size === 0) {
+            alert('Select contacts first');
+            return;
+        }
+        // TODO: Open campaign selector modal
+        alert(`Adding ${selectedIds.size} contacts to campaign... (Feature coming soon)`);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}
